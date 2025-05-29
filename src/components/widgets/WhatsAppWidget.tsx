@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -110,6 +111,7 @@ export function WhatsAppWidget() {
         const data = await response.json();
         console.log('🔍 [CHECK_STATUS] Dados recebidos:', data);
         
+        // Corrigindo a extração do status conforme a estrutura real da API
         const apiStatus = data.instance?.state || data.state || 'unknown';
         const normalizedStatus = normalizeStatus(apiStatus);
         
@@ -166,7 +168,7 @@ export function WhatsAppWidget() {
     setError(undefined);
     
     try {
-      // Formato correto conforme o checklist
+      // Usando as configurações corretas do checklist
       const requestBody = {
         instanceName: nomeClienteTrimmed,
         integration: "WHATSAPP-BAILEYS",
@@ -270,7 +272,7 @@ export function WhatsAppWidget() {
     
     try {
       // Usando o endpoint correto conforme checklist
-      console.log('📱 [CONECTAR_WHATSAPP] Fazendo requisição GET para gerar QR Code...');
+      console.log('📱 [CONECTAR_WHATSAPP] Fazendo requisição para gerar QR Code...');
       const response = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
         method: 'GET',
         headers: {
@@ -285,11 +287,29 @@ export function WhatsAppWidget() {
         const data = await response.json();
         console.log('📱 [CONECTAR_WHATSAPP] Dados recebidos:', data);
         
-        // Conforme checklist: deve retornar { "qrcode": "data:image/png;base64,...", "status": "qrcode", "message": "Scan the QR Code to connect" }
-        const qrCodeData = data.qrcode;
+        // Verificar diferentes possíveis estruturas de resposta
+        let qrCodeData = null;
+        
+        // Formato esperado pelo checklist
+        if (data.qrcode) {
+          qrCodeData = data.qrcode;
+        }
+        // Outras possíveis estruturas
+        else if (data.qr) {
+          qrCodeData = data.qr;
+        }
+        else if (data.base64) {
+          qrCodeData = data.base64;
+        }
+        
+        console.log('📱 [CONECTAR_WHATSAPP] QR Code extraído:', qrCodeData ? 'Encontrado' : 'Não encontrado');
         
         if (qrCodeData) {
-          console.log('📱 [CONECTAR_WHATSAPP] QR Code encontrado');
+          // Garantir que o QR code tem o prefixo correto
+          if (!qrCodeData.startsWith('data:image/')) {
+            qrCodeData = `data:image/png;base64,${qrCodeData}`;
+          }
+          
           setQrCode(qrCodeData);
           setStatusConexao('connecting');
           setStatusMessage('Escaneie o QR Code com seu WhatsApp');
@@ -308,11 +328,12 @@ export function WhatsAppWidget() {
           setStatusConexao('open');
           setStatusMessage('Conectado');
         } else {
-          console.log('📱 [CONECTAR_WHATSAPP] Sem QR Code na resposta, verificando status...');
+          // Se não há QR code, pode ser que a instância já esteja conectada
+          console.log('📱 [CONECTAR_WHATSAPP] Verificando se já está conectado...');
           await checkConnectionStatus();
           
           if (statusConexao !== 'open') {
-            throw new Error('QR Code não foi gerado. Verifique se a instância foi criada corretamente.');
+            throw new Error('QR Code não foi gerado. Tente criar uma nova instância.');
           }
         }
       } else {
