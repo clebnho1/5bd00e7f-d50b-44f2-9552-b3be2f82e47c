@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,7 @@ const Login = () => {
   }, [user, authLoading, initialized, navigate]);
 
   const handleInputChange = (field: string, value: string) => {
+    console.log(`Input changed - ${field}:`, value);
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -38,6 +40,7 @@ const Login = () => {
   };
 
   const validateForm = () => {
+    console.log('Validating form...');
     const newErrors: {[key: string]: string} = {};
 
     if (!formData.email.trim()) {
@@ -51,12 +54,36 @@ const Login = () => {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    console.log('Form validation result:', isValid);
+    return isValid;
+  };
+
+  const handleForgotPasswordClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('=== FORGOT PASSWORD BUTTON CLICKED ===');
+    console.log('Navigating to /esqueci-senha');
+    navigate('/esqueci-senha');
+  };
+
+  const handleBackClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('=== BACK BUTTON CLICKED ===');
+    console.log('Navigating to /');
+    navigate('/');
+  };
+
+  const handleCreateAccountClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('=== CREATE ACCOUNT BUTTON CLICKED ===');
+    console.log('Navigating to /cadastro');
+    navigate('/cadastro');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('=== LOGIN SUBMIT BUTTON CLICKED ===');
     console.log('=== LOGIN ATTEMPT START ===');
     console.log('Login form submitted with:', { email: formData.email, senha: '***' });
     console.log('Current route before validation:', window.location.pathname);
@@ -131,9 +158,10 @@ const Login = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <Button
+            type="button"
             variant="ghost"
             className="mb-4"
-            onClick={() => navigate('/')}
+            onClick={handleBackClick}
             disabled={isLoading}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -195,7 +223,10 @@ const Login = () => {
                     variant="ghost"
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => {
+                      console.log('=== PASSWORD VISIBILITY TOGGLE CLICKED ===');
+                      setShowPassword(!showPassword);
+                    }}
                     disabled={isLoading}
                     aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
@@ -213,9 +244,10 @@ const Login = () => {
 
               <div className="flex justify-end">
                 <Button 
+                  type="button"
                   variant="link" 
                   className="p-0 h-auto text-sm text-whatsapp"
-                  onClick={() => navigate('/esqueci-senha')}
+                  onClick={handleForgotPasswordClick}
                   disabled={isLoading}
                 >
                   Esqueci minha senha?
@@ -242,9 +274,10 @@ const Login = () => {
               <p className="text-sm text-gray-600">
                 Não tem uma conta?{' '}
                 <Button 
+                  type="button"
                   variant="link" 
                   className="p-0 h-auto text-whatsapp" 
-                  onClick={() => navigate('/cadastro')}
+                  onClick={handleCreateAccountClick}
                   disabled={isLoading}
                 >
                   Criar conta gratuita
