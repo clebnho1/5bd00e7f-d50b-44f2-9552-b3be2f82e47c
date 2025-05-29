@@ -10,13 +10,17 @@ import { Users, Activity, BarChart3, Clock, Search, Filter } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast';
 import { ProtectedWidget } from '@/components/ProtectedWidget';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
+
+type PlanoTipo = Database['public']['Enums']['plano_tipo'];
+type UserRole = Database['public']['Enums']['user_role'];
 
 interface Usuario {
   id: string;
   name: string;
   email: string;
-  plano: string;
-  role: string;
+  plano: PlanoTipo;
+  role: UserRole;
   created_at: string;
 }
 
@@ -91,28 +95,28 @@ export function AdministracaoWidget() {
     }
   };
 
-  const getPlanoInfo = (plano: string) => {
+  const getPlanoInfo = (plano: PlanoTipo) => {
     const planos = {
       gratuito: { nome: 'Gratuito', cor: 'bg-gray-100 text-gray-800' },
       profissional: { nome: 'Profissional', cor: 'bg-blue-100 text-blue-800' },
       empresarial: { nome: 'Empresarial', cor: 'bg-purple-100 text-purple-800' }
     };
-    return planos[plano as keyof typeof planos] || planos.gratuito;
+    return planos[plano] || planos.gratuito;
   };
 
-  const getRoleInfo = (role: string) => {
+  const getRoleInfo = (role: UserRole) => {
     const roles = {
       admin: { nome: 'Admin', cor: 'bg-red-100 text-red-800' },
       user: { nome: 'Usuário', cor: 'bg-green-100 text-green-800' }
     };
-    return roles[role as keyof typeof roles] || roles.user;
+    return roles[role] || roles.user;
   };
 
   const alterarPlanoUsuario = async (userId: string, novoPlano: string) => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ plano: novoPlano })
+        .update({ plano: novoPlano as PlanoTipo })
         .eq('id', userId);
 
       if (error) throw error;
@@ -137,7 +141,7 @@ export function AdministracaoWidget() {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ role: novaRole })
+        .update({ role: novaRole as UserRole })
         .eq('id', userId);
 
       if (error) throw error;
