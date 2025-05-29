@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,21 +57,28 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('=== LOGIN ATTEMPT START ===');
     console.log('Login form submitted with:', { email: formData.email, senha: '***' });
+    console.log('Current route before validation:', window.location.pathname);
     
     if (!validateForm()) {
-      console.log('Form validation failed');
+      console.log('Form validation failed, staying on login page');
       return;
     }
     
     setIsLoading(true);
+    console.log('Loading state set, current route:', window.location.pathname);
     
     try {
-      console.log('Attempting to sign in...');
+      console.log('About to call signIn function...');
       await signIn(formData.email.trim(), formData.senha);
-      console.log('Sign in successful');
+      console.log('SignIn function completed successfully');
+      console.log('Current route after signIn:', window.location.pathname);
+      console.log('=== LOGIN ATTEMPT SUCCESS ===');
     } catch (error: any) {
+      console.error('=== LOGIN ATTEMPT FAILED ===');
       console.error('Login error:', error);
+      console.log('Current route after error:', window.location.pathname);
       
       // Tratamento específico de erros de login
       if (error.message?.includes('Email') || error.message?.includes('incorretos')) {
@@ -92,7 +98,9 @@ const Login = () => {
         }));
       }
     } finally {
+      console.log('Setting loading to false, current route:', window.location.pathname);
       setIsLoading(false);
+      console.log('=== LOGIN ATTEMPT END ===');
     }
   };
 

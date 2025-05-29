@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    console.log('=== SIGNIN FUNCTION START ===');
+    console.log('Current URL at signIn start:', window.location.href);
+    
     if (!email.trim() || !password.trim()) {
       const errorMsg = "Email e senha são obrigatórios";
       console.log('Sign in validation failed:', errorMsg);
@@ -95,14 +97,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       console.log('Attempting sign in with email:', email);
+      console.log('Current URL before Supabase call:', window.location.href);
       
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
+      console.log('Supabase signInWithPassword completed');
+      console.log('Current URL after Supabase call:', window.location.href);
+
       if (error) {
         console.error('Supabase sign in error:', error);
+        console.log('Current URL after error:', window.location.href);
         let errorMessage = "Erro no login";
         
         if (error.message.includes('Invalid login credentials')) {
@@ -122,15 +129,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('Sign in successful');
+      console.log('Current URL after successful signIn:', window.location.href);
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
       });
+      console.log('=== SIGNIN FUNCTION SUCCESS ===');
     } catch (error) {
       console.error('Error during sign in:', error);
+      console.log('Current URL after catch:', window.location.href);
+      console.log('=== SIGNIN FUNCTION ERROR ===');
       throw error;
     } finally {
       setLoading(false);
+      console.log('SignIn loading set to false');
+      console.log('Current URL at signIn end:', window.location.href);
     }
   };
 
