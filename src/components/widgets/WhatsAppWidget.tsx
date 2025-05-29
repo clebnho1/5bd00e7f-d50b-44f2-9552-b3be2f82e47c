@@ -158,9 +158,11 @@ export function WhatsAppWidget() {
     setError(undefined);
     
     try {
+      // Formato correto para a API Evolution
       const requestBody = {
         instanceName: nomeClienteTrimmed,
-        token: API_KEY
+        qrcode: true,
+        integration: "WHATSAPP-BAILEYS"
       };
       
       console.log('🔧 [CRIAR_INSTANCIA] Corpo da requisição:', requestBody);
