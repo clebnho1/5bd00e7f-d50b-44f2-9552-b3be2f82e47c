@@ -64,6 +64,7 @@ export function WhatsAppWidget() {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       await saveInstance({
+        nome_empresa: formData.nome_empresa,
         status: 'conectado',
         qr_code: null,
         ultima_verificacao: new Date().toISOString()
@@ -75,6 +76,7 @@ export function WhatsAppWidget() {
 
   const desconectar = async () => {
     await saveInstance({
+      nome_empresa: formData.nome_empresa,
       status: 'desconectado',
       qr_code: null
     });
