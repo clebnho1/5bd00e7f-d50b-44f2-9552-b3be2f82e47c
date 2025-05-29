@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageCircle, Bot, Users, Settings, BarChart, CheckCircle } from "lucide-react";
@@ -70,14 +71,22 @@ const Landing = () => {
     },
     {
       name: "Empresarial",
-      price: "R$ 79",
+      price: "R$ 699",
       period: "/mês",
       features: [
-        "Agentes AI ilimitados",
-        "Instâncias ilimitadas",
-        "API personalizada",
-        "Integração completa",
-        "Suporte 24/7"
+        "Cancelou? Cliente recebe mensagem automática!",
+        "Novo agendamento ou venda? Notificação direto no seu WhatsApp!",
+        "Após 7 dias, o cliente recebe um lembrete para reagendar ou comprar novamente!",
+        "🔄 Respostas automáticas 24/7",
+        "Atenda seus clientes a qualquer hora, sem depender de humanos.",
+        "🧭 Menu interativo personalizado",
+        "Crie um fluxo de conversa guiado com base no seu negócio.",
+        "🎯 Detecção de intenção",
+        "A IA entende o que o cliente quer, mesmo com perguntas abertas e informais.",
+        "📚 Aprendizado contínuo",
+        "O chat melhora com o tempo, aprendendo com interações passadas para se tornar mais eficaz.",
+        "📅 Agendamentos automáticos",
+        "Organize compromissos automaticamente sem intervenção manual, integrando com calendários e sistemas."
       ]
     }
   ];
