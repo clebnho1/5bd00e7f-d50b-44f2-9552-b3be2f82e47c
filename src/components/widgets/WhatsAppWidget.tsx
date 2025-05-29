@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -268,6 +269,12 @@ export function WhatsAppWidget() {
     
     try {
       console.log('📱 [CONECTAR_WHATSAPP] Fazendo requisição para gerar QR Code...');
+      console.log('📱 [CONECTAR_WHATSAPP] URL:', `${API_BASE}/instance/connect/${targetInstance}`);
+      console.log('📱 [CONECTAR_WHATSAPP] Headers:', {
+        'Content-Type': 'application/json',
+        'apikey': API_KEY
+      });
+      
       const response = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
         method: 'GET',
         headers: {
@@ -277,29 +284,60 @@ export function WhatsAppWidget() {
       });
 
       console.log('📱 [CONECTAR_WHATSAPP] Status da resposta:', response.status);
+      console.log('📱 [CONECTAR_WHATSAPP] Headers da resposta:', Object.fromEntries(response.headers.entries()));
+      console.log('📱 [CONECTAR_WHATSAPP] OK?:', response.ok);
 
+      // Capturar o texto bruto da resposta primeiro
+      const responseText = await response.text();
+      console.log('📱 [CONECTAR_WHATSAPP] Resposta RAW (texto):', responseText);
+      
       if (response.ok) {
-        const data = await response.json();
-        console.log('📱 [CONECTAR_WHATSAPP] Dados recebidos:', data);
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('📱 [CONECTAR_WHATSAPP] Dados JSON parseados:', data);
+          console.log('📱 [CONECTAR_WHATSAPP] Tipo dos dados:', typeof data);
+          console.log('📱 [CONECTAR_WHATSAPP] Chaves disponíveis:', Object.keys(data));
+        } catch (jsonError) {
+          console.error('📱 [CONECTAR_WHATSAPP] Erro ao fazer parse do JSON:', jsonError);
+          throw new Error(`Resposta inválida da API: ${responseText}`);
+        }
+        
+        // Log detalhado de cada propriedade possível
+        console.log('📱 [CONECTAR_WHATSAPP] Verificando propriedades:');
+        console.log('📱 [CONECTAR_WHATSAPP] - data.qrcode:', data.qrcode);
+        console.log('📱 [CONECTAR_WHATSAPP] - data.qr:', data.qr);
+        console.log('📱 [CONECTAR_WHATSAPP] - data.base64:', data.base64);
+        console.log('📱 [CONECTAR_WHATSAPP] - data.count:', data.count);
+        console.log('📱 [CONECTAR_WHATSAPP] - data.status:', data.status);
+        console.log('📱 [CONECTAR_WHATSAPP] - data.message:', data.message);
+        console.log('📱 [CONECTAR_WHATSAPP] - data.error:', data.error);
         
         // Verificar diferentes possíveis estruturas de resposta para QR Code
         let qrCodeData = null;
         
         if (data.qrcode) {
           qrCodeData = data.qrcode;
+          console.log('📱 [CONECTAR_WHATSAPP] QR Code encontrado em data.qrcode');
         } else if (data.qr) {
           qrCodeData = data.qr;
+          console.log('📱 [CONECTAR_WHATSAPP] QR Code encontrado em data.qr');
         } else if (data.base64) {
           qrCodeData = data.base64;
+          console.log('📱 [CONECTAR_WHATSAPP] QR Code encontrado em data.base64');
         }
         
         console.log('📱 [CONECTAR_WHATSAPP] QR Code extraído:', qrCodeData ? 'Encontrado' : 'Não encontrado');
+        console.log('📱 [CONECTAR_WHATSAPP] Tamanho do QR Code:', qrCodeData ? qrCodeData.length : 0);
         
         if (qrCodeData) {
           // Garantir que o QR code tem o prefixo correto
           if (!qrCodeData.startsWith('data:image/')) {
+            console.log('📱 [CONECTAR_WHATSAPP] Adicionando prefixo data:image ao QR Code');
             qrCodeData = `data:image/png;base64,${qrCodeData}`;
           }
+          
+          console.log('📱 [CONECTAR_WHATSAPP] QR Code final (primeiros 100 chars):', qrCodeData.substring(0, 100));
           
           setQrCode(qrCodeData);
           setStatusConexao('connecting');
@@ -312,6 +350,7 @@ export function WhatsAppWidget() {
           // Verificar status após 5 segundos
           setTimeout(() => checkConnectionStatus(), 5000);
         } else if (data.message && (data.message.includes('já está conectada') || data.message.includes('already connected'))) {
+          console.log('📱 [CONECTAR_WHATSAPP] Instância já conectada');
           toast({
             title: "Já conectado",
             description: data.message,
@@ -319,20 +358,25 @@ export function WhatsAppWidget() {
           setStatusConexao('open');
           setStatusMessage('Conectado');
         } else {
-          console.log('📱 [CONECTAR_WHATSAPP] Verificando se já está conectado...');
+          console.log('📱 [CONECTAR_WHATSAPP] QR Code não encontrado, verificando status atual...');
+          console.log('📱 [CONECTAR_WHATSAPP] Estrutura completa da resposta:', JSON.stringify(data, null, 2));
+          
           await checkConnectionStatus();
           
           if (statusConexao !== 'open') {
-            throw new Error('QR Code não foi gerado. A instância pode estar corrompida.');
+            const errorMsg = `QR Code não foi gerado. Resposta da API: ${JSON.stringify(data)}`;
+            console.error('📱 [CONECTAR_WHATSAPP] Erro:', errorMsg);
+            throw new Error(errorMsg);
           }
         }
       } else {
-        const errorText = await response.text();
-        console.error('📱 [CONECTAR_WHATSAPP] Erro da API:', errorText);
-        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+        console.error('📱 [CONECTAR_WHATSAPP] Resposta não OK - Status:', response.status);
+        console.error('📱 [CONECTAR_WHATSAPP] Resposta não OK - Texto:', responseText);
+        throw new Error(`Erro na API: ${response.status} - ${responseText}`);
       }
     } catch (err) {
-      console.error('📱 [CONECTAR_WHATSAPP] Erro:', err);
+      console.error('📱 [CONECTAR_WHATSAPP] Erro completo:', err);
+      console.error('📱 [CONECTAR_WHATSAPP] Stack trace:', err instanceof Error ? err.stack : 'N/A');
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       setError(errorMessage);
       toast({
