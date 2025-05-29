@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -324,112 +323,104 @@ export function WhatsAppWidget() {
             </div>
           </div>
 
-          {/* Campo ID da Instância (somente leitura) - SEMPRE MOSTRAR SE EXISTIR */}
-          {instanceId && (
-            <div className="space-y-2">
-              <Label htmlFor="instanceId" className="text-gray-700 font-medium">
-                ID da Instância
-              </Label>
-              <Input
-                id="instanceId"
-                value={instanceId}
-                readOnly
-                className="bg-gray-50 text-gray-600"
+          {/* Campo ID da Instância (sempre visível) */}
+          <div className="space-y-2">
+            <Label htmlFor="instanceId" className="text-gray-700 font-medium">
+              ID da Instância
+            </Label>
+            <Input
+              id="instanceId"
+              value={instanceId || 'Nenhuma instância criada'}
+              readOnly
+              className="bg-gray-50 text-gray-600"
+            />
+          </div>
+
+          {/* Status da Conexão (sempre visível) */}
+          <div className="space-y-2">
+            <Label className="text-gray-700 font-medium">Status da Conexão</Label>
+            <div className={`font-semibold text-lg ${getStatusColor()}`}>
+              {statusConexao}
+            </div>
+          </div>
+
+          {/* Botões de Ação (sempre visíveis, mas desabilitados sem instância) */}
+          <div className="flex gap-3 pt-4">
+            {/* Botão Conectar WhatsApp */}
+            <Button
+              onClick={conectarWhatsApp}
+              disabled={isConnecting || !instanceId}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              {isConnecting ? "Conectando..." : "Conectar WhatsApp"}
+            </Button>
+            
+            {/* Botão Desconectar */}
+            <Button
+              onClick={desconectar}
+              disabled={isDisconnecting || !instanceId}
+              variant="outline"
+              className="flex-1"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {isDisconnecting ? "Desconectando..." : "Desconectar"}
+            </Button>
+            
+            {/* Botão Excluir Instância */}
+            <Button
+              onClick={excluirInstancia}
+              disabled={isDeleting || !instanceId}
+              variant="destructive"
+              className="flex-1"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {isDeleting ? "Excluindo..." : "Excluir Instância"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Card QR Code (sempre visível) */}
+      <Card className="bg-white shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-gray-800">
+            <QrCode className="h-5 w-5" />
+            QR Code para Conexão
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            Escaneie o código QR com seu WhatsApp para conectar
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Área de Imagem QR Code */}
+          {qrCode ? (
+            <div className="bg-gray-50 rounded-lg p-6 text-center border">
+              <img
+                src={qrCode}
+                alt="QR Code WhatsApp"
+                className="w-64 h-64 mx-auto border border-gray-200 rounded-lg shadow-sm"
               />
+              <p className="text-gray-600 mt-4 text-sm">
+                Escaneie este código com seu WhatsApp para conectar
+              </p>
+              <p className="text-orange-600 text-xs mt-2">
+                ⚠️ O QR Code tem tempo limitado. Se expirar, clique em "Conectar WhatsApp" novamente.
+              </p>
             </div>
-          )}
-
-          {/* Indicador Status da Conexão - SEMPRE MOSTRAR SE INSTÂNCIA EXISTIR */}
-          {instanceId && (
-            <div className="space-y-2">
-              <Label className="text-gray-700 font-medium">Status da Conexão</Label>
-              <div className={`font-semibold text-lg ${getStatusColor()}`}>
-                {statusConexao}
-              </div>
-            </div>
-          )}
-
-          {/* Botões de Ação - SEMPRE MOSTRAR SE INSTÂNCIA EXISTIR */}
-          {instanceId && (
-            <div className="flex gap-3 pt-4">
-              {/* Botão Conectar WhatsApp */}
-              <Button
-                onClick={conectarWhatsApp}
-                disabled={isConnecting}
-                className="flex-1 bg-green-600 hover:bg-green-700"
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                {isConnecting ? "Conectando..." : "Conectar WhatsApp"}
-              </Button>
-              
-              {/* Botão Desconectar */}
-              <Button
-                onClick={desconectar}
-                disabled={isDisconnecting}
-                variant="outline"
-                className="flex-1"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                {isDisconnecting ? "Desconectando..." : "Desconectar"}
-              </Button>
-              
-              {/* Botão Excluir Instância */}
-              <Button
-                onClick={excluirInstancia}
-                disabled={isDeleting}
-                variant="destructive"
-                className="flex-1"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {isDeleting ? "Excluindo..." : "Excluir Instância"}
-              </Button>
+          ) : (
+            <div className="bg-gray-50 rounded-lg p-12 text-center border border-dashed border-gray-300">
+              <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg mb-2">
+                Nenhum QR Code gerado
+              </p>
+              <p className="text-gray-500 text-sm">
+                Clique em "Conectar WhatsApp" para gerar o QR Code
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Card QR Code - SEMPRE MOSTRAR SE INSTÂNCIA EXISTIR */}
-      {instanceId && (
-        <Card className="bg-white shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-800">
-              <QrCode className="h-5 w-5" />
-              QR Code para Conexão
-            </CardTitle>
-            <CardDescription className="text-gray-600">
-              Escaneie o código QR com seu WhatsApp para conectar
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Área de Imagem QR Code */}
-            {qrCode ? (
-              <div className="bg-gray-50 rounded-lg p-6 text-center border">
-                <img
-                  src={qrCode}
-                  alt="QR Code WhatsApp"
-                  className="w-64 h-64 mx-auto border border-gray-200 rounded-lg shadow-sm"
-                />
-                <p className="text-gray-600 mt-4 text-sm">
-                  Escaneie este código com seu WhatsApp para conectar
-                </p>
-                <p className="text-orange-600 text-xs mt-2">
-                  ⚠️ O QR Code tem tempo limitado. Se expirar, clique em "Conectar WhatsApp" novamente.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-lg p-12 text-center border border-dashed border-gray-300">
-                <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg mb-2">
-                  Nenhum QR Code gerado
-                </p>
-                <p className="text-gray-500 text-sm">
-                  Clique em "Conectar WhatsApp" para gerar o QR Code
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
