@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -295,19 +296,33 @@ export function useWhatsAppInstance() {
   const { toast } = useToast();
   const [instance, setInstance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const initRef = useRef(false);
 
-  console.log('🔧 [useWhatsAppInstance] Hook inicializado', { user: !!user });
+  console.log('🔧 [useWhatsAppInstance] Hook inicializado', { user: !!user, initialized: initRef.current });
 
   useEffect(() => {
+    // Prevenir múltiplas inicializações
+    if (initRef.current) {
+      console.log('⚠️ [useWhatsAppInstance] Já inicializado, ignorando');
+      return;
+    }
+
     console.log('🔧 [useWhatsAppInstance] useEffect executado', { user: !!user });
     
     if (user) {
+      initRef.current = true;
       fetchInstance();
     } else {
       console.log('🔧 [useWhatsAppInstance] Sem usuário, definindo loading=false');
       setLoading(false);
     }
-  }, [user]);
+
+    // Cleanup function
+    return () => {
+      console.log('🧹 [useWhatsAppInstance] Cleanup');
+      initRef.current = false;
+    };
+  }, [user?.id]); // Usar user.id em vez de user completo
 
   const fetchInstance = async () => {
     if (!user) {
@@ -475,7 +490,8 @@ export function useWhatsAppInstance() {
 
   console.log('🔧 [useWhatsAppInstance] Estado atual:', { 
     hasInstance: !!instance, 
-    loading
+    loading,
+    initialized: initRef.current
   });
 
   return {

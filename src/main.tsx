@@ -62,8 +62,10 @@ if (typeof window !== 'undefined') {
   
   console.warn = function(...args: any[]) {
     const message = args.join(' ').toLowerCase();
-    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || message.includes('doubleclick')) {
-      return; // Silencia warnings de terceiros
+    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || message.includes('doubleclick') || 
+        message.includes('unrecognized feature') || message.includes('permission policy') || 
+        message.includes('ambient-light-sensor') || message.includes('battery') || message.includes('vr')) {
+      return; // Silencia warnings de terceiros e permissions policy
     }
     originalConsoleWarn.apply(console, args);
   };

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
+
+import React, { useState, useEffect, createContext, useContext, ReactNode, useRef, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,17 +29,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
   const mountedRef = useRef(false);
+  const initRef = useRef(false);
 
-  console.log('🚀 [AUTH_PROVIDER] Renderizado', { mounted: mountedRef.current });
+  console.log('🚀 [AUTH_PROVIDER] Renderizado', { mounted: mountedRef.current, initialized: initRef.current });
+
+  const fetchUserRole = useCallback(async (userId: string) => {
+    if (!mountedRef.current) return;
+    
+    try {
+      console.log('🔍 [ROLE] Buscando role para usuário:', userId);
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('❌ [ROLE_ERROR]', error);
+        if (mountedRef.current) setUserRole('user');
+        return;
+      }
+
+      console.log('✅ [ROLE_SUCCESS] Role encontrado:', data.role);
+      if (mountedRef.current) setUserRole(data.role);
+    } catch (error) {
+      console.error('💥 [ROLE_CRASH]', error);
+      if (mountedRef.current) setUserRole('user');
+    }
+  }, []);
 
   useEffect(() => {
     // Previne múltiplas inicializações
-    if (mountedRef.current) {
+    if (initRef.current) {
       console.log('⚠️ [AUTH_PROVIDER] Já inicializado, ignorando');
       return;
     }
 
     mountedRef.current = true;
+    initRef.current = true;
     console.log('🔄 [INIT] Iniciando inicialização única da autenticação');
 
     let authSubscription: any = null;
@@ -116,37 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       console.log('🧹 [CLEANUP] Limpando AuthProvider');
       mountedRef.current = false;
+      initRef.current = false;
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
     };
   }, []); // Array vazio - executa apenas uma vez
-
-  const fetchUserRole = async (userId: string) => {
-    if (!mountedRef.current) return;
-    
-    try {
-      console.log('🔍 [ROLE] Buscando role para usuário:', userId);
-      
-      const { data, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('❌ [ROLE_ERROR]', error);
-        if (mountedRef.current) setUserRole('user');
-        return;
-      }
-
-      console.log('✅ [ROLE_SUCCESS] Role encontrado:', data.role);
-      if (mountedRef.current) setUserRole(data.role);
-    } catch (error) {
-      console.error('💥 [ROLE_CRASH]', error);
-      if (mountedRef.current) setUserRole('user');
-    }
-  };
 
   const refreshUserRole = async () => {
     if (user && mountedRef.current) {
@@ -367,7 +371,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: !!user,
     session: !!session,
     loading,
-    userRole
+    userRole,
+    initialized: initRef.current
   });
 
   return (
