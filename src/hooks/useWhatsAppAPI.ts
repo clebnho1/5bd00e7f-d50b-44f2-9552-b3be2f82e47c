@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -57,7 +56,6 @@ export function useWhatsAppAPI() {
           'Content-Type': 'application/json',
           'apikey': API_KEY
         },
-        // Adicionar timeout para evitar travamentos
         signal: AbortSignal.timeout(10000)
       });
 
@@ -68,7 +66,6 @@ export function useWhatsAppAPI() {
         
         console.log(`📊 Status atual para ${user.email}: ${apiStatus} -> ${normalizedStatus}`);
         
-        // Resetar contador de retry e marcar API como saudável
         setRetryCount(0);
         setIsAPIHealthy(true);
         
@@ -96,14 +93,14 @@ export function useWhatsAppAPI() {
           }
         }
       } else if (response.status === 404) {
+        console.log(`ℹ️ Instância ${finalInstanceName} não encontrada - marcando como fechada`);
         if (statusConexao !== 'closed') {
           setStatusConexao('closed');
-          setStatusMessage('Instância não encontrada');
+          setStatusMessage('Instância não encontrada - precisa ser criada');
           setError(undefined);
           setQrCode('');
         }
       } else if (response.status >= 500) {
-        // Erro de servidor - marcar API como não saudável
         setIsAPIHealthy(false);
         setRetryCount(prev => prev + 1);
         
@@ -111,7 +108,8 @@ export function useWhatsAppAPI() {
           console.log(`⚠️ Erro 500 da API (tentativa ${retryCount + 1}/3), tentando novamente...`);
           setStatusMessage('Servidor temporariamente indisponível, tentando reconectar...');
         } else {
-          throw new Error(`API com problemas no servidor (${response.status})`);
+          console.error(`❌ API com problemas persistentes no servidor (${response.status})`);
+          setStatusMessage('Servidor com problemas, tente novamente mais tarde');
         }
       } else {
         throw new Error(`API respondeu com status ${response.status}`);
@@ -341,11 +339,23 @@ export function useWhatsAppAPI() {
           title: "WhatsApp desconectado",
           description: "Sua instância foi desconectada com sucesso.",
         });
+      } else if (response.status === 404) {
+        // Instância já foi removida, considerar como desconectada
+        console.log(`ℹ️ Instância ${finalInstanceName} não encontrada - já estava desconectada`);
+        setQrCode('');
+        setStatusConexao('closed');
+        setStatusMessage('Já estava desconectado');
+        setError(undefined);
+        toast({
+          title: "WhatsApp desconectado",
+          description: "A instância já estava desconectada.",
+        });
       } else {
         throw new Error(`Erro na API: ${response.status}`);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      console.error('❌ Erro ao desconectar:', errorMessage);
       setError(errorMessage);
       toast({
         title: "Erro ao desconectar",
@@ -386,11 +396,28 @@ export function useWhatsAppAPI() {
           title: "Instância excluída",
           description: "Sua instância foi excluída com sucesso.",
         });
+      } else if (response.status === 404) {
+        // Instância já foi removida, considerar como sucesso
+        console.log(`ℹ️ Instância ${finalInstanceName} não encontrada - já estava excluída`);
+        setQrCode('');
+        setStatusConexao('unknown');
+        setStatusMessage('');
+        setError(undefined);
+        
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+
+        toast({
+          title: "Instância excluída",
+          description: "A instância já havia sido excluída anteriormente.",
+        });
       } else {
         throw new Error(`Erro na API: ${response.status}`);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      console.error('❌ Erro ao excluir instância:', errorMessage);
       setError(errorMessage);
       toast({
         title: "Erro ao excluir",
