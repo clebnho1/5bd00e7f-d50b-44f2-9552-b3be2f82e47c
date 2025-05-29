@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 export function WhatsAppWidget() {
-  const { instance, loading, saveInstance } = useWhatsAppInstance();
+  const { instance, loading, saveInstance, disconnectInstance } = useWhatsAppInstance();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -23,6 +23,86 @@ export function WhatsAppWidget() {
       setInstanceName(instance.nome_empresa);
     }
   }, [instance]);
+
+  const clearLocalData = () => {
+    // Limpar localStorage relacionado ao WhatsApp
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('whatsapp') || key.includes('instance') || key.includes('qr'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // Limpar sessionStorage relacionado ao WhatsApp
+    const sessionKeysToRemove = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && (key.includes('whatsapp') || key.includes('instance') || key.includes('qr'))) {
+        sessionKeysToRemove.push(key);
+      }
+    }
+    sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
+
+    // Limpar cookies relacionados ao WhatsApp
+    const cookies = document.cookie.split(';');
+    cookies.forEach(cookie => {
+      const eqPos = cookie.indexOf('=');
+      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+      if (name.includes('whatsapp') || name.includes('instance') || name.includes('qr')) {
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+      }
+    });
+
+    console.log('Dados locais relacionados ao WhatsApp foram limpos');
+  };
+
+  const disconnectAndCleanAll = async () => {
+    if (!instance) return;
+
+    try {
+      console.log('Iniciando desconexão completa e limpeza de dados...');
+
+      // 1. Desconectar via API da Evolution
+      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/disconnect/${instance.nome_empresa}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+        }
+      });
+
+      // 2. Atualizar status no banco mesmo se a API falhar
+      await saveInstance({
+        nome_empresa: instance.nome_empresa,
+        status: 'desconectado',
+        qr_code: null,
+        ultima_verificacao: new Date().toISOString()
+      });
+
+      // 3. Limpar dados locais
+      clearLocalData();
+
+      toast({
+        title: "WhatsApp desconectado e dados limpos",
+        description: "A instância foi desconectada e todos os dados locais foram removidos.",
+      });
+
+      console.log('Desconexão completa realizada com sucesso');
+    } catch (error) {
+      console.error('Erro durante desconexão completa:', error);
+      
+      // Mesmo com erro, tentar limpar dados locais
+      clearLocalData();
+      
+      toast({
+        title: "Erro na desconexão",
+        description: "Houve um problema, mas os dados locais foram limpos.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const criarInstancia = async () => {
     if (!instanceName.trim()) {
@@ -187,6 +267,22 @@ export function WhatsAppWidget() {
               )}
             </div>
           </div>
+          
+          {/* Botão de desconectar e limpar dados */}
+          {instance && (
+            <div className="pt-4 border-t border-green-400">
+              <Button
+                onClick={disconnectAndCleanAll}
+                variant="destructive"
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                Desconectar e Limpar Dados
+              </Button>
+              <p className="text-green-100 text-xs mt-2 text-center">
+                Isso irá desconectar completamente e limpar todos os dados locais
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
