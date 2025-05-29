@@ -4,11 +4,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Comentando temporariamente para eliminar warnings "Unrecognized feature"
-// import "./utils/blockAllThirdParty";
-// import "./utils/cleanupFirebase";
-
-// Remove recursos não utilizados do navegador
+// Configuração de limpeza e otimização
 if (typeof window !== 'undefined') {
   // Remove APIs não utilizadas para evitar warnings
   const unusedAPIs = ['webkitStorageInfo', 'webkitIndexedDB'];
@@ -24,30 +20,69 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  // Override console para filtrar mensagens de terceiros e warnings obsoletos
+  // Override console para filtrar mensagens desnecessárias
   const originalConsoleError = console.error;
   const originalConsoleWarn = console.warn;
+  const originalConsoleInfo = console.info;
   
   console.error = function(...args: any[]) {
     const message = args.join(' ').toLowerCase();
-    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || 
-        message.includes('doubleclick') || message.includes('net::err_http2_protocol_error')) {
-      return; // Silencia erros de terceiros e HTTP2
+    if (message.includes('google') || 
+        message.includes('analytics') || 
+        message.includes('gtm') || 
+        message.includes('doubleclick') || 
+        message.includes('net::err_http2_protocol_error') ||
+        message.includes('permissions policy') ||
+        message.includes('unrecognized feature')) {
+      return;
     }
     originalConsoleError.apply(console, args);
   };
   
   console.warn = function(...args: any[]) {
     const message = args.join(' ').toLowerCase();
-    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || 
-        message.includes('doubleclick') || message.includes('unrecognized feature') || 
-        message.includes('permission policy') || message.includes('ambient-light-sensor') || 
-        message.includes('battery') || message.includes('vr') || 
-        message.includes('preloaded resource')) {
-      return; // Silencia warnings de terceiros, permissions policy e preload
+    if (message.includes('google') || 
+        message.includes('analytics') || 
+        message.includes('gtm') || 
+        message.includes('doubleclick') || 
+        message.includes('unrecognized feature') || 
+        message.includes('permission policy') || 
+        message.includes('permissions policy') ||
+        message.includes('ambient-light-sensor') || 
+        message.includes('battery') || 
+        message.includes('vr') || 
+        message.includes('preloaded resource') ||
+        message.includes('geolocation') ||
+        message.includes('microphone') ||
+        message.includes('camera')) {
+      return;
     }
     originalConsoleWarn.apply(console, args);
   };
+
+  console.info = function(...args: any[]) {
+    const message = args.join(' ').toLowerCase();
+    if (message.includes('permissions policy') ||
+        message.includes('unrecognized feature')) {
+      return;
+    }
+    originalConsoleInfo.apply(console, args);
+  };
+
+  // Prevenção de recursos não utilizados
+  window.addEventListener('beforeunload', () => {
+    // Limpa recursos antes do unload
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(registration => {
+          if (registration.scope.includes('google') || 
+              registration.scope.includes('analytics')) {
+            registration.unregister();
+          }
+        });
+      });
+    }
+  });
 }
 
 createRoot(document.getElementById("root")!).render(

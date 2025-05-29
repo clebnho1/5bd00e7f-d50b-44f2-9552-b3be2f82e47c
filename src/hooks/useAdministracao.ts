@@ -8,18 +8,19 @@ import type { Database } from '@/integrations/supabase/types';
 type Tables = Database['public']['Tables'];
 
 export function useAdministracao() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<Tables['users']['Row'][]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && isAdmin()) {
+    // Só tenta buscar dados quando auth estiver carregado e usuário for admin
+    if (!authLoading && user && isAdmin()) {
       fetchUsers();
-    } else {
+    } else if (!authLoading) {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const fetchUsers = async () => {
     if (!user || !isAdmin()) {
@@ -28,12 +29,18 @@ export function useAdministracao() {
     }
     
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar usuários:', error);
+        throw error;
+      }
+      
       setUsers(data || []);
     } catch (error: any) {
       console.error('Erro ao carregar usuários:', error);
@@ -112,5 +119,11 @@ export function useAdministracao() {
     }
   };
 
-  return { users, loading, updateUser, resetUserPassword, refetch: fetchUsers };
+  return { 
+    users, 
+    loading: loading || authLoading, 
+    updateUser, 
+    resetUserPassword, 
+    refetch: fetchUsers 
+  };
 }

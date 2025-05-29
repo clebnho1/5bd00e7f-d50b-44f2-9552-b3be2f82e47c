@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
+  errorInfo?: React.ErrorInfo;
 }
 
 interface ErrorBoundaryProps {
@@ -25,11 +26,28 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary capturou um erro:', error, errorInfo);
+    console.error('🚨 [ERROR_BOUNDARY] Erro capturado:', {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack
+    });
+    
+    this.setState({ errorInfo });
+
+    // Log específico para erros de API
+    if (error.message.includes('500') || error.message.includes('API')) {
+      console.error('🔥 [API_ERROR] Erro de API detectado:', error);
+    }
   }
 
   resetError = () => {
-    this.setState({ hasError: false, error: undefined });
+    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+    
+    // Força refresh da página em casos críticos
+    if (this.state.error?.message.includes('ChunkLoadError') || 
+        this.state.error?.message.includes('Loading chunk')) {
+      window.location.reload();
+    }
   };
 
   render() {
@@ -39,30 +57,59 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         return <FallbackComponent error={this.state.error} resetError={this.resetError} />;
       }
 
+      const isAPIError = this.state.error?.message.includes('500') || 
+                        this.state.error?.message.includes('API') ||
+                        this.state.error?.message.includes('fetch');
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
           <Card className="max-w-md w-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="h-5 w-5" />
-                Algo deu errado
+                {isAPIError ? 'Erro de Conexão' : 'Erro da Aplicação'}
               </CardTitle>
               <CardDescription>
-                Ocorreu um erro inesperado na aplicação
+                {isAPIError 
+                  ? 'Problema na comunicação com o servidor'
+                  : 'Ocorreu um erro inesperado na aplicação'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {this.state.error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm text-red-800 font-mono">
+                  <p className="text-sm text-red-800 font-mono break-words">
                     {this.state.error.message}
                   </p>
                 </div>
               )}
-              <Button onClick={this.resetError} className="w-full">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Tentar novamente
-              </Button>
+              
+              <div className="space-y-2">
+                <Button onClick={this.resetError} className="w-full">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar novamente
+                </Button>
+                
+                {isAPIError && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.reload()} 
+                    className="w-full"
+                  >
+                    Recarregar página
+                  </Button>
+                )}
+              </div>
+              
+              {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer">Detalhes técnicos</summary>
+                  <pre className="mt-2 bg-gray-100 p-2 rounded text-xs overflow-auto max-h-32">
+                    {this.state.errorInfo.componentStack}
+                  </pre>
+                </details>
+              )}
             </CardContent>
           </Card>
         </div>

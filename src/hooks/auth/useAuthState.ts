@@ -11,6 +11,7 @@ export function useAuthState() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -28,7 +29,7 @@ export function useAuthState() {
         return;
       }
 
-      console.log('✅ [ROLE_SUCCESS] Role:', data.role);
+      console.log('✅ [ROLE_SUCCESS] Role encontrada:', data.role);
       setUserRole(data.role);
     } catch (error) {
       console.error('💥 [ROLE_CRASH]', error);
@@ -47,13 +48,31 @@ export function useAuthState() {
   };
 
   useEffect(() => {
-    console.log('🔄 [AUTH_INIT] Inicializando sistema de autenticação');
+    if (initialized) return;
 
+    console.log('🔄 [AUTH_INIT] Inicializando sistema de autenticação');
+    
     let mounted = true;
 
     const initAuth = async () => {
       try {
-        // Setup auth state change listener
+        // Primeiro pega a sessão atual
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (mounted) {
+          if (currentSession?.user) {
+            console.log('📨 [SESSION_FOUND] Sessão encontrada para:', currentSession.user.email);
+            setSession(currentSession);
+            setUser(currentSession.user);
+            await fetchUserRole(currentSession.user.id);
+          } else {
+            console.log('❌ [NO_SESSION] Nenhuma sessão encontrada');
+          }
+          setLoading(false);
+          setInitialized(true);
+        }
+
+        // Depois configura o listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!mounted) return;
@@ -64,7 +83,6 @@ export function useAuthState() {
               setUser(null);
               setSession(null);
               setUserRole(null);
-              setLoading(false);
             } else {
               setSession(newSession);
               setUser(newSession.user);
@@ -72,29 +90,21 @@ export function useAuthState() {
               if (newSession.user) {
                 await fetchUserRole(newSession.user.id);
               }
+            }
+            
+            if (!initialized) {
               setLoading(false);
+              setInitialized(true);
             }
           }
         );
-
-        // Check for existing session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (mounted) {
-          if (currentSession?.user) {
-            console.log('📨 [SESSION] Sessão encontrada');
-            setSession(currentSession);
-            setUser(currentSession.user);
-            await fetchUserRole(currentSession.user.id);
-          }
-          setLoading(false);
-        }
 
         return subscription;
       } catch (error) {
         console.error('💥 [AUTH_INIT_ERROR]', error);
         if (mounted) {
           setLoading(false);
+          setInitialized(true);
         }
       }
     };
@@ -105,7 +115,7 @@ export function useAuthState() {
       mounted = false;
       subscriptionPromise.then(sub => sub?.unsubscribe());
     };
-  }, []); // Removed dependency on initialized
+  }, [initialized]);
 
   return {
     user,
