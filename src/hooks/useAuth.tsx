@@ -1,4 +1,5 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode, useRef, useCallback } from 'react';
+
+import React, { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -27,14 +28,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
-  const mountedRef = useRef(true);
-  const initRef = useRef(false);
 
-  console.log('🚀 [AUTH_PROVIDER] Renderizado', { mounted: mountedRef.current, initialized: initRef.current });
+  console.log('🔧 [AUTH_PROVIDER] Estado atual:', { 
+    hasUser: !!user, 
+    hasSession: !!session, 
+    loading, 
+    userRole 
+  });
 
   const fetchUserRole = useCallback(async (userId: string) => {
-    if (!mountedRef.current) return;
-    
     try {
       console.log('🔍 [ROLE] Buscando role para usuário:', userId);
       
@@ -46,90 +48,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('❌ [ROLE_ERROR]', error);
-        if (mountedRef.current) setUserRole('user');
+        setUserRole('user');
         return;
       }
 
       console.log('✅ [ROLE_SUCCESS] Role encontrado:', data.role);
-      if (mountedRef.current) setUserRole(data.role);
+      setUserRole(data.role);
     } catch (error) {
       console.error('💥 [ROLE_CRASH]', error);
-      if (mountedRef.current) setUserRole('user');
+      setUserRole('user');
     }
   }, []);
 
   useEffect(() => {
-    // Previne múltiplas inicializações
-    if (initRef.current) {
-      console.log('⚠️ [AUTH_PROVIDER] Já inicializado, ignorando');
-      return;
-    }
-
-    initRef.current = true;
-    console.log('🔄 [INIT] Iniciando inicialização única da autenticação');
-
-    let authSubscription: any = null;
+    let mounted = true;
 
     const initAuth = async () => {
       try {
-        // 1. Configurar listener PRIMEIRO
+        console.log('🔄 [INIT] Iniciando autenticação');
+
+        // 1. Configurar listener primeiro
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
-            if (!mountedRef.current) return;
+            if (!mounted) return;
             
             console.log('🔄 [AUTH_CHANGE] Evento:', {
               event,
               hasSession: !!newSession,
-              hasUser: !!newSession?.user,
-              mounted: mountedRef.current
+              hasUser: !!newSession?.user
             });
             
             setSession(newSession);
             setUser(newSession?.user ?? null);
             
-            // Buscar role apenas para usuários logados, com debounce
-            if (newSession?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-              setTimeout(() => {
-                if (mountedRef.current) {
-                  fetchUserRole(newSession.user.id);
-                }
-              }, 100);
+            if (newSession?.user && event === 'SIGNED_IN') {
+              await fetchUserRole(newSession.user.id);
             } else if (!newSession?.user) {
               setUserRole(null);
             }
           }
         );
 
-        authSubscription = subscription;
-
-        // 2. Depois obter sessão atual
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        // 2. Obter sessão atual
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         console.log('📨 [SESSION] Sessão obtida:', {
           hasSession: !!currentSession,
           hasUser: !!currentSession?.user,
-          error: sessionError?.message
+          error: error?.message
         });
 
-        if (sessionError) {
-          console.error('❌ [SESSION_ERROR]', sessionError);
-        }
-
-        // 3. Configurar estados iniciais
-        if (mountedRef.current) {
+        if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           
           if (currentSession?.user) {
-            fetchUserRole(currentSession.user.id);
+            await fetchUserRole(currentSession.user.id);
           }
           
           setLoading(false);
           console.log('✅ [INIT] Inicialização concluída');
         }
+
+        return () => {
+          subscription.unsubscribe();
+        };
+
       } catch (error) {
         console.error('💥 [INIT_ERROR]', error);
-        if (mountedRef.current) {
+        if (mounted) {
           setLoading(false);
         }
       }
@@ -137,18 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth();
 
-    // Cleanup function
     return () => {
+      mounted = false;
       console.log('🧹 [CLEANUP] Limpando AuthProvider');
-      mountedRef.current = false;
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
     };
-  }, []); // Array vazio - executa apenas uma vez
+  }, [fetchUserRole]);
 
   const refreshUserRole = async () => {
-    if (user && mountedRef.current) {
+    if (user) {
       console.log('🔄 [REFRESH_ROLE] Atualizando role do usuário');
       await fetchUserRole(user.id);
     }
@@ -361,14 +344,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole,
     refreshUserRole,
   };
-
-  console.log('🎯 [CONTEXT] Estado atual:', {
-    user: !!user,
-    session: !!session,
-    loading,
-    userRole,
-    initialized: initRef.current
-  });
 
   return (
     <AuthContext.Provider value={contextValue}>
