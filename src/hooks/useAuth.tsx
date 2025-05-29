@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('🔄 [INIT] Iniciando autenticação');
 
-        // 1. Configurar listener primeiro
+        // Configurar listener de mudanças de auth
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!mounted) return;
@@ -86,16 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else if (!newSession?.user) {
               setUserRole(null);
             }
+            
+            // Definir loading como false apenas após processar a mudança
+            setLoading(false);
           }
         );
 
-        // 2. Obter sessão atual
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        // Obter sessão atual
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         console.log('📨 [SESSION] Sessão obtida:', {
           hasSession: !!currentSession,
-          hasUser: !!currentSession?.user,
-          error: error?.message
+          hasUser: !!currentSession?.user
         });
 
         if (mounted) {
