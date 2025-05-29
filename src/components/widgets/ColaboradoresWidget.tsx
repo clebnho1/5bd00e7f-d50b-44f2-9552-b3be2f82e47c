@@ -1,14 +1,16 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, Plus, Edit, UserX, UserCheck, Trash2 } from 'lucide-react';
-import { useColaboradores } from '@/hooks/useSupabaseData';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Users, Plus, Edit, Trash2, User, Package, Clock } from 'lucide-react';
+import { useColaboradores } from '@/hooks/useColaboradores';
 import { ImageUpload } from '@/components/ImageUpload';
 
 export function ColaboradoresWidget() {
@@ -19,25 +21,45 @@ export function ColaboradoresWidget() {
   const [activeTab, setActiveTab] = useState('dados');
   const [formData, setFormData] = useState({
     nome: '',
-    imagem_url: '',
-    horarios: '09:00 - 18:00'
+    produtos: [] as string[],
+    produtos_precos: {} as Record<string, number>,
+    horarios: '09:00 - 18:00',
+    ativo: true,
+    imagem_url: ''
   });
-  const [produtos, setProdutos] = useState<Array<{ nome: string; preco: number }>>([]);
-  const [novoProduto, setNovoProduto] = useState({ nome: '', preco: 0 });
+  const [newProduct, setNewProduct] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const adicionarProduto = () => {
-    if (novoProduto.nome.trim() && novoProduto.preco > 0) {
-      setProdutos([...produtos, { ...novoProduto }]);
-      setNovoProduto({ nome: '', preco: 0 });
+  const handleAddProduct = () => {
+    if (newProduct.trim() && newProductPrice.trim()) {
+      const price = parseFloat(newProductPrice);
+      if (!isNaN(price)) {
+        setFormData(prev => ({
+          ...prev,
+          produtos: [...prev.produtos, newProduct.trim()],
+          produtos_precos: { ...prev.produtos_precos, [newProduct.trim()]: price }
+        }));
+        setNewProduct('');
+        setNewProductPrice('');
+      }
     }
   };
 
-  const removerProduto = (index: number) => {
-    setProdutos(produtos.filter((_, i) => i !== index));
+  const handleRemoveProduct = (produto: string) => {
+    setFormData(prev => {
+      const newProdutos = prev.produtos.filter(p => p !== produto);
+      const newPrecos = { ...prev.produtos_precos };
+      delete newPrecos[produto];
+      return {
+        ...prev,
+        produtos: newProdutos,
+        produtos_precos: newPrecos
+      };
+    });
   };
 
   const openDialog = (colaborador?: any) => {
@@ -45,59 +67,37 @@ export function ColaboradoresWidget() {
       setEditingColaborador(colaborador);
       setFormData({
         nome: colaborador.nome,
-        imagem_url: colaborador.imagem_url || '',
-        horarios: colaborador.horarios || '09:00 - 18:00'
+        produtos: colaborador.produtos || [],
+        produtos_precos: colaborador.produtos_precos || {},
+        horarios: colaborador.horarios || '09:00 - 18:00',
+        ativo: colaborador.ativo ?? true,
+        imagem_url: colaborador.imagem_url || ''
       });
-      
-      // Converter produtos e preços para o formato do formulário
-      const produtosList = colaborador.produtos?.map((produto: string) => ({
-        nome: produto,
-        preco: colaborador.produtos_precos?.[produto] || 0
-      })) || [];
-      setProdutos(produtosList);
     } else {
       setEditingColaborador(null);
-      setFormData({ nome: '', imagem_url: '', horarios: '09:00 - 18:00' });
-      setProdutos([]);
+      setFormData({
+        nome: '',
+        produtos: [],
+        produtos_precos: {},
+        horarios: '09:00 - 18:00',
+        ativo: true,
+        imagem_url: ''
+      });
     }
     setActiveTab('dados');
     setIsDialogOpen(true);
   };
 
   const handleSubmit = async () => {
-    if (!formData.nome) return;
+    if (!formData.nome.trim()) return;
 
-    // Preparar dados dos produtos
-    const produtosArray = produtos.map(p => p.nome);
-    const produtosPrecos = produtos.reduce((acc, p) => {
-      acc[p.nome] = p.preco;
-      return acc;
-    }, {} as Record<string, number>);
-    
     if (editingColaborador) {
-      await updateColaborador(editingColaborador.id, {
-        nome: formData.nome,
-        imagem_url: formData.imagem_url || null,
-        produtos: produtosArray,
-        produtos_precos: produtosPrecos,
-        horarios: formData.horarios
-      });
+      await updateColaborador(editingColaborador.id, formData);
     } else {
-      await saveColaborador({
-        nome: formData.nome,
-        imagem_url: formData.imagem_url || undefined,
-        produtos: produtosArray,
-        produtos_precos: produtosPrecos,
-        horarios: formData.horarios,
-        ativo: true
-      });
+      await saveColaborador(formData);
     }
 
     setIsDialogOpen(false);
-  };
-
-  const toggleStatus = async (colaborador: any) => {
-    await updateColaborador(colaborador.id, { ativo: !colaborador.ativo });
   };
 
   if (loading) {
@@ -113,38 +113,44 @@ export function ColaboradoresWidget() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="h-6 w-6 text-whatsapp" />
-          <h2 className="text-2xl font-bold">Gestão de Colaboradores</h2>
+          <h2 className="text-2xl font-bold">Colaboradores</h2>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => openDialog()} className="whatsapp-gradient text-white">
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar Colaborador
+              Novo Colaborador
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] bg-white max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[600px] bg-white max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingColaborador ? 'Editar Colaborador' : 'Novo Colaborador'}
               </DialogTitle>
               <DialogDescription>
-                {editingColaborador 
-                  ? 'Atualize as informações do colaborador'
-                  : 'Adicione um novo membro à sua equipe'
-                }
+                Configure as informações do colaborador em abas organizadas
               </DialogDescription>
             </DialogHeader>
             
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="dados">Dados Pessoais</TabsTrigger>
-                <TabsTrigger value="produtos">Produtos & Preços</TabsTrigger>
-                <TabsTrigger value="horarios">Horários</TabsTrigger>
+                <TabsTrigger value="dados" className="flex items-center gap-1">
+                  <User className="h-4 w-4" />
+                  Dados
+                </TabsTrigger>
+                <TabsTrigger value="produtos" className="flex items-center gap-1">
+                  <Package className="h-4 w-4" />
+                  Produtos
+                </TabsTrigger>
+                <TabsTrigger value="horarios" className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  Horários
+                </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="dados" className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nome">Nome Completo *</Label>
+                  <Label htmlFor="nome">Nome Completo</Label>
                   <Input
                     id="nome"
                     value={formData.nome}
@@ -152,73 +158,91 @@ export function ColaboradoresWidget() {
                     placeholder="Digite o nome completo"
                   />
                 </div>
-                
+
                 <ImageUpload
                   value={formData.imagem_url}
-                  onChange={(url) => handleInputChange('imagem_url', url || '')}
+                  onChange={(url) => handleInputChange('imagem_url', url)}
                 />
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="ativo"
+                    checked={formData.ativo}
+                    onCheckedChange={(checked) => handleInputChange('ativo', checked)}
+                  />
+                  <Label htmlFor="ativo">Colaborador ativo</Label>
+                </div>
               </TabsContent>
-              
+
               <TabsContent value="produtos" className="space-y-4 mt-4">
                 <div className="space-y-4">
-                  <Label>Produtos e Serviços</Label>
-                  
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="flex gap-2">
                     <Input
-                      placeholder="Nome do produto"
-                      value={novoProduto.nome}
-                      onChange={(e) => setNovoProduto(prev => ({ ...prev, nome: e.target.value }))}
+                      placeholder="Nome do produto/serviço"
+                      value={newProduct}
+                      onChange={(e) => setNewProduct(e.target.value)}
+                      className="flex-1"
                     />
                     <Input
-                      type="number"
                       placeholder="Preço"
-                      value={novoProduto.preco || ''}
-                      onChange={(e) => setNovoProduto(prev => ({ ...prev, preco: Number(e.target.value) || 0 }))}
+                      type="number"
+                      step="0.01"
+                      value={newProductPrice}
+                      onChange={(e) => setNewProductPrice(e.target.value)}
+                      className="w-24"
                     />
-                    <Button onClick={adicionarProduto} type="button">
+                    <Button onClick={handleAddProduct} variant="outline">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {produtos.map((produto, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
-                        <div>
-                          <span className="font-medium">{produto.nome}</span>
-                          <span className="text-sm text-gray-600 ml-2">
-                            R$ {produto.preco.toFixed(2)}
-                          </span>
+
+                  <div className="space-y-2">
+                    <Label>Produtos/Serviços Cadastrados</Label>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {formData.produtos.map((produto, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex-1">
+                            <span className="font-medium">{produto}</span>
+                            <span className="text-sm text-gray-600 ml-2">
+                              R$ {formData.produtos_precos[produto]?.toFixed(2) || '0,00'}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveProduct(produto)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removerProduto(index)}
-                          type="button"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    ))}
+                      ))}
+                      {formData.produtos.length === 0 && (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          Nenhum produto cadastrado ainda
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="horarios" className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="horarios">Horários de Trabalho</Label>
-                  <Input
+                  <Textarea
                     id="horarios"
                     value={formData.horarios}
                     onChange={(e) => handleInputChange('horarios', e.target.value)}
-                    placeholder="Ex: Segunda a Sexta: 09:00 - 18:00"
+                    placeholder="Ex: Segunda a Sexta: 09:00 - 18:00&#10;Sábado: 09:00 - 12:00"
+                    rows={4}
                   />
-                  <p className="text-xs text-gray-500">
-                    Descreva os horários de disponibilidade do colaborador
+                  <p className="text-sm text-gray-600">
+                    Descreva os horários de trabalho do colaborador
                   </p>
                 </div>
               </TabsContent>
             </Tabs>
-            
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
@@ -233,69 +257,64 @@ export function ColaboradoresWidget() {
 
       <div className="grid gap-4">
         {colaboradores.map((colaborador) => (
-          <Card key={colaborador.id} className={`transition-all ${!colaborador.ativo ? 'opacity-60' : ''}`}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {colaborador.imagem_url && (
+          <Card key={colaborador.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  {colaborador.imagem_url ? (
                     <img
                       src={colaborador.imagem_url}
                       alt={colaborador.nome}
-                      className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                      className="w-16 h-16 rounded-full object-cover border"
                     />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                      <User className="h-8 w-8 text-gray-400" />
+                    </div>
                   )}
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {colaborador.nome}
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-lg font-semibold">{colaborador.nome}</h3>
                       <Badge variant={colaborador.ativo ? 'default' : 'secondary'}>
                         {colaborador.ativo ? 'Ativo' : 'Inativo'}
                       </Badge>
-                    </CardTitle>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openDialog(colaborador)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={colaborador.ativo ? "destructive" : "default"}
-                    size="sm"
-                    onClick={() => toggleStatus(colaborador)}
-                  >
-                    {colaborador.ativo ? (
-                      <UserX className="h-4 w-4" />
-                    ) : (
-                      <UserCheck className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2">Produtos/Serviços:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {colaborador.produtos?.map((produto, index) => (
-                      <div key={index} className="bg-gray-100 px-2 py-1 rounded text-xs">
-                        <span className="font-medium">{produto}</span>
-                        {colaborador.produtos_precos?.[produto] && (
-                          <span className="text-gray-600 ml-1">
-                            (R$ {colaborador.produtos_precos[produto].toFixed(2)})
-                          </span>
-                        )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {colaborador.produtos && colaborador.produtos.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Produtos/Serviços:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {colaborador.produtos.slice(0, 3).map((produto: string, index: number) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {produto}
+                              </Badge>
+                            ))}
+                            {colaborador.produtos.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{colaborador.produtos.length - 3} mais
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Horários:</p>
+                        <p className="text-sm text-gray-600">{colaborador.horarios}</p>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-1">Horários:</h4>
-                  <p className="text-sm text-gray-600">{colaborador.horarios}</p>
-                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openDialog(colaborador)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -303,14 +322,16 @@ export function ColaboradoresWidget() {
 
         {colaboradores.length === 0 && (
           <Card>
-            <CardContent className="text-center py-12">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum colaborador cadastrado</h3>
-              <p className="text-gray-600 mb-4">Adicione colaboradores para gerenciar sua equipe.</p>
-              <Button onClick={() => openDialog()} className="whatsapp-gradient text-white">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeiro Colaborador
-              </Button>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum colaborador cadastrado</h3>
+                <p className="text-gray-600 mb-4">Comece adicionando seu primeiro colaborador</p>
+                <Button onClick={() => openDialog()} className="whatsapp-gradient text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Colaborador
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

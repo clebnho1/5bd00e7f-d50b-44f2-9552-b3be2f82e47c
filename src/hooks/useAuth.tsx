@@ -26,24 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
 
-  console.log('🔧 [AUTH_PROVIDER] Estado atual:', { 
+  console.log('🔧 [AUTH_PROVIDER] Estado:', { 
     hasUser: !!user, 
     hasSession: !!session, 
     loading, 
-    userRole 
+    userRole,
+    initialized 
   });
-
-  const clearAuthState = () => {
-    setUser(null);
-    setSession(null);
-    setUserRole(null);
-  };
 
   const fetchUserRole = async (userId: string) => {
     try {
-      console.log('🔍 [ROLE] Buscando role para usuário:', userId);
+      console.log('🔍 [ROLE] Buscando role para:', userId);
       
       const { data, error } = await supabase
         .from('users')
@@ -57,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      console.log('✅ [ROLE_SUCCESS] Role encontrado:', data.role);
+      console.log('✅ [ROLE_SUCCESS] Role:', data.role);
       setUserRole(data.role);
     } catch (error) {
       console.error('💥 [ROLE_CRASH]', error);
@@ -66,90 +62,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('🔄 [INIT] Iniciando autenticação');
-    
-    let isMounted = true;
+    if (initialized) return;
 
-    const initializeAuth = async () => {
+    console.log('🔄 [AUTH_INIT] Inicializando uma única vez');
+    setInitialized(true);
+
+    let mounted = true;
+
+    const initAuth = async () => {
       try {
-        // PRIMEIRO: Configurar listener para mudanças de estado
+        // Configurar listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
-            if (!isMounted) return;
+            if (!mounted) return;
             
-            console.log('🔄 [AUTH_CHANGE] Evento:', {
-              event,
-              hasSession: !!newSession,
-              hasUser: !!newSession?.user
-            });
+            console.log('🔄 [AUTH_CHANGE]', { event, hasSession: !!newSession });
             
             if (event === 'SIGNED_OUT' || !newSession) {
-              clearAuthState();
+              setUser(null);
+              setSession(null);
+              setUserRole(null);
             } else {
               setSession(newSession);
-              setUser(newSession?.user ?? null);
+              setUser(newSession.user);
               
-              if (newSession?.user) {
+              if (newSession.user) {
                 await fetchUserRole(newSession.user.id);
               }
             }
+            
+            setLoading(false);
           }
         );
 
-        // SEGUNDO: Obter sessão atual
+        // Obter sessão atual
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
-        console.log('📨 [SESSION] Sessão obtida:', {
-          hasSession: !!currentSession,
-          hasUser: !!currentSession?.user
-        });
-
-        if (isMounted) {
-          if (currentSession) {
+        if (mounted) {
+          if (currentSession?.user) {
+            console.log('📨 [SESSION] Sessão encontrada');
             setSession(currentSession);
             setUser(currentSession.user);
             await fetchUserRole(currentSession.user.id);
-          } else {
-            clearAuthState();
           }
-          
           setLoading(false);
-          console.log('✅ [INIT] Inicialização concluída');
         }
 
         return subscription;
-
       } catch (error) {
-        console.error('💥 [INIT_ERROR]', error);
-        if (isMounted) {
-          clearAuthState();
+        console.error('💥 [AUTH_INIT_ERROR]', error);
+        if (mounted) {
           setLoading(false);
         }
       }
     };
 
-    let subscriptionPromise = initializeAuth();
+    const subscriptionPromise = initAuth();
 
     return () => {
-      isMounted = false;
-      subscriptionPromise.then(subscription => {
-        if (subscription) {
-          subscription.unsubscribe();
-        }
-      });
-      console.log('🧹 [CLEANUP] Limpando AuthProvider');
+      mounted = false;
+      subscriptionPromise.then(sub => sub?.unsubscribe());
     };
-  }, []);
-
-  const refreshUserRole = async () => {
-    if (user) {
-      console.log('🔄 [REFRESH_ROLE] Atualizando role do usuário');
-      await fetchUserRole(user.id);
-    }
-  };
+  }, [initialized]);
 
   const isAdmin = () => {
     return userRole === 'admin' || user?.email === 'admin@admin.com';
+  };
+
+  const refreshUserRole = async () => {
+    if (user) {
+      await fetchUserRole(user.id);
+    }
   };
 
   const signIn = async (email: string, password: string) => {
@@ -164,8 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log('🔐 [SIGNIN] Tentativa de login para:', email);
-      
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -178,8 +159,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           errorMessage = "Email ou senha incorretos";
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = "Email não confirmado. Verifique sua caixa de entrada";
-        } else if (error.message.includes('Too many requests')) {
-          errorMessage = "Muitas tentativas. Tente novamente em alguns minutos";
         }
 
         toast({
@@ -190,8 +169,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      console.log('✅ [SIGNIN] Login bem-sucedido');
-      
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
@@ -250,10 +227,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           
           throw new Error(errorMessage);
-        } else if (error.message.includes('Password should be at least')) {
-          errorMessage = "A senha deve ter pelo menos 6 caracteres";
-        } else if (error.message.includes('Invalid email')) {
-          errorMessage = "Email inválido";
         }
 
         toast({
@@ -283,44 +256,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      console.log('🚪 [SIGNOUT] Iniciando logout');
+      setUser(null);
+      setSession(null);
+      setUserRole(null);
       
-      // Limpar estado local primeiro para evitar tentativas de uso de sessão inválida
-      clearAuthState();
-      
-      // Tentar fazer logout no Supabase, mas não falhar se der erro
-      try {
-        const { error } = await supabase.auth.signOut();
-        
-        if (error) {
-          // Se for erro de sessão não encontrada, não é um problema crítico
-          if (error.message?.includes('session') || error.message?.includes('Session')) {
-            console.log('ℹ️ [SIGNOUT] Sessão já estava inválida, logout local realizado');
-          } else {
-            console.error('⚠️ [SIGNOUT_WARNING] Erro no logout remoto:', error);
-          }
-        } else {
-          console.log('✅ [SIGNOUT] Logout remoto bem-sucedido');
-        }
-      } catch (remoteError) {
-        console.error('⚠️ [SIGNOUT_REMOTE_ERROR] Erro no logout remoto:', remoteError);
-        // Continuar mesmo com erro remoto - o estado local já foi limpo
-      }
+      await supabase.auth.signOut();
       
       toast({
         title: "Logout realizado",
         description: "Até logo!",
       });
-      
     } catch (error) {
-      console.error('💥 [SIGNOUT_CRITICAL] Erro crítico durante logout:', error);
-      // Mesmo com erro crítico, garantir que o estado local seja limpo
-      clearAuthState();
-      
-      toast({
-        title: "Logout realizado",
-        description: "Sessão encerrada localmente.",
-      });
+      console.error('Erro durante logout:', error);
     }
   };
 

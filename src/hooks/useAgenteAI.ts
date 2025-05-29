@@ -1,0 +1,112 @@
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import type { Database } from '@/integrations/supabase/types';
+
+type Tables = Database['public']['Tables'];
+
+export function useAgenteAI() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [agentData, setAgentData] = useState<Tables['agentes_ai']['Row'] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchAgenteAI();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchAgenteAI = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('agentes_ai')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setAgentData(data);
+    } catch (error: any) {
+      console.error('Erro ao carregar agente AI:', error);
+      toast({
+        title: "Erro ao carregar agente AI",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveAgenteAI = async (data: Partial<Tables['agentes_ai']['Insert']>) => {
+    if (!user) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Usuário não está logado",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!data.nome || !data.sexo || !data.area_atuacao || !data.estilo_comportamento || !data.nome_empresa) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('agentes_ai')
+        .upsert({
+          user_id: user.id,
+          nome: data.nome,
+          sexo: data.sexo,
+          area_atuacao: data.area_atuacao,
+          estilo_comportamento: data.estilo_comportamento,
+          usar_emotion: data.usar_emotion ?? true,
+          nome_empresa: data.nome_empresa,
+          telefone_empresa: data.telefone_empresa || null,
+          email_empresa: data.email_empresa || null,
+          website_empresa: data.website_empresa || null,
+          endereco_empresa: data.endereco_empresa || null,
+          funcoes: data.funcoes || null,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Agente AI salvo",
+        description: "Configurações atualizadas com sucesso.",
+      });
+
+      fetchAgenteAI();
+    } catch (error: any) {
+      console.error('Erro ao salvar agente AI:', error);
+      toast({
+        title: "Erro ao salvar agente AI",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return { 
+    agentData, 
+    loading, 
+    saveAgenteAI, 
+    refetch: fetchAgenteAI 
+  };
+}

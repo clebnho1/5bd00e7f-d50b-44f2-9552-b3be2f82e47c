@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Settings, Edit, Key, Users as UsersIcon, Shield } from 'lucide-react';
-import { useAdministracao } from '@/hooks/useSupabaseData';
+import { useAdministracao } from '@/hooks/useAdministracao';
 import { useAuth } from '@/hooks/useAuth';
 
 export function AdministracaoWidget() {
