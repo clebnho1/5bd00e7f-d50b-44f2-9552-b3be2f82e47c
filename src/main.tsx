@@ -4,9 +4,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Importa e executa limpeza Firebase ANTES de qualquer outra coisa
+// Bloqueia TODOS os serviços de terceiros ANTES de qualquer outra coisa
+import "./utils/blockAllThirdParty";
 import "./utils/cleanupFirebase";
-import "./utils/blockThirdPartyServices";
 
 // Remove recursos não utilizados do navegador
 if (typeof window !== 'undefined') {
@@ -24,14 +24,15 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  // Força limpeza adicional para garantir que não há vestígios
+  // Bloqueia setInterval e setTimeout para terceiros
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   
   // @ts-ignore
   window.setInterval = function(callback: any, delay: any, ...args: any[]) {
-    if (callback && callback.toString().includes('firebase')) {
-      console.warn('Blocked Firebase interval');
+    const callbackStr = callback.toString();
+    if (callbackStr.includes('google') || callbackStr.includes('analytics') || callbackStr.includes('gtm') || callbackStr.includes('facebook')) {
+      console.warn('🚫 Blocked third-party interval');
       return -1;
     }
     return originalSetInterval(callback, delay, ...args);
@@ -39,36 +40,33 @@ if (typeof window !== 'undefined') {
   
   // @ts-ignore
   window.setTimeout = function(callback: any, delay: any, ...args: any[]) {
-    if (callback && callback.toString().includes('firebase')) {
-      console.warn('Blocked Firebase timeout');
+    const callbackStr = callback.toString();
+    if (callbackStr.includes('google') || callbackStr.includes('analytics') || callbackStr.includes('gtm') || callbackStr.includes('facebook')) {
+      console.warn('🚫 Blocked third-party timeout');
       return -1;
     }
     return originalSetTimeout(callback, delay, ...args);
   };
 
-  // Bloqueia fetch para endpoints Firebase
-  const originalFetch = window.fetch;
-  window.fetch = function(input: RequestInfo | URL, init?: RequestInit) {
-    const url = typeof input === 'string' ? input : input.toString();
-    if (url.includes('firebase') || url.includes('firestore') || url.includes('googleapis.com/firebase') || url.includes('facebook.com')) {
-      console.warn('Blocked external fetch to:', url);
-      return Promise.reject(new Error('External fetch blocked'));
+  // Override console para filtrar mensagens de terceiros
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+  
+  console.error = function(...args: any[]) {
+    const message = args.join(' ').toLowerCase();
+    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || message.includes('doubleclick')) {
+      return; // Silencia erros de terceiros
     }
-    return originalFetch(input, init);
+    originalConsoleError.apply(console, args);
   };
-
-  // Bloqueia WebSocket para Firebase
-  const OriginalWebSocket = window.WebSocket;
-  window.WebSocket = class extends OriginalWebSocket {
-    constructor(url: string | URL, protocols?: string | string[]) {
-      const urlStr = url.toString();
-      if (urlStr.includes('firebase') || urlStr.includes('firestore')) {
-        console.warn('Blocked Firebase WebSocket to:', urlStr);
-        throw new Error('Firebase WebSocket blocked');
-      }
-      super(url, protocols);
+  
+  console.warn = function(...args: any[]) {
+    const message = args.join(' ').toLowerCase();
+    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || message.includes('doubleclick')) {
+      return; // Silencia warnings de terceiros
     }
-  } as any;
+    originalConsoleWarn.apply(console, args);
+  };
 }
 
 createRoot(document.getElementById("root")!).render(
