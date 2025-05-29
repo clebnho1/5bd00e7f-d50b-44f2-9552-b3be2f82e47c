@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,8 +146,8 @@ export function AdministracaoWidget() {
   const getPlanoInfo = (plano: PlanoTipo) => {
     const planos = {
       gratuito: { nome: 'Gratuito', cor: 'bg-gray-100 text-gray-800' },
-      profissional: { nome: 'Profissional', cor: 'bg-blue-100 text-blue-800' },
-      empresarial: { nome: 'Empresarial', cor: 'bg-purple-100 text-purple-800' }
+      basico: { nome: 'Básico', cor: 'bg-blue-100 text-blue-800' },
+      premium: { nome: 'Premium', cor: 'bg-purple-100 text-purple-800' }
     };
     return planos[plano] || planos.gratuito;
   };
@@ -233,8 +234,8 @@ export function AdministracaoWidget() {
     usuariosAdmin: usuarios.filter(u => u.role === 'admin').length,
     usuariosPorPlano: {
       gratuito: usuarios.filter(u => u.plano === 'gratuito').length,
-      profissional: usuarios.filter(u => u.plano === 'profissional').length,
-      empresarial: usuarios.filter(u => u.plano === 'empresarial').length
+      basico: usuarios.filter(u => u.plano === 'basico').length,
+      premium: usuarios.filter(u => u.plano === 'premium').length
     },
     logsHoje: logs.filter(log => {
       const hoje = new Date().toISOString().split('T')[0];
@@ -296,10 +297,10 @@ export function AdministracaoWidget() {
           
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Plano Profissional</CardTitle>
+              <CardTitle className="text-sm font-medium">Plano Básico</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{estatisticas.usuariosPorPlano.profissional}</div>
+              <div className="text-2xl font-bold">{estatisticas.usuariosPorPlano.basico}</div>
               <p className="text-xs text-muted-foreground">usuários</p>
             </CardContent>
           </Card>
@@ -350,8 +351,8 @@ export function AdministracaoWidget() {
                       <SelectContent className="bg-white z-50">
                         <SelectItem value="todos">Todos os planos</SelectItem>
                         <SelectItem value="gratuito">Gratuito</SelectItem>
-                        <SelectItem value="profissional">Profissional</SelectItem>
-                        <SelectItem value="empresarial">Empresarial</SelectItem>
+                        <SelectItem value="basico">Básico</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -405,8 +406,8 @@ export function AdministracaoWidget() {
                             </SelectTrigger>
                             <SelectContent className="bg-white z-50">
                               <SelectItem value="gratuito">Gratuito</SelectItem>
-                              <SelectItem value="profissional">Profissional</SelectItem>
-                              <SelectItem value="empresarial">Empresarial</SelectItem>
+                              <SelectItem value="basico">Básico</SelectItem>
+                              <SelectItem value="premium">Premium</SelectItem>
                             </SelectContent>
                           </Select>
                           <Select onValueChange={(value) => alterarRoleUsuario(usuario.id, value)}>
@@ -530,27 +531,27 @@ export function AdministracaoWidget() {
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Profissional</span>
-                      <span className="text-sm font-medium">{estatisticas.usuariosPorPlano.profissional}</span>
+                      <span className="text-sm">Básico</span>
+                      <span className="text-sm font-medium">{estatisticas.usuariosPorPlano.basico}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-blue-500 h-2 rounded-full" 
                         style={{ 
-                          width: `${estatisticas.totalUsuarios > 0 ? (estatisticas.usuariosPorPlano.profissional / estatisticas.totalUsuarios) * 100 : 0}%` 
+                          width: `${estatisticas.totalUsuarios > 0 ? (estatisticas.usuariosPorPlano.basico / estatisticas.totalUsuarios) * 100 : 0}%` 
                         }} 
                       />
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Empresarial</span>
-                      <span className="text-sm font-medium">{estatisticas.usuariosPorPlano.empresarial}</span>
+                      <span className="text-sm">Premium</span>
+                      <span className="text-sm font-medium">{estatisticas.usuariosPorPlano.premium}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-purple-500 h-2 rounded-full" 
                         style={{ 
-                          width: `${estatisticas.totalUsuarios > 0 ? (estatisticas.usuariosPorPlano.empresarial / estatisticas.totalUsuarios) * 100 : 0}%` 
+                          width: `${estatisticas.totalUsuarios > 0 ? (estatisticas.usuariosPorPlano.premium / estatisticas.totalUsuarios) * 100 : 0}%` 
                         }} 
                       />
                     </div>
