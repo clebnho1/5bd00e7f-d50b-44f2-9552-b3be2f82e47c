@@ -1,5 +1,7 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const API_BASE = 'https://apiwhats.lifecombr.com.br';
 const API_KEY = '0417bf43b0a8669bd6635bcb49d783df';
@@ -8,11 +10,21 @@ type ConnectionStatus = 'open' | 'closed' | 'error' | 'connecting' | 'unknown';
 
 export function useWhatsAppAPI() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [statusConexao, setStatusConexao] = useState<ConnectionStatus>('unknown');
   const [statusMessage, setStatusMessage] = useState('');
   const [qrCode, setQrCode] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Gerar nome único da instância baseado no usuário
+  const generateInstanceName = (baseClientName: string) => {
+    if (!user?.id) return baseClientName;
+    
+    // Usar os primeiros 8 caracteres do ID do usuário + nome do cliente
+    const userPrefix = user.id.substring(0, 8);
+    return `${userPrefix}_${baseClientName.trim()}`;
+  };
 
   const normalizeStatus = (apiStatus: string): ConnectionStatus => {
     const status = apiStatus?.toLowerCase();
@@ -25,13 +37,15 @@ export function useWhatsAppAPI() {
     return 'unknown';
   };
 
-  const checkConnectionStatus = async (targetInstance: string) => {
-    if (!targetInstance) return;
+  const checkConnectionStatus = async (baseInstanceName: string) => {
+    if (!baseInstanceName || !user?.id) return;
+
+    const instanceName = generateInstanceName(baseInstanceName);
 
     try {
-      console.log(`🔍 Verificando status da instância: ${targetInstance}`);
+      console.log(`🔍 Verificando status da instância do usuário ${user.email}: ${instanceName}`);
       
-      const response = await fetch(`${API_BASE}/instance/connectionState/${targetInstance}`, {
+      const response = await fetch(`${API_BASE}/instance/connectionState/${instanceName}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -44,7 +58,7 @@ export function useWhatsAppAPI() {
         const apiStatus = data.instance?.state || data.state || 'unknown';
         const normalizedStatus = normalizeStatus(apiStatus);
         
-        console.log(`📊 Status atual: ${apiStatus} -> ${normalizedStatus}`);
+        console.log(`📊 Status atual para ${user.email}: ${apiStatus} -> ${normalizedStatus}`);
         
         // Só atualiza se o status mudou
         if (statusConexao !== normalizedStatus) {
@@ -91,6 +105,15 @@ export function useWhatsAppAPI() {
   };
 
   const createInstance = async (nomeCliente: string) => {
+    if (!user?.id) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Usuário não autenticado.",
+        variant: "destructive",
+      });
+      throw new Error("Usuário não autenticado");
+    }
+
     const nomeClienteTrimmed = nomeCliente.trim();
     
     if (!nomeClienteTrimmed) {
@@ -102,11 +125,14 @@ export function useWhatsAppAPI() {
       throw new Error("Nome obrigatório");
     }
 
+    const instanceName = generateInstanceName(nomeClienteTrimmed);
     setError(undefined);
     
     try {
+      console.log(`🔨 Criando instância para ${user.email}: ${instanceName}`);
+      
       const requestBody = {
-        instanceName: nomeClienteTrimmed,
+        instanceName: instanceName,
         integration: "WHATSAPP-BAILEYS",
         qrcode: true,
         rejectCall: true,
@@ -135,9 +161,9 @@ export function useWhatsAppAPI() {
           if (errorData.message?.includes('already in use') || errorData.message?.includes('já existe')) {
             toast({
               title: "Instância já existe",
-              description: `Conectando à instância existente: ${nomeClienteTrimmed}`,
+              description: `Conectando à sua instância existente.`,
             });
-            return nomeClienteTrimmed;
+            return instanceName;
           }
           
           throw new Error(errorData.message || `Erro na API: ${response.status}`);
@@ -147,14 +173,13 @@ export function useWhatsAppAPI() {
       }
 
       const data = await response.json();
-      const newInstanceId = data.instance?.instanceName || data.instance || data.instanceName || nomeClienteTrimmed;
       
       toast({
         title: "Instância criada",
-        description: `Instância criada com sucesso. ID: ${newInstanceId}`,
+        description: `Sua instância foi criada com sucesso.`,
       });
       
-      return newInstanceId;
+      return instanceName;
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -168,23 +193,24 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const connectWhatsApp = async (targetInstance: string) => {
-    if (!targetInstance) {
+  const connectWhatsApp = async (baseInstanceName: string) => {
+    if (!baseInstanceName || !user?.id) {
       toast({
-        title: "Instância necessária",
-        description: "Crie uma instância primeiro ou digite um nome válido.",
+        title: "Erro",
+        description: "Usuário não autenticado ou instância inválida.",
         variant: "destructive",
       });
-      throw new Error("Instância necessária");
+      throw new Error("Usuário não autenticado ou instância inválida");
     }
 
+    const instanceName = generateInstanceName(baseInstanceName);
     setQrCode('');
     setError(undefined);
     
     try {
-      console.log(`🔗 Conectando instância: ${targetInstance}`);
+      console.log(`🔗 Conectando instância do usuário ${user.email}: ${instanceName}`);
       
-      const response = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
+      const response = await fetch(`${API_BASE}/instance/connect/${instanceName}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +247,7 @@ export function useWhatsAppAPI() {
         } else if (data.message && (data.message.includes('já está conectada') || data.message.includes('already connected'))) {
           toast({
             title: "Já conectado",
-            description: data.message,
+            description: "Seu WhatsApp já está conectado.",
           });
           setStatusConexao('open');
           setStatusMessage('WhatsApp já está conectado');
@@ -244,11 +270,15 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const disconnect = async (targetInstance: string) => {
-    if (!targetInstance) return;
+  const disconnect = async (baseInstanceName: string) => {
+    if (!baseInstanceName || !user?.id) return;
+    
+    const instanceName = generateInstanceName(baseInstanceName);
     
     try {
-      const response = await fetch(`${API_BASE}/instance/logout/${targetInstance}`, {
+      console.log(`🔌 Desconectando instância do usuário ${user.email}: ${instanceName}`);
+      
+      const response = await fetch(`${API_BASE}/instance/logout/${instanceName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -263,7 +293,7 @@ export function useWhatsAppAPI() {
         setError(undefined);
         toast({
           title: "WhatsApp desconectado",
-          description: "A instância foi desconectada com sucesso.",
+          description: "Sua instância foi desconectada com sucesso.",
         });
       } else {
         throw new Error(`Erro na API: ${response.status}`);
@@ -280,11 +310,15 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const deleteInstance = async (targetInstance: string) => {
-    if (!targetInstance) return;
+  const deleteInstance = async (baseInstanceName: string) => {
+    if (!baseInstanceName || !user?.id) return;
+    
+    const instanceName = generateInstanceName(baseInstanceName);
     
     try {
-      const response = await fetch(`${API_BASE}/instance/delete/${targetInstance}`, {
+      console.log(`🗑️ Excluindo instância do usuário ${user.email}: ${instanceName}`);
+      
+      const response = await fetch(`${API_BASE}/instance/delete/${instanceName}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -304,7 +338,7 @@ export function useWhatsAppAPI() {
 
         toast({
           title: "Instância excluída",
-          description: "A instância foi excluída com sucesso.",
+          description: "Sua instância foi excluída com sucesso.",
         });
       } else {
         throw new Error(`Erro na API: ${response.status}`);
@@ -321,8 +355,10 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const startPeriodicCheck = (instanceId: string) => {
-    console.log(`🔄 Iniciando verificação periódica para: ${instanceId}`);
+  const startPeriodicCheck = (baseInstanceName: string) => {
+    if (!user?.id) return;
+    
+    console.log(`🔄 Iniciando verificação periódica para usuário ${user.email}: ${baseInstanceName}`);
     
     // Limpa qualquer intervalo anterior
     if (intervalRef.current) {
@@ -330,13 +366,13 @@ export function useWhatsAppAPI() {
     }
     
     // Verifica imediatamente
-    checkConnectionStatus(instanceId);
+    checkConnectionStatus(baseInstanceName);
     
     // Configura verificação a cada 5 segundos quando conectando, 15 segundos quando conectado
     const getInterval = () => statusConexao === 'connecting' ? 5000 : 15000;
     
     intervalRef.current = setInterval(() => {
-      checkConnectionStatus(instanceId);
+      checkConnectionStatus(baseInstanceName);
     }, getInterval());
   };
 

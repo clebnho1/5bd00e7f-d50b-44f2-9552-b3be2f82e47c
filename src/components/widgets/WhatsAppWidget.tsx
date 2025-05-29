@@ -4,15 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { QrCode, Settings, ArrowLeft } from 'lucide-react';
+import { QrCode, Settings, ArrowLeft, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import QrCodeDisplay from '@/components/QrCodeDisplay';
 import { WhatsAppConnectionForm } from './WhatsApp/WhatsAppConnectionForm';
 import { WhatsAppActions } from './WhatsApp/WhatsAppActions';
 import { useWhatsAppAPI } from '@/hooks/useWhatsAppAPI';
+import { useAuth } from '@/hooks/useAuth';
 
 export function WhatsAppWidget() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [nomeCliente, setNomeCliente] = useState('');
   const [instanceId, setInstanceId] = useState('');
@@ -36,10 +38,13 @@ export function WhatsAppWidget() {
     stopPeriodicCheck
   } = useWhatsAppAPI();
 
-  // Carregar dados salvos do localStorage
+  // Carregar dados salvos do localStorage específicos do usuário
   useEffect(() => {
-    const savedInstanceId = localStorage.getItem('whatsapp_instance_id');
-    const savedNomeCliente = localStorage.getItem('whatsapp_cliente_nome');
+    if (!user?.id) return;
+    
+    const userKey = `whatsapp_${user.id}`;
+    const savedInstanceId = localStorage.getItem(`${userKey}_instance_id`);
+    const savedNomeCliente = localStorage.getItem(`${userKey}_cliente_nome`);
     
     if (savedInstanceId) {
       setInstanceId(savedInstanceId);
@@ -47,7 +52,7 @@ export function WhatsAppWidget() {
     if (savedNomeCliente) {
       setNomeCliente(savedNomeCliente);
     }
-  }, []);
+  }, [user?.id]);
 
   // Auto-verificação quando o nome da instância muda
   useEffect(() => {
@@ -64,15 +69,15 @@ export function WhatsAppWidget() {
   useEffect(() => {
     const targetInstance = instanceId || nomeCliente.trim();
     
-    if (targetInstance) {
-      console.log(`🎯 Iniciando monitoramento para: ${targetInstance}`);
+    if (targetInstance && user?.id) {
+      console.log(`🎯 Iniciando monitoramento para usuário ${user.email}: ${targetInstance}`);
       startPeriodicCheck(targetInstance);
     } else {
       stopPeriodicCheck();
     }
     
     return () => stopPeriodicCheck();
-  }, [instanceId, nomeCliente]);
+  }, [instanceId, nomeCliente, user?.id]);
 
   const handleCheckStatus = async () => {
     const targetInstance = instanceId || nomeCliente.trim();
@@ -92,8 +97,11 @@ export function WhatsAppWidget() {
       const newInstanceId = await createInstance(nomeCliente);
       setInstanceId(newInstanceId);
       
-      localStorage.setItem('whatsapp_instance_id', newInstanceId);
-      localStorage.setItem('whatsapp_cliente_nome', nomeCliente.trim());
+      if (user?.id) {
+        const userKey = `whatsapp_${user.id}`;
+        localStorage.setItem(`${userKey}_instance_id`, newInstanceId);
+        localStorage.setItem(`${userKey}_cliente_nome`, nomeCliente.trim());
+      }
       
       setTimeout(() => handleCheckStatus(), 2000);
     } finally {
@@ -130,12 +138,25 @@ export function WhatsAppWidget() {
       setInstanceId('');
       setNomeCliente('');
       
-      localStorage.removeItem('whatsapp_instance_id');
-      localStorage.removeItem('whatsapp_cliente_nome');
+      if (user?.id) {
+        const userKey = `whatsapp_${user.id}`;
+        localStorage.removeItem(`${userKey}_instance_id`);
+        localStorage.removeItem(`${userKey}_cliente_nome`);
+      }
     } finally {
       setIsDeleting(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 p-6">
+        <div className="text-center">
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-6">
@@ -149,7 +170,11 @@ export function WhatsAppWidget() {
           <ArrowLeft className="h-4 w-4" />
           Voltar ao Dashboard
         </Button>
-        <h1 className="text-2xl font-bold text-gray-800">Gerenciar WhatsApp do Cliente</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Seu WhatsApp Pessoal</h1>
+        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+          <User className="h-4 w-4" />
+          {user.email}
+        </div>
       </div>
 
       {/* Card Principal */}
@@ -157,10 +182,10 @@ export function WhatsAppWidget() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-800">
             <Settings className="h-5 w-5" />
-            Configuração da Instância WhatsApp
+            Sua Instância WhatsApp Privada
           </CardTitle>
           <CardDescription className="text-gray-600">
-            Configure e gerencie a instância WhatsApp para o cliente
+            Configure e gerencie sua instância WhatsApp pessoal. Cada usuário tem sua própria instância isolada.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -179,14 +204,17 @@ export function WhatsAppWidget() {
           {instanceId && (
             <div className="space-y-2">
               <Label htmlFor="instanceId" className="text-gray-700 font-medium">
-                ID da Instância
+                ID da Sua Instância
               </Label>
               <Input
                 id="instanceId"
                 value={instanceId}
                 readOnly
-                className="bg-gray-50 text-gray-600"
+                className="bg-gray-50 text-gray-600 font-mono text-xs"
               />
+              <p className="text-xs text-gray-500">
+                Esta é sua instância privada, isolada de outros usuários
+              </p>
             </div>
           )}
 
@@ -212,8 +240,8 @@ export function WhatsAppWidget() {
           </CardTitle>
           <CardDescription className="text-gray-600">
             {statusConexao === 'open' 
-              ? 'WhatsApp conectado! Não é necessário escanear o QR Code.'
-              : 'Escaneie o código QR com seu WhatsApp para conectar'
+              ? 'Seu WhatsApp está conectado! Não é necessário escanear o QR Code.'
+              : 'Escaneie o código QR com seu WhatsApp para conectar sua instância privada'
             }
           </CardDescription>
         </CardHeader>
@@ -222,7 +250,7 @@ export function WhatsAppWidget() {
             qrCodeData={qrCode} 
             isLoading={isConnecting} 
             error={error}
-            message={statusConexao === 'open' ? 'WhatsApp conectado com sucesso! ✅' : undefined}
+            message={statusConexao === 'open' ? 'Seu WhatsApp conectado com sucesso! ✅' : undefined}
           />
         </CardContent>
       </Card>
