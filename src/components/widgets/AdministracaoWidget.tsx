@@ -98,9 +98,9 @@ export function AdministracaoWidget() {
 
   const [filtros, setFiltros] = useState({
     usuarioSearch: '',
-    planoFilter: '',
-    statusFilter: '',
-    widgetFilter: '',
+    planoFilter: 'todos',
+    statusFilter: 'todos',
+    widgetFilter: 'todos',
     acaoFilter: ''
   });
 
@@ -143,14 +143,14 @@ export function AdministracaoWidget() {
   const usuariosFiltrados = usuarios.filter(usuario => {
     return (
       usuario.nome.toLowerCase().includes(filtros.usuarioSearch.toLowerCase()) &&
-      (filtros.planoFilter === '' || usuario.plano === filtros.planoFilter) &&
-      (filtros.statusFilter === '' || usuario.status === filtros.statusFilter)
+      (filtros.planoFilter === 'todos' || usuario.plano === filtros.planoFilter) &&
+      (filtros.statusFilter === 'todos' || usuario.status === filtros.statusFilter)
     );
   });
 
   const logsFiltrados = logs.filter(log => {
     return (
-      (filtros.widgetFilter === '' || log.widget === filtros.widgetFilter) &&
+      (filtros.widgetFilter === 'todos' || log.widget === filtros.widgetFilter) &&
       (filtros.acaoFilter === '' || log.acao.toLowerCase().includes(filtros.acaoFilter.toLowerCase()))
     );
   });
@@ -240,7 +240,7 @@ export function AdministracaoWidget() {
                       <SelectValue placeholder="Todos os planos" />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50">
-                      <SelectItem value="">Todos os planos</SelectItem>
+                      <SelectItem value="todos">Todos os planos</SelectItem>
                       <SelectItem value="free">Gratuito</SelectItem>
                       <SelectItem value="professional">Profissional</SelectItem>
                       <SelectItem value="enterprise">Empresarial</SelectItem>
@@ -254,7 +254,7 @@ export function AdministracaoWidget() {
                       <SelectValue placeholder="Todos os status" />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50">
-                      <SelectItem value="">Todos os status</SelectItem>
+                      <SelectItem value="todos">Todos os status</SelectItem>
                       <SelectItem value="ativo">Ativo</SelectItem>
                       <SelectItem value="inativo">Inativo</SelectItem>
                     </SelectContent>
@@ -332,7 +332,7 @@ export function AdministracaoWidget() {
                       <SelectValue placeholder="Todos os widgets" />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50">
-                      <SelectItem value="">Todos os widgets</SelectItem>
+                      <SelectItem value="todos">Todos os widgets</SelectItem>
                       <SelectItem value="Agente AI">Agente AI</SelectItem>
                       <SelectItem value="Colaboradores">Colaboradores</SelectItem>
                       <SelectItem value="WhatsApp">WhatsApp</SelectItem>
