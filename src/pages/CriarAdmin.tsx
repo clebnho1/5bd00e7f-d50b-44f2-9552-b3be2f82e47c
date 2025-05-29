@@ -33,6 +33,7 @@ const CriarAdmin = () => {
       console.log('👤 Nome:', 'Cleber Mosmann');
       console.log('📋 Plano:', 'profissional');
       
+      // Usar a função signUp do hook useAuth
       await signUp(
         'clebermosmann@gmail.com',
         '123456',
@@ -40,31 +41,35 @@ const CriarAdmin = () => {
         'profissional'
       );
       
-      console.log('✅ Admin criado com sucesso no Supabase!');
+      console.log('✅ Admin criado com sucesso!');
       setSuccess(true);
       
-      // Redirecionar para login após 3 segundos
+      // Aguardar um pouco antes de redirecionar
       setTimeout(() => {
+        console.log('🔄 Redirecionando para login...');
         navigate('/login');
-      }, 3000);
+      }, 2000);
       
     } catch (error: any) {
-      console.error('❌ Erro detalhado ao criar admin:', error);
-      console.error('📄 Mensagem do erro:', error.message);
-      console.error('🔍 Stack trace:', error.stack);
+      console.error('❌ Erro ao criar admin:', error);
+      console.error('📄 Detalhes do erro:', {
+        message: error.message,
+        code: error.code,
+        status: error.status
+      });
       
       let errorMessage = 'Erro desconhecido ao criar usuário';
       
       if (error.message?.includes('User already registered') || 
           error.message?.includes('já está cadastrado') ||
           error.message?.includes('duplicate key')) {
-        errorMessage = 'Este email já possui uma conta no sistema';
+        errorMessage = 'Este email já possui uma conta. Tente fazer login.';
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Email necessita confirmação';
       } else if (error.message?.includes('Invalid email')) {
         errorMessage = 'Email inválido';
       } else if (error.message?.includes('Password')) {
-        errorMessage = 'Problema com a senha fornecida';
+        errorMessage = 'Problema com a senha';
       } else {
         errorMessage = error.message || 'Erro ao criar usuário admin';
       }
@@ -100,7 +105,7 @@ const CriarAdmin = () => {
             </div>
             <CardTitle className="text-2xl">Criar Usuário Admin</CardTitle>
             <CardDescription>
-              Criação do usuário administrador do sistema
+              Criação do usuário administrador no Supabase
             </CardDescription>
           </CardHeader>
           
@@ -129,7 +134,7 @@ const CriarAdmin = () => {
                 <div className="flex items-start gap-2">
                   <span className="text-red-500 text-lg">❌</span>
                   <div>
-                    <p className="text-sm font-medium text-red-800">Erro ao criar usuário:</p>
+                    <p className="text-sm font-medium text-red-800">Erro:</p>
                     <p className="text-sm text-red-600 mt-1">{error}</p>
                   </div>
                 </div>
@@ -144,7 +149,7 @@ const CriarAdmin = () => {
                     <p className="text-sm font-medium text-green-800">Sucesso!</p>
                     <p className="text-sm text-green-600 mt-1">
                       Usuário admin criado com sucesso no Supabase! 
-                      Redirecionando para login em 3 segundos...
+                      Redirecionando para login...
                     </p>
                   </div>
                 </div>
@@ -159,10 +164,10 @@ const CriarAdmin = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando usuário no Supabase...
+                  Criando no Supabase...
                 </>
               ) : success ? (
-                "✅ Usuário criado com sucesso!"
+                "✅ Usuário criado!"
               ) : (
                 "🚀 Criar Usuário Admin"
               )}
@@ -177,12 +182,6 @@ const CriarAdmin = () => {
               >
                 ← Voltar para Login
               </Button>
-              
-              {success && (
-                <p className="text-xs text-gray-500">
-                  Após criado, faça login com as credenciais acima
-                </p>
-              )}
             </div>
           </CardContent>
         </Card>
