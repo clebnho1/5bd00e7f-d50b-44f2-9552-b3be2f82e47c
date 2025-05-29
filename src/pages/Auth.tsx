@@ -125,13 +125,13 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {!isLogin && (
                 <div className="space-y-2">
                   <Label htmlFor="auth-name">Nome</Label>
                   <Input
                     id="auth-name"
-                    name="name"
+                    name="fullName"
                     type="text"
                     placeholder="Seu nome completo"
                     value={formData.name}
@@ -140,9 +140,10 @@ const Auth = () => {
                     disabled={isLoading}
                     autoComplete="name"
                     required={!isLogin}
+                    aria-describedby={errors.name ? "name-error" : undefined}
                   />
                   {errors.name && (
-                    <p className="text-sm text-red-500">{errors.name}</p>
+                    <p id="name-error" className="text-sm text-red-500" role="alert">{errors.name}</p>
                   )}
                 </div>
               )}
@@ -160,9 +161,10 @@ const Auth = () => {
                   disabled={isLoading}
                   autoComplete="email"
                   required
+                  aria-describedby={errors.email ? "email-error" : undefined}
                 />
                 {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email}</p>
+                  <p id="email-error" className="text-sm text-red-500" role="alert">{errors.email}</p>
                 )}
               </div>
 
@@ -180,6 +182,7 @@ const Auth = () => {
                     disabled={isLoading}
                     autoComplete={isLogin ? "current-password" : "new-password"}
                     required
+                    aria-describedby={errors.password ? "password-error" : undefined}
                   />
                   <Button
                     type="button"
@@ -189,6 +192,7 @@ const Auth = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
                     aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    tabIndex={-1}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -198,13 +202,14 @@ const Auth = () => {
                   </Button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-red-500">{errors.password}</p>
+                  <p id="password-error" className="text-sm text-red-500" role="alert">{errors.password}</p>
                 )}
               </div>
 
               {isLogin && (
                 <div className="flex justify-end">
                   <Button 
+                    type="button"
                     variant="link" 
                     className="p-0 h-auto text-sm text-whatsapp"
                     onClick={() => navigate('/esqueci-senha')}
@@ -235,6 +240,7 @@ const Auth = () => {
               <p className="text-sm text-gray-600">
                 {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}{' '}
                 <Button 
+                  type="button"
                   variant="link" 
                   className="p-0 h-auto text-whatsapp" 
                   onClick={() => setIsLogin(!isLogin)}

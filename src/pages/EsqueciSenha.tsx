@@ -58,12 +58,14 @@ const EsqueciSenha = () => {
               </p>
               <div className="space-y-2">
                 <Button 
+                  type="button"
                   className="w-full"
                   onClick={() => setEmailSent(false)}
                 >
                   Enviar novamente
                 </Button>
                 <Button 
+                  type="button"
                   variant="outline" 
                   className="w-full"
                   onClick={() => navigate('/login')}
@@ -84,6 +86,7 @@ const EsqueciSenha = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <Button
+            type="button"
             variant="ghost"
             className="mb-4"
             onClick={() => navigate('/login')}
@@ -107,23 +110,26 @@ const EsqueciSenha = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="reset-email">Email</Label>
                 <Input
-                  id="email"
+                  id="reset-email"
+                  name="email"
                   type="email"
                   placeholder="Digite seu email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
               <Button
                 type="submit"
                 className="w-full whatsapp-gradient text-white"
-                disabled={isLoading}
+                disabled={isLoading || !email.trim()}
               >
                 {isLoading ? "Enviando..." : "Enviar Link de Redefinição"}
               </Button>
@@ -132,7 +138,12 @@ const EsqueciSenha = () => {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Lembrou da senha?{' '}
-                <Button variant="link" className="p-0 h-auto text-whatsapp" onClick={() => navigate('/login')}>
+                <Button 
+                  type="button"
+                  variant="link" 
+                  className="p-0 h-auto text-whatsapp" 
+                  onClick={() => navigate('/login')}
+                >
                   Fazer login
                 </Button>
               </p>
