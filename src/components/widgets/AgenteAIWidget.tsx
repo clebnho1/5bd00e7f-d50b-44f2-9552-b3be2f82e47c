@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,7 @@ export function AgenteAIWidget() {
         email_empresa: agentData.email_empresa || '',
         website_empresa: agentData.website_empresa || '',
         endereco_empresa: agentData.endereco_empresa || '',
-        funcoes: agentData.funcoes || ''
+        funcoes: Array.isArray(agentData.funcoes) ? agentData.funcoes.join('\n') : (agentData.funcoes || '')
       });
     }
   }, [agentData]);
@@ -54,7 +54,16 @@ export function AgenteAIWidget() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveAgenteAI(formData);
+    
+    // Convert funcoes string to array
+    const funcoesArray = formData.funcoes 
+      ? formData.funcoes.split('\n').filter(f => f.trim()).map(f => f.trim())
+      : [];
+    
+    await saveAgenteAI({
+      ...formData,
+      funcoes: funcoesArray
+    });
   };
 
   if (loading || optionsLoading) {
@@ -239,9 +248,10 @@ export function AgenteAIWidget() {
                 id="funcoes"
                 value={formData.funcoes}
                 onChange={(e) => handleInputChange('funcoes', e.target.value)}
-                placeholder="Descreva as principais funções que o agente deve desempenhar..."
+                placeholder="Digite uma função por linha:&#10;Responder dúvidas sobre produtos&#10;Agendar atendimentos&#10;Fornecer informações de contato"
                 rows={4}
               />
+              <p className="text-sm text-gray-500">Digite uma função por linha</p>
             </div>
           </CardContent>
         </Card>
