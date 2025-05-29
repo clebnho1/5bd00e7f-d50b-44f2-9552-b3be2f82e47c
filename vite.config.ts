@@ -36,14 +36,8 @@ export default defineConfig(({ mode }) => ({
       ]
     },
     target: 'esnext',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: mode === 'production' ? ['log', 'warn'] : false,
-        drop_debugger: true,
-        pure_funcs: mode === 'production' ? ['console.log', 'console.warn'] : [],
-      }
-    }
+    minify: 'esbuild', // Changed from 'terser' to 'esbuild'
+    // Removed terserOptions since we're using esbuild now
   },
   // Limpa cache do Vite
   cacheDir: '.vite-clean',
