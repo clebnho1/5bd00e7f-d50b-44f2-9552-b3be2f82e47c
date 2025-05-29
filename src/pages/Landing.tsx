@@ -1,109 +1,124 @@
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Check, MessageCircle, Bot, Users, Settings, Zap } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageCircle, Bot, Users, Settings, BarChart, CheckCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Landing = () => {
   const navigate = useNavigate();
-  const [selectedPlan, setSelectedPlan] = useState('');
 
-  const plans = [
+  const features = [
     {
-      id: 'free',
-      name: 'Gratuito',
-      price: 'R$ 0',
-      period: '/mês',
-      description: 'Ideal para testar a plataforma',
-      features: [
-        'Até 100 mensagens/mês',
-        '1 Agente AI básico',
-        '2 Colaboradores',
-        'Suporte por email'
-      ],
-      popular: false,
-      color: 'border-gray-200'
+      icon: Bot,
+      title: "Agente AI Inteligente",
+      description: "Configure assistentes virtuais para automatizar atendimentos"
     },
     {
-      id: 'professional',
-      name: 'Profissional',
-      price: 'R$ 399',
-      period: '/mês',
-      description: 'Para pequenas e médias empresas',
-      features: [
-        'Até 5.000 mensagens/mês',
-        '3 Agentes AI personalizados',
-        '10 Colaboradores',
-        'Webhook/Integração n8n',
-        'Suporte prioritário'
-      ],
-      popular: true,
-      color: 'border-whatsapp'
+      icon: Users,
+      title: "Gestão de Colaboradores",
+      description: "Gerencie equipes e distribuição de atendimentos"
     },
     {
-      id: 'enterprise',
-      name: 'Empresarial',
-      price: 'R$ 699',
-      period: '/mês',
-      description: 'Para grandes empresas',
-      features: [
-        'Mensagens ilimitadas',
-        'Agentes AI ilimitados',
-        'Colaboradores ilimitados',
-        'Múltiplas instâncias WhatsApp',
-        'Webhook/Integração n8n',
-        'Suporte 24/7',
-        'Relatórios avançados'
-      ],
-      popular: false,
-      color: 'border-blue-500'
+      icon: MessageCircle,
+      title: "WhatsApp Integrado",
+      description: "Conecte múltiplas instâncias do WhatsApp"
+    },
+    {
+      icon: Settings,
+      title: "Configurações Avançadas",
+      description: "Webhooks, integrações e automações personalizadas"
+    },
+    {
+      icon: BarChart,
+      title: "Relatórios Completos",
+      description: "Acompanhe métricas e performance em tempo real"
     }
   ];
 
-  const handlePlanSelect = (planId: string) => {
-    setSelectedPlan(planId);
-    navigate(`/cadastro?plan=${planId}`);
-  };
+  const plans = [
+    {
+      name: "Gratuito",
+      price: "R$ 0",
+      period: "/mês",
+      features: [
+        "1 Agente AI",
+        "1 Instância WhatsApp",
+        "Até 100 mensagens/mês",
+        "Suporte básico"
+      ]
+    },
+    {
+      name: "Profissional",
+      price: "R$ 29",
+      period: "/mês",
+      features: [
+        "3 Agentes AI",
+        "3 Instâncias WhatsApp",
+        "Mensagens ilimitadas",
+        "Relatórios avançados",
+        "Suporte prioritário"
+      ]
+    },
+    {
+      name: "Empresarial",
+      price: "R$ 79",
+      period: "/mês",
+      features: [
+        "Agentes AI ilimitados",
+        "Instâncias ilimitadas",
+        "API personalizada",
+        "Integração completa",
+        "Suporte 24/7"
+      ]
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="h-8 w-8 text-whatsapp" />
-            <span className="text-2xl font-bold text-gray-900">ChatWhatsApp</span>
-          </div>
-          <div className="flex gap-4">
-            <Button variant="ghost" onClick={() => navigate('/login')}>
-              Entrar
-            </Button>
-            <Button onClick={() => navigate('/cadastro')}>
-              Começar Grátis
-            </Button>
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-8 w-8 text-whatsapp" />
+              <span className="text-2xl font-bold text-gray-900">ChatWhatsApp</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" onClick={() => navigate('/auth')}>
+                Login
+              </Button>
+              <Button className="whatsapp-gradient text-white" onClick={() => navigate('/auth')}>
+                Começar Grátis
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 animate-fade-in">
-            Automatize seu WhatsApp com
-            <span className="text-whatsapp"> Inteligência Artificial</span>
+      <section className="py-20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-5xl font-bold text-gray-900 mb-6">
+            Automatize seu WhatsApp com <span className="text-whatsapp">Inteligência Artificial</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto animate-fade-in">
-            Transforme seu atendimento no WhatsApp com agentes AI personalizados, 
-            gestão de colaboradores e automação completa. Aumente sua produtividade em até 300%.
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            Transforme seu atendimento com agentes AI que respondem automaticamente, 
+            gerenciam conversas e convertem leads 24/7.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
-            <Button size="lg" className="whatsapp-gradient text-white hover:opacity-90" onClick={() => navigate('/cadastro')}>
-              <MessageCircle className="mr-2 h-5 w-5" />
+          <div className="flex items-center justify-center gap-4">
+            <Button 
+              size="lg" 
+              className="whatsapp-gradient text-white text-lg px-8 py-3"
+              onClick={() => navigate('/auth')}
+            >
               Começar Gratuitamente
             </Button>
-            <Button size="lg" variant="outline">
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="text-lg px-8 py-3"
+              onClick={() => navigate('/auth')}
+            >
               Ver Demonstração
             </Button>
           </div>
@@ -111,83 +126,66 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 bg-white">
-        <div className="container mx-auto">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-12">
-            Recursos Poderosos para Seu Negócio
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            Recursos Poderosos para seu Negócio
           </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center p-6 rounded-lg border border-gray-100 hover:shadow-lg transition-shadow">
-              <Bot className="h-12 w-12 text-whatsapp mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Agentes AI Personalizados</h3>
-              <p className="text-gray-600">Crie agentes com personalidade e conhecimento específico do seu negócio</p>
-            </div>
-            <div className="text-center p-6 rounded-lg border border-gray-100 hover:shadow-lg transition-shadow">
-              <Users className="h-12 w-12 text-whatsapp mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Gestão de Colaboradores</h3>
-              <p className="text-gray-600">Organize sua equipe com horários, produtos e permissões personalizadas</p>
-            </div>
-            <div className="text-center p-6 rounded-lg border border-gray-100 hover:shadow-lg transition-shadow">
-              <MessageCircle className="h-12 w-12 text-whatsapp mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Instância WhatsApp</h3>
-              <p className="text-gray-600">Conecte facilmente via QR Code e mantenha sua conta sempre ativa</p>
-            </div>
-            <div className="text-center p-6 rounded-lg border border-gray-100 hover:shadow-lg transition-shadow">
-              <Zap className="h-12 w-12 text-whatsapp mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Integração Webhook</h3>
-              <p className="text-gray-600">Conecte com n8n e outras ferramentas para automação completa</p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <feature.icon className="h-12 w-12 text-whatsapp mb-4" />
+                  <CardTitle>{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>{feature.description}</CardDescription>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 px-4 bg-gray-50">
-        <div className="container mx-auto">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">
-            Escolha o Plano Ideal
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            Planos para Todos os Tamanhos
           </h2>
-          <p className="text-xl text-gray-600 text-center mb-12">
-            Comece grátis e escale conforme seu negócio cresce
-          </p>
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {plans.map((plan) => (
-              <Card 
-                key={plan.id} 
-                className={`pricing-card relative ${plan.color} ${plan.popular ? 'ring-2 ring-whatsapp' : ''}`}
-              >
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-whatsapp text-white">
-                    Mais Popular
-                  </Badge>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {plans.map((plan, index) => (
+              <Card key={index} className={`relative ${index === 1 ? 'border-whatsapp shadow-lg scale-105' : ''}`}>
+                {index === 1 && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <span className="bg-whatsapp text-white px-3 py-1 rounded-full text-sm">
+                      Mais Popular
+                    </span>
+                  </div>
                 )}
                 <CardHeader className="text-center">
                   <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="text-4xl font-bold text-gray-900">
-                    {plan.price}
-                    <span className="text-base font-normal text-gray-600">{plan.period}</span>
+                  <div className="text-3xl font-bold text-whatsapp">
+                    {plan.price}<span className="text-sm text-gray-500">{plan.period}</span>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-whatsapp" />
-                        <span className="text-sm">{feature}</span>
+                  <ul className="space-y-3 mb-6">
+                    {plan.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
-                </CardContent>
-                <CardFooter>
                   <Button 
-                    className={`w-full ${plan.popular ? 'whatsapp-gradient text-white' : ''}`}
-                    variant={plan.popular ? 'default' : 'outline'}
-                    onClick={() => handlePlanSelect(plan.id)}
+                    className="w-full" 
+                    variant={index === 1 ? "default" : "outline"}
+                    onClick={() => navigate('/auth')}
                   >
-                    Começar com este plano
+                    Escolher Plano
                   </Button>
-                </CardFooter>
+                </CardContent>
               </Card>
             ))}
           </div>
@@ -195,23 +193,28 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 whatsapp-gradient text-white">
-        <div className="container mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-4">
+      <section className="py-16 bg-whatsapp text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-4">
             Pronto para Revolucionar seu Atendimento?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Junte-se a milhares de empresas que já automatizaram seu WhatsApp
+            Comece gratuitamente e veja como a IA pode transformar seu negócio.
           </p>
-          <Button size="lg" variant="secondary" onClick={() => navigate('/cadastro')}>
-            Começar Gratuitamente Agora
+          <Button 
+            size="lg" 
+            variant="secondary" 
+            className="text-lg px-8 py-3"
+            onClick={() => navigate('/auth')}
+          >
+            Começar Agora - É Grátis!
           </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-4">
-        <div className="container mx-auto text-center">
+      <footer className="bg-gray-900 text-white py-8">
+        <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <MessageCircle className="h-6 w-6" />
             <span className="text-xl font-bold">ChatWhatsApp</span>

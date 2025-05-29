@@ -25,14 +25,7 @@ interface CustomSidebarProps {
 
 export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setActiveWidget }) => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
-  
-  // Mock user data - em produção viria do Supabase Auth
-  const user = {
-    name: 'João Silva',
-    email: 'joao@exemplo.com',
-    role: 'admin' // ou 'user'
-  };
+  const { signOut, user } = useAuth();
 
   const commonItems = [
     {
@@ -87,7 +80,7 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
           <span className="font-bold text-lg">ChatWhatsApp</span>
         </div>
         <div className="text-sm text-muted-foreground mt-2">
-          Olá, {user.name}
+          Olá, {user?.user_metadata?.name || user?.email}
         </div>
       </SidebarHeader>
 
@@ -112,7 +105,7 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {user.role === 'admin' && (
+        {user?.user_metadata?.role === 'admin' && (
           <SidebarGroup>
             <SidebarGroupLabel>Administração</SidebarGroupLabel>
             <SidebarGroupContent>
