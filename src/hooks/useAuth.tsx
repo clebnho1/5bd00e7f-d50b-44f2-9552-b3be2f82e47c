@@ -23,10 +23,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('Setting up auth state listener...');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('Auth state changed:', event, session?.user?.email || 'no user');
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -34,16 +36,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Erro ao verificar sessão:', error);
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Erro ao verificar sessão inicial:', error);
+        } else {
+          console.log('Sessão inicial encontrada:', session?.user?.email || 'nenhuma sessão');
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (error) {
+        console.error('Erro ao obter sessão:', error);
+      } finally {
+        setLoading(false);
       }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    getInitialSession();
+
+    return () => {
+      console.log('Cleaning up auth subscription');
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -56,32 +72,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Email e senha são obrigatórios");
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    if (error) {
-      let errorMessage = "Erro no login";
-      
-      if (error.message.includes('Invalid login credentials')) {
-        errorMessage = "Email ou senha incorretos";
-      } else if (error.message.includes('Email not confirmed')) {
-        errorMessage = "Email não confirmado. Verifique sua caixa de entrada";
+      if (error) {
+        let errorMessage = "Erro no login";
+        
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = "Email ou senha incorretos";
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = "Email não confirmado. Verifique sua caixa de entrada";
+        }
+
+        console.error('Erro no login:', error);
+        toast({
+          title: "Erro no login",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        throw error;
       }
 
       toast({
-        title: "Erro no login",
-        description: errorMessage,
-        variant: "destructive",
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo de volta!",
       });
+    } catch (error) {
+      console.error('Erro durante login:', error);
       throw error;
     }
-
-    toast({
-      title: "Login realizado com sucesso!",
-      description: "Bem-vindo de volta!",
-    });
   };
 
   const signUp = async (email: string, password: string, name: string, plano: string) => {
@@ -103,56 +125,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Senha muito fraca");
     }
 
-    const { error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: {
-          name: name.trim(),
-          plano: plano,
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+            plano: plano,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      let errorMessage = "Erro no cadastro";
-      
-      if (error.message.includes('User already registered')) {
-        errorMessage = "Este email já está cadastrado";
-      } else if (error.message.includes('Password should be at least')) {
-        errorMessage = "A senha deve ter pelo menos 6 caracteres";
+      if (error) {
+        let errorMessage = "Erro no cadastro";
+        
+        if (error.message.includes('User already registered')) {
+          errorMessage = "Este email já está cadastrado";
+        } else if (error.message.includes('Password should be at least')) {
+          errorMessage = "A senha deve ter pelo menos 6 caracteres";
+        } else if (error.message.includes('duplicate key value violates unique constraint')) {
+          errorMessage = "Este email já está cadastrado no sistema";
+        }
+
+        console.error('Erro no cadastro:', error);
+        toast({
+          title: "Erro no cadastro",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        throw error;
       }
 
       toast({
-        title: "Erro no cadastro",
-        description: errorMessage,
-        variant: "destructive",
+        title: "Cadastro realizado com sucesso!",
+        description: "Verifique seu email para confirmar a conta.",
       });
+    } catch (error) {
+      console.error('Erro durante cadastro:', error);
       throw error;
     }
-
-    toast({
-      title: "Cadastro realizado com sucesso!",
-      description: "Verifique seu email para confirmar a conta.",
-    });
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Erro ao fazer logout:', error);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Erro ao fazer logout:', error);
+        toast({
+          title: "Erro ao sair",
+          description: error.message || "Erro desconhecido",
+          variant: "destructive",
+        });
+        throw error;
+      }
+
       toast({
-        title: "Erro ao sair",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
+        title: "Logout realizado",
+        description: "Até logo!",
       });
+    } catch (error) {
+      console.error('Erro durante logout:', error);
       throw error;
     }
-
-    toast({
-      title: "Logout realizado",
-      description: "Até logo!",
-    });
   };
 
   const resetPassword = async (email: string) => {
@@ -165,23 +200,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Email é obrigatório");
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      toast({
-        title: "Erro ao enviar email",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
+
+      if (error) {
+        console.error('Erro ao enviar email de reset:', error);
+        toast({
+          title: "Erro ao enviar email",
+          description: error.message || "Erro desconhecido",
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+      });
+    } catch (error) {
+      console.error('Erro durante reset de senha:', error);
       throw error;
     }
-
-    toast({
-      title: "Email enviado!",
-      description: "Verifique sua caixa de entrada para redefinir sua senha.",
-    });
   };
 
   return (
