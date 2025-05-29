@@ -114,17 +114,7 @@ export function blockFirebaseInitialization() {
   // @ts-ignore
   window.Firebase = undefined;
   
-  // Sobrescreve qualquer tentativa de importar Firebase
-  if (typeof define === 'function') {
-    const originalDefine = define;
-    // @ts-ignore
-    window.define = function(deps: any, factory: any) {
-      if (Array.isArray(deps)) {
-        deps = deps.filter((dep: string) => !dep.includes('firebase'));
-      }
-      return originalDefine(deps, factory);
-    };
-  }
+  console.log('🚫 Firebase initialization blocked');
 }
 
 // Executa a limpeza imediatamente
