@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const initializeAuth = async () => {
       try {
@@ -78,14 +80,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else if (!currentSession?.user) {
             setUserRole(null);
           }
+          
+          // Garantir que loading seja false após qualquer mudança de auth
+          if (loading) {
+            setLoading(false);
+          }
         }
       }
     );
+
+    // Timeout de segurança para garantir que loading seja false
+    timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        console.log('⏰ Timeout de segurança: definindo loading como false');
+        setLoading(false);
+      }
+    }, 3000);
 
     initializeAuth();
 
     return () => {
       mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
