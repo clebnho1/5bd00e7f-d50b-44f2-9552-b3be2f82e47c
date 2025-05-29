@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +33,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
       title: 'Agente AI',
       description: 'Configure seu assistente virtual',
       icon: Bot,
-      hasOwnPage: true, // Indica que tem página própria
+      hasOwnPage: true,
     },
     {
       id: 'colaboradores',
@@ -66,17 +67,22 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
   const availableWidgets = isAdmin() ? [...userWidgets, ...adminWidgets] : userWidgets;
 
   const handleWidgetClick = (widgetId: string) => {
+    console.log('Widget clicked:', widgetId);
     const widget = availableWidgets.find(w => w.id === widgetId);
+    console.log('Widget found:', widget);
     
     if (widget?.hasOwnPage) {
-      // Redireciona para página específica
+      console.log('Redirecting to page for widget:', widgetId);
       if (widgetId === 'agente-ai') {
+        console.log('Navigating to /agenteai');
         navigate('/agenteai');
+        return;
       }
-    } else {
-      // Abre como widget interno
-      setSelectedWidget(widgetId);
     }
+    
+    // Para widgets sem página própria, abre como widget interno
+    console.log('Opening as internal widget:', widgetId);
+    setSelectedWidget(widgetId);
   };
 
   const renderWidget = () => {
@@ -123,7 +129,6 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
           {isAdmin() && <span className="text-blue-600 font-medium"> (Administrador)</span>}
         </p>
         
-        {/* Link para Admin Dashboard se for admin */}
         {isAdmin() && (
           <div className="mt-4">
             <Button 
