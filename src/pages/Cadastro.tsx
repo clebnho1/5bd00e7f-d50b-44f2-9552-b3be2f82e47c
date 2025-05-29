@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -126,17 +125,26 @@ const Cadastro = () => {
     } catch (error: any) {
       console.error('Registration error:', error);
       
-      // Check if it's a duplicate user error
+      // Tratamento específico para email já cadastrado
       if (error.message?.includes('já está cadastrado')) {
-        // Don't navigate immediately, let the toast and auto-redirect handle it
+        setErrors(prev => ({ 
+          ...prev, 
+          email: 'Este email já possui uma conta. Tente fazer login.' 
+        }));
         return;
       }
       
-      // For other errors, show them in the form
+      // Tratamento para outros erros
       if (error.message?.includes('Email')) {
         setErrors(prev => ({ ...prev, email: error.message }));
       } else if (error.message?.includes('senha')) {
         setErrors(prev => ({ ...prev, senha: error.message }));
+      } else {
+        // Erro genérico
+        setErrors(prev => ({ 
+          ...prev, 
+          email: 'Erro ao criar conta. Tente novamente.' 
+        }));
       }
     } finally {
       setIsLoading(false);

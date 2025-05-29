@@ -29,44 +29,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     let mounted = true;
 
-    // Set up auth state listener first
+    // Função para atualizar o estado de autenticação de forma centralizada
+    const updateAuthState = (currentSession: Session | null) => {
+      if (!mounted) return;
+      
+      console.log('Updating auth state:', currentSession?.user?.email || 'no user');
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      if (!initialized) {
+        setInitialized(true);
+        setLoading(false);
+      }
+    };
+
+    // Configurar listener de mudanças de estado primeiro
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
-        if (!mounted) return;
-        
         console.log('Auth state changed:', event, currentSession?.user?.email || 'no user');
-        
-        // Update state synchronously
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        // Mark as initialized after first auth event
-        if (!initialized) {
-          setInitialized(true);
-          setLoading(false);
-        }
+        updateAuthState(currentSession);
       }
     );
 
-    // Get initial session
-    const getInitialSession = async () => {
+    // Verificar sessão inicial após configurar o listener
+    const initializeAuth = async () => {
       try {
-        if (!mounted) return;
-        
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting initial session:', error);
-        } else {
+        } else if (mounted && !initialized) {
+          // Só atualizar se ainda não foi inicializado (evita duplicação)
           console.log('Initial session found:', initialSession?.user?.email || 'no session');
-          
-          // Only update if we haven't received auth state change yet
-          if (mounted && !initialized) {
-            setSession(initialSession);
-            setUser(initialSession?.user ?? null);
-            setInitialized(true);
-            setLoading(false);
-          }
+          updateAuthState(initialSession);
         }
       } catch (error) {
         console.error('Error during session initialization:', error);
@@ -77,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Small delay to ensure auth state listener is set up first
-    const timeoutId = setTimeout(getInitialSession, 100);
+    // Pequeno delay para garantir que o listener seja configurado primeiro
+    const timeoutId = setTimeout(initializeAuth, 50);
 
     return () => {
       mounted = false;
@@ -182,19 +177,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (error.message.includes('User already registered') || 
             error.message.includes('duplicate key value violates unique constraint')) {
-          errorMessage = "Este email já está cadastrado. Tente fazer login ou use outro email";
+          errorMessage = "Este email já está cadastrado";
           
-          // Suggest login for existing users
           toast({
             title: "Email já cadastrado",
-            description: "Este email já possui uma conta. Redirecionando para login...",
+            description: "Este email já possui uma conta. Tente fazer login.",
             variant: "destructive",
           });
-          
-          // Auto redirect to login after a short delay
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 2000);
           
           throw new Error(errorMessage);
         } else if (error.message.includes('Password should be at least')) {
@@ -212,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      // Check if user needs email confirmation
+      // Verificar se o usuário precisa confirmar email
       if (data.user && !data.session) {
         toast({
           title: "Verifique seu email",

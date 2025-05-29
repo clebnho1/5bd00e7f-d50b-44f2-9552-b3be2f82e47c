@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,25 +68,28 @@ const Login = () => {
       await signIn(formData.email.trim(), formData.senha);
       
       console.log('Login successful, redirecting to dashboard');
-      // Small delay to show success message
-      setTimeout(() => {
-        navigate('/dashboard', { replace: true });
-      }, 1000);
+      // Redirect will be handled by the useEffect watching user state
       
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // Show specific error messages
+      // Tratamento específico de erros de login
       if (error.message?.includes('Email') || error.message?.includes('incorretos')) {
         setErrors(prev => ({ 
           ...prev, 
-          email: 'Credenciais inválidas',
-          senha: 'Credenciais inválidas'
+          email: 'Email ou senha incorretos',
+          senha: 'Email ou senha incorretos'
         }));
       } else if (error.message?.includes('confirmado')) {
         setErrors(prev => ({ ...prev, email: 'Email não confirmado' }));
       } else if (error.message?.includes('tentativas')) {
         setErrors(prev => ({ ...prev, email: 'Muitas tentativas. Aguarde alguns minutos' }));
+      } else {
+        // Erro genérico
+        setErrors(prev => ({ 
+          ...prev, 
+          email: 'Erro no login. Tente novamente.' 
+        }));
       }
     } finally {
       setIsLoading(false);

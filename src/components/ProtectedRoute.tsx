@@ -13,14 +13,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only redirect if auth is fully initialized and no user is found
+    // Só redirecionar se a autenticação estiver totalmente inicializada
+    // e não houver usuário autenticado
     if (initialized && !loading && !user) {
       console.log('No authenticated user, redirecting to login');
       navigate('/login', { replace: true });
     }
   }, [user, loading, initialized, navigate]);
 
-  // Show loading while auth is initializing
+  // Mostrar loading enquanto a autenticação não estiver inicializada
   if (!initialized || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
@@ -32,7 +33,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Don't render children if no user (will redirect)
+  // Não renderizar filhos se não houver usuário (vai redirecionar)
   if (!user) {
     return null;
   }
