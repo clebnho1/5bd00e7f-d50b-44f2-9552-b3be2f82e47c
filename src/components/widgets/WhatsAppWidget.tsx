@@ -256,12 +256,15 @@ export function WhatsAppWidget() {
       return;
     }
 
+    console.log('📱 [CONECTAR_WHATSAPP] Iniciando conexão para:', targetInstance);
     setIsConnecting(true);
     setQrCode('');
     setError(undefined);
     
     try {
-      const response = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
+      // Primeiro, tentar obter o QR Code
+      console.log('📱 [CONECTAR_WHATSAPP] Buscando QR Code...');
+      const qrResponse = await fetch(`${API_BASE}/instance/fetchInstances/${targetInstance}?getQrcode=true`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -269,37 +272,71 @@ export function WhatsAppWidget() {
         }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API error (${response.status}):`, errorText);
-        throw new Error(`Erro na API: ${response.status}`);
-      }
+      console.log('📱 [CONECTAR_WHATSAPP] Status da resposta QR:', qrResponse.status);
 
-      const data = await response.json();
-      const qrCodeData = data.qrCode || data.qr_code || data.base64;
-      
-      console.log('Conectar WhatsApp response:', data);
-      
-      if (qrCodeData) {
-        setQrCode(qrCodeData);
-        setStatusConexao('connecting');
-        setStatusMessage('Aguardando leitura do QR Code');
-        toast({
-          title: "QR Code gerado",
-          description: "Escaneie o QR Code com seu WhatsApp para conectar.",
-        });
+      if (qrResponse.ok) {
+        const qrData = await qrResponse.json();
+        console.log('📱 [CONECTAR_WHATSAPP] Dados do QR Code:', qrData);
         
-        setTimeout(checkConnectionStatus, 3000);
-      } else if (data.message && data.message.includes('já está conectada')) {
-        toast({
-          title: "Já conectado",
-          description: data.message,
-        });
-        setStatusConexao('open');
-        setStatusMessage('Conectado');
+        // Verificar se há QR Code na resposta
+        const qrCodeData = qrData.qrcode?.code || qrData.qr_code || qrData.base64 || qrData.qrCode;
+        
+        if (qrCodeData) {
+          console.log('📱 [CONECTAR_WHATSAPP] QR Code encontrado');
+          setQrCode(qrCodeData);
+          setStatusConexao('connecting');
+          setStatusMessage('Aguardando leitura do QR Code');
+          toast({
+            title: "QR Code gerado",
+            description: "Escaneie o QR Code com seu WhatsApp para conectar.",
+          });
+          
+          // Verificar status periodicamente
+          setTimeout(() => checkConnectionStatus(), 3000);
+        } else {
+          console.log('📱 [CONECTAR_WHATSAPP] Sem QR Code, tentando conectar...');
+          // Se não há QR Code, tentar conectar diretamente
+          const connectResponse = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': API_KEY
+            }
+          });
+
+          if (connectResponse.ok) {
+            const connectData = await connectResponse.json();
+            console.log('📱 [CONECTAR_WHATSAPP] Resposta de conexão:', connectData);
+            
+            const newQrCode = connectData.qrCode || connectData.qr_code || connectData.base64;
+            
+            if (newQrCode) {
+              setQrCode(newQrCode);
+              setStatusConexao('connecting');
+              setStatusMessage('Aguardando leitura do QR Code');
+              toast({
+                title: "QR Code gerado",
+                description: "Escaneie o QR Code com seu WhatsApp para conectar.",
+              });
+            } else if (connectData.message && connectData.message.includes('já está conectada')) {
+              toast({
+                title: "Já conectado",
+                description: connectData.message,
+              });
+              setStatusConexao('open');
+              setStatusMessage('Conectado');
+            } else {
+              throw new Error('QR Code não foi gerado');
+            }
+          } else {
+            throw new Error(`Erro ao conectar: ${connectResponse.status}`);
+          }
+        }
+      } else {
+        throw new Error(`Erro ao buscar QR Code: ${qrResponse.status}`);
       }
     } catch (err) {
-      console.error('Erro ao conectar WhatsApp:', err);
+      console.error('📱 [CONECTAR_WHATSAPP] Erro:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       setError(errorMessage);
       toast({
