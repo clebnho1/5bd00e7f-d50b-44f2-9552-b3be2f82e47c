@@ -14,7 +14,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   loading: boolean;
-  initialized: boolean;
   isAdmin: () => boolean;
   userRole: UserRole | null;
 }
@@ -25,7 +24,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
 
@@ -35,13 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth...');
+        
         // Get initial session
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting initial session:', error);
-        } else {
-          console.log('Initial session:', !!initialSession);
         }
 
         if (mounted) {
@@ -52,14 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await fetchUserRole(initialSession.user.id);
           }
           
-          setInitialized(true);
           setLoading(false);
           console.log('Auth initialized with user:', !!initialSession?.user);
         }
       } catch (error) {
         console.error('Error during session initialization:', error);
         if (mounted) {
-          setInitialized(true);
           setLoading(false);
         }
       }
@@ -73,16 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           
-          if (currentSession?.user) {
+          if (currentSession?.user && !userRole) {
+            // Only fetch role if we don't have it yet
             await fetchUserRole(currentSession.user.id);
-          } else {
+          } else if (!currentSession?.user) {
             setUserRole(null);
           }
           
-          if (!initialized) {
-            setInitialized(true);
-            setLoading(false);
-          }
+          setLoading(false);
         }
       }
     );
@@ -94,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Remove userRole dependency to avoid re-initialization
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -121,11 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     console.log('=== SIGNIN FUNCTION START ===');
-    console.log('Current URL at signIn start:', window.location.href);
     
     if (!email.trim() || !password.trim()) {
       const errorMsg = "Email e senha são obrigatórios";
-      console.log('Sign in validation failed:', errorMsg);
       toast({
         title: "Campos obrigatórios",
         description: errorMsg,
@@ -137,19 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       console.log('Attempting sign in with email:', email);
-      console.log('Current URL before Supabase call:', window.location.href);
       
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
-      console.log('Supabase signInWithPassword completed');
-      console.log('Current URL after Supabase call:', window.location.href);
-
       if (error) {
         console.error('Supabase sign in error:', error);
-        console.log('Current URL after error:', window.location.href);
         let errorMessage = "Erro no login";
         
         if (error.message.includes('Invalid login credentials')) {
@@ -169,21 +155,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('Sign in successful');
-      console.log('Current URL after successful signIn:', window.location.href);
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
       });
-      console.log('=== SIGNIN FUNCTION SUCCESS ===');
+      
     } catch (error) {
       console.error('Error during sign in:', error);
-      console.log('Current URL after catch:', window.location.href);
-      console.log('=== SIGNIN FUNCTION ERROR ===');
       throw error;
     } finally {
       setLoading(false);
-      console.log('SignIn loading set to false');
-      console.log('Current URL at signIn end:', window.location.href);
     }
   };
 
@@ -346,7 +327,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       resetPassword,
       loading,
-      initialized,
       isAdmin,
       userRole,
     }}>
