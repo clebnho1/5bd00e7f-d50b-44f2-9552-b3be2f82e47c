@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Activity, BarChart3, Clock, Search, Filter, RefreshCw } from 'lucide-react';
+import { Users, Activity, BarChart3, Clock, Search, Filter, RefreshCw, Settings, Edit, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProtectedWidget } from '@/components/ProtectedWidget';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +34,15 @@ interface LogActivity {
   metadata: any;
 }
 
+interface PlanoConfig {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+}
+
 export function AdministracaoWidget() {
   const { toast } = useToast();
   const { isAdmin, user, refreshUserRole } = useAuth();
@@ -43,6 +51,55 @@ export function AdministracaoWidget() {
   const [logs, setLogs] = useState<LogActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Estados para configuração de planos
+  const [planos, setPlanos] = useState<PlanoConfig[]>([
+    {
+      id: 'gratuito',
+      name: 'Gratuito',
+      price: 'R$ 0',
+      period: '7 dias trial',
+      description: 'Ideal para testar a plataforma',
+      features: [
+        'Até 100 mensagens/mês',
+        '1 agente AI',
+        'Suporte básico',
+        'Trial de 7 dias'
+      ]
+    },
+    {
+      id: 'basico',
+      name: 'Básico',
+      price: 'R$ 399',
+      period: '/mês',
+      description: 'Para pequenas empresas',
+      features: [
+        'Até 5.000 mensagens/mês',
+        '5 agentes AI',
+        'Suporte prioritário',
+        'Análises avançadas',
+        'Webhook personalizado'
+      ]
+    },
+    {
+      id: 'premium',
+      name: 'Premium',
+      price: 'R$ 699',
+      period: '/mês',
+      description: 'Para grandes empresas',
+      features: [
+        'Mensagens ilimitadas',
+        'Agentes AI ilimitados',
+        'Suporte 24/7',
+        'API personalizada',
+        'Integrações avançadas',
+        'Relatórios detalhados'
+      ]
+    }
+  ]);
+
+  const [editingPlan, setEditingPlan] = useState<string | null>(null);
+  const [editingFeature, setEditingFeature] = useState<{planId: string, index: number} | null>(null);
 
   const [filtros, setFiltros] = useState({
     usuarioSearch: '',
@@ -214,6 +271,52 @@ export function AdministracaoWidget() {
     }
   };
 
+  const updatePlanField = (planId: string, field: keyof PlanoConfig, value: string) => {
+    setPlanos(prev => prev.map(plan => 
+      plan.id === planId ? { ...plan, [field]: value } : plan
+    ));
+  };
+
+  const updatePlanFeature = (planId: string, featureIndex: number, value: string) => {
+    setPlanos(prev => prev.map(plan => 
+      plan.id === planId 
+        ? { 
+            ...plan, 
+            features: plan.features.map((feature, index) => 
+              index === featureIndex ? value : feature
+            ) 
+          } 
+        : plan
+    ));
+  };
+
+  const addFeature = (planId: string) => {
+    setPlanos(prev => prev.map(plan => 
+      plan.id === planId 
+        ? { ...plan, features: [...plan.features, 'Nova funcionalidade'] }
+        : plan
+    ));
+  };
+
+  const removeFeature = (planId: string, featureIndex: number) => {
+    setPlanos(prev => prev.map(plan => 
+      plan.id === planId 
+        ? { ...plan, features: plan.features.filter((_, index) => index !== featureIndex) }
+        : plan
+    ));
+  };
+
+  const savePlansConfig = () => {
+    // Aqui você salvaria no localStorage ou banco de dados
+    localStorage.setItem('planos_config', JSON.stringify(planos));
+    toast({
+      title: "Configurações salvas",
+      description: "As configurações dos planos foram salvas com sucesso.",
+    });
+    setEditingPlan(null);
+    setEditingFeature(null);
+  };
+
   const usuariosFiltrados = usuarios.filter(usuario => {
     return (
       usuario.name.toLowerCase().includes(filtros.usuarioSearch.toLowerCase()) &&
@@ -319,6 +422,7 @@ export function AdministracaoWidget() {
         <Tabs defaultValue="usuarios" className="space-y-4">
           <TabsList>
             <TabsTrigger value="usuarios">Gerenciar Usuários</TabsTrigger>
+            <TabsTrigger value="planos">Gerenciar Planos</TabsTrigger>
             <TabsTrigger value="logs">Logs de Atividade</TabsTrigger>
             <TabsTrigger value="estatisticas">Estatísticas</TabsTrigger>
           </TabsList>
@@ -429,6 +533,123 @@ export function AdministracaoWidget() {
                       <p className="text-gray-500">Nenhum usuário encontrado</p>
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="planos" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Configurações dos Planos
+                  </div>
+                  <Button onClick={savePlansConfig} className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
+                    Salvar Alterações
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Configure os planos disponíveis no sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {planos.map((plano) => (
+                    <Card key={plano.id} className="relative">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          {editingPlan === plano.id ? (
+                            <Input
+                              value={plano.name}
+                              onChange={(e) => updatePlanField(plano.id, 'name', e.target.value)}
+                              className="font-semibold"
+                            />
+                          ) : (
+                            <CardTitle>{plano.name}</CardTitle>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingPlan(editingPlan === plano.id ? null : plano.id)}
+                          >
+                            {editingPlan === plano.id ? <X className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        {editingPlan === plano.id ? (
+                          <Input
+                            value={plano.description}
+                            onChange={(e) => updatePlanField(plano.id, 'description', e.target.value)}
+                            className="text-sm"
+                          />
+                        ) : (
+                          <CardDescription>{plano.description}</CardDescription>
+                        )}
+                        <div className="mt-4 flex items-center gap-2">
+                          {editingPlan === plano.id ? (
+                            <>
+                              <Input
+                                value={plano.price}
+                                onChange={(e) => updatePlanField(plano.id, 'price', e.target.value)}
+                                className="w-24 text-2xl font-bold"
+                              />
+                              <Input
+                                value={plano.period}
+                                onChange={(e) => updatePlanField(plano.id, 'period', e.target.value)}
+                                className="w-20 text-sm"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-3xl font-bold">{plano.price}</span>
+                              <span className="text-gray-500">{plano.period}</span>
+                            </>
+                          )}
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent>
+                        <div className="space-y-2">
+                          {plano.features.map((feature, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <span className="text-green-500">✓</span>
+                              {editingPlan === plano.id ? (
+                                <div className="flex-1 flex items-center gap-2">
+                                  <Input
+                                    value={feature}
+                                    onChange={(e) => updatePlanFeature(plano.id, index, e.target.value)}
+                                    className="text-sm"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeFeature(plano.id, index)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-sm">{feature}</span>
+                              )}
+                            </div>
+                          ))}
+                          
+                          {editingPlan === plano.id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addFeature(plano.id)}
+                              className="w-full mt-2"
+                            >
+                              + Adicionar Funcionalidade
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </CardContent>
             </Card>
