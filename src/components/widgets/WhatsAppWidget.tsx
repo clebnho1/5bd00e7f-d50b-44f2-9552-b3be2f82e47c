@@ -25,12 +25,39 @@ export function WhatsAppWidget() {
     setIsCreating(true);
     
     try {
+      // Primeiro criar a instância na Evolution API
+      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+        },
+        body: JSON.stringify({
+          instanceName: instanceName.trim(),
+          token: instanceName.trim(),
+          qrcode: true,
+          chatwoot_account_id: null,
+          chatwoot_token: null,
+          chatwoot_url: null,
+          chatwoot_sign_msg: false,
+          chatwoot_reopen_conversation: false,
+          chatwoot_conversation_pending: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na API: ${response.status}`);
+      }
+
+      // Salvar no Supabase
       await saveInstance({
         nome_empresa: instanceName.trim(),
-        status: 'desconectado',
+        status: 'criado',
         qr_code: null
       });
-      setInstanceName(''); // Limpar o campo após criar
+      setInstanceName('');
+    } catch (error) {
+      console.error('Erro ao criar instância:', error);
     } finally {
       setIsCreating(false);
     }
@@ -42,9 +69,9 @@ export function WhatsAppWidget() {
     setIsGeneratingQR(true);
     
     try {
-      // Chamar a API da Evolution para gerar QR Code
+      // Usar GET para buscar o QR Code
       const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connect/${instance.nome_empresa}`, {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'apikey': '0417bf43b0a8669bd6635bcb49d783df'
@@ -60,8 +87,8 @@ export function WhatsAppWidget() {
       // Atualizar a instância com o QR Code
       await saveInstance({
         nome_empresa: instance.nome_empresa,
-        status: 'conectando',
-        qr_code: apiData.qrCode || apiData.qr_code || null,
+        status: 'aguardando_conexao',
+        qr_code: apiData.qrCode || apiData.qr_code || apiData.base64 || null,
         ultima_verificacao: new Date().toISOString()
       });
     } catch (error) {
@@ -75,23 +102,71 @@ export function WhatsAppWidget() {
     setIsChecking(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connectionState/${instance?.nome_empresa}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na API: ${response.status}`);
+      }
+
+      const statusData = await response.json();
+      
+      let newStatus = 'desconectado';
+      if (statusData.instance?.state === 'open') {
+        newStatus = 'conectado';
+      } else if (statusData.instance?.state === 'connecting') {
+        newStatus = 'aguardando_conexao';
+      }
       
       await saveInstance({
         nome_empresa: instance?.nome_empresa,
-        status: 'conectado',
-        qr_code: null,
+        status: newStatus,
+        qr_code: newStatus === 'conectado' ? null : instance?.qr_code,
         ultima_verificacao: new Date().toISOString()
       });
+    } catch (error) {
+      console.error('Erro ao verificar status:', error);
     } finally {
       setIsChecking(false);
     }
   };
 
   const handleDisconnect = async () => {
+    if (!instance) return;
+
     setIsDisconnecting(true);
     try {
-      await disconnectInstance();
+      // Tentar desconectar via API da Evolution
+      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/logout/${instance.nome_empresa}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+        }
+      });
+
+      // Atualizar o status local independentemente da resposta da API
+      await saveInstance({
+        nome_empresa: instance.nome_empresa,
+        status: 'desconectado',
+        qr_code: null,
+        ultima_verificacao: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Erro ao desconectar instância:', error);
+      // Mesmo com erro, atualizar status local
+      await saveInstance({
+        nome_empresa: instance.nome_empresa,
+        status: 'desconectado',
+        qr_code: null,
+        ultima_verificacao: new Date().toISOString()
+      });
     } finally {
       setIsDisconnecting(false);
     }
@@ -107,12 +182,19 @@ export function WhatsAppWidget() {
           text: 'Conectado',
           description: 'WhatsApp ativo e funcionando'
         };
-      case 'conectando':
+      case 'aguardando_conexao':
         return {
           color: 'bg-yellow-500',
           icon: QrCode,
           text: 'Aguardando Conexão',
           description: 'Escaneie o QR Code para conectar'
+        };
+      case 'criado':
+        return {
+          color: 'bg-blue-500',
+          icon: Zap,
+          text: 'Instância Criada',
+          description: 'Gere o QR Code para conectar'
         };
       default:
         return {
@@ -211,7 +293,7 @@ export function WhatsAppWidget() {
                 </div>
 
                 <div className="space-y-2">
-                  {instance.status === 'desconectado' && (
+                  {(instance.status === 'desconectado' || instance.status === 'criado') && (
                     <Button
                       onClick={gerarQRCode}
                       disabled={isGeneratingQR}
@@ -222,7 +304,7 @@ export function WhatsAppWidget() {
                     </Button>
                   )}
 
-                  {(instance.status === 'conectando' || instance.status === 'conectado') && (
+                  {(instance.status === 'aguardando_conexao' || instance.status === 'conectado') && (
                     <div className="space-y-2">
                       <Button
                         onClick={verificarStatus}
@@ -328,9 +410,9 @@ export function WhatsAppWidget() {
             <div>
               <h4 className="font-medium mb-2">✅ Recursos Ativos</h4>
               <ul className="space-y-1 text-gray-600">
-                <li>• Criação manual de instância</li>
+                <li>• Criação de instância na Evolution API</li>
                 <li>• Nome personalizado pelo usuário</li>
-                <li>• Geração manual de QR Code</li>
+                <li>• Geração de QR Code via GET</li>
                 <li>• Verificação de status em tempo real</li>
                 <li>• Desconexão de instância</li>
               </ul>
@@ -340,9 +422,9 @@ export function WhatsAppWidget() {
               <ul className="space-y-1 text-gray-600">
                 <li>• API: Evolution WhatsApp</li>
                 <li>• Endpoint: apiwhats.lifecombr.com.br</li>
-                <li>• Método: POST /instance/connect/{instanceName}</li>
-                <li>• Autenticação: API Key</li>
-                <li>• Webhook: Configurado automaticamente</li>
+                <li>• Criação: POST /instance/create</li>
+                <li>• QR Code: GET /instance/connect/{name}</li>
+                <li>• Desconectar: DELETE /instance/logout/{name}</li>
               </ul>
             </div>
           </div>
