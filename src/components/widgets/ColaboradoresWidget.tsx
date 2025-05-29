@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Plus, Edit, Trash2, User, Package, Clock, Upload } from 'lucide-react';
 import { useColaboradores } from '@/hooks/useColaboradores';
+import { useAuth } from '@/hooks/useAuth';
 import { ImageUpload } from '@/components/ImageUpload';
 
 const diasSemana = [
@@ -25,6 +26,7 @@ const diasSemana = [
 
 export function ColaboradoresWidget() {
   const { colaboradores, loading, saveColaborador, updateColaborador } = useColaboradores();
+  const { isAdmin } = useAuth();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingColaborador, setEditingColaborador] = useState<any>(null);
@@ -165,6 +167,14 @@ export function ColaboradoresWidget() {
       setIsDialogOpen(false);
     }
     setIsSubmitting(false);
+  };
+
+  const handleToggleStatus = async (colaboradorId: string, currentStatus: boolean) => {
+    if (!isAdmin()) {
+      return;
+    }
+    
+    await updateColaborador(colaboradorId, { ativo: !currentStatus });
   };
 
   if (loading) {
@@ -531,13 +541,27 @@ export function ColaboradoresWidget() {
                   </div>
                 </div>
                 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openDialog(colaborador)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {isAdmin() && (
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`toggle-${colaborador.id}`} className="text-sm">
+                        {colaborador.ativo ? 'Ativo' : 'Inativo'}
+                      </Label>
+                      <Switch
+                        id={`toggle-${colaborador.id}`}
+                        checked={colaborador.ativo}
+                        onCheckedChange={() => handleToggleStatus(colaborador.id, colaborador.ativo)}
+                      />
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openDialog(colaborador)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
