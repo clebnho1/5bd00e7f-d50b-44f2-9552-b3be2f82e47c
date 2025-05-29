@@ -16,6 +16,9 @@ interface FormData {
   website_empresa: string;
   endereco_empresa: string;
   funcoes: string;
+  instagram_empresa?: string;
+  facebook_empresa?: string;
+  observacoes?: string;
 }
 
 export function useAgenteForm(agentData: Tables['agentes_ai']['Row'] | null) {
@@ -30,7 +33,10 @@ export function useAgenteForm(agentData: Tables['agentes_ai']['Row'] | null) {
     email_empresa: '',
     website_empresa: '',
     endereco_empresa: '',
-    funcoes: ''
+    funcoes: '',
+    instagram_empresa: '',
+    facebook_empresa: '',
+    observacoes: ''
   });
 
   useEffect(() => {
@@ -46,7 +52,10 @@ export function useAgenteForm(agentData: Tables['agentes_ai']['Row'] | null) {
         email_empresa: agentData.email_empresa || '',
         website_empresa: agentData.website_empresa || '',
         endereco_empresa: agentData.endereco_empresa || '',
-        funcoes: Array.isArray(agentData.funcoes) ? agentData.funcoes.join('\n') : (agentData.funcoes || '')
+        funcoes: Array.isArray(agentData.funcoes) ? agentData.funcoes.join('\n') : (agentData.funcoes || ''),
+        instagram_empresa: (agentData as any).instagram_empresa || '',
+        facebook_empresa: (agentData as any).facebook_empresa || '',
+        observacoes: (agentData as any).observacoes || ''
       });
     }
   }, [agentData]);

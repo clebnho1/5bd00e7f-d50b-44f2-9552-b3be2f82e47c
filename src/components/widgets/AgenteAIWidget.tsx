@@ -4,8 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Bot, Save } from 'lucide-react';
 import { useAgenteAI } from '@/hooks/useAgenteAI';
 import { useSelectOptions } from '@/hooks/useSelectOptions';
-import { AgenteBasicInfo } from './AgenteAI/AgenteBasicInfo';
-import { EmpresaInfo } from './AgenteAI/EmpresaInfo';
+import { IdentidadeAgente } from './AgenteAI/IdentidadeAgente';
+import { FuncoesAgente } from './AgenteAI/FuncoesAgente';
+import { ComportamentoAgente } from './AgenteAI/ComportamentoAgente';
+import { ConfiguracaoEmpresa } from './AgenteAI/ConfiguracaoEmpresa';
+import { RedesSociais } from './AgenteAI/RedesSociais';
+import { Observacoes } from './AgenteAI/Observacoes';
 import { useAgenteForm } from './AgenteAI/useAgenteForm';
 
 export function AgenteAIWidget() {
@@ -29,24 +33,54 @@ export function AgenteAIWidget() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Bot className="h-6 w-6 text-whatsapp" />
-        <h2 className="text-2xl font-bold">Configuração do Agente AI</h2>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
-        <AgenteBasicInfo
+        {/* Botão Salvar - Parte de Cima */}
+        <div className="flex justify-end">
+          <Button type="submit" className="whatsapp-gradient text-white">
+            <Save className="h-4 w-4 mr-2" />
+            Salvar Configurações
+          </Button>
+        </div>
+
+        {/* 1. Identidade do Agente */}
+        <IdentidadeAgente
           formData={formData}
           areasAtuacao={areasAtuacao}
+          onInputChange={handleInputChange}
+        />
+
+        {/* 2. Funções */}
+        <FuncoesAgente
+          formData={formData}
+          onInputChange={handleInputChange}
+        />
+
+        {/* 3. Comportamento */}
+        <ComportamentoAgente
+          formData={formData}
           estilosComportamento={estilosComportamento}
           onInputChange={handleInputChange}
         />
 
-        <EmpresaInfo
+        {/* 4. Configuração da Empresa */}
+        <ConfiguracaoEmpresa
           formData={formData}
           onInputChange={handleInputChange}
         />
 
+        {/* 5. Redes Sociais */}
+        <RedesSociais
+          formData={formData}
+          onInputChange={handleInputChange}
+        />
+
+        {/* 6. Observações */}
+        <Observacoes
+          formData={formData}
+          onInputChange={handleInputChange}
+        />
+
+        {/* Botão Salvar - Parte de Baixo */}
         <Button type="submit" className="w-full whatsapp-gradient text-white">
           <Save className="h-4 w-4 mr-2" />
           Salvar Configurações
