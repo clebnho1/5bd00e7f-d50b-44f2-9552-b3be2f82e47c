@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +29,7 @@ export function ColaboradoresWidget() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingColaborador, setEditingColaborador] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('cadastro');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Dados pessoais
   const [formData, setFormData] = useState({
@@ -113,15 +113,15 @@ export function ColaboradoresWidget() {
       setEditingColaborador(colaborador);
       setFormData({
         nome: colaborador.nome || '',
-        email: (colaborador as any).email || '',
-        telefone: (colaborador as any).telefone || '',
-        cargo: (colaborador as any).cargo || '',
-        unidade: (colaborador as any).unidade || '',
+        email: colaborador.email || '',
+        telefone: colaborador.telefone || '',
+        cargo: colaborador.cargo || '',
+        unidade: colaborador.unidade || '',
         ativo: colaborador.ativo ?? true,
         imagem_url: colaborador.imagem_url || ''
       });
-      setProdutos((colaborador as any).produtos_detalhados || []);
-      setHorarios((colaborador as any).horarios_detalhados || []);
+      setProdutos(colaborador.produtos_detalhados || []);
+      setHorarios(colaborador.horarios_detalhados || []);
     } else {
       setEditingColaborador(null);
       setFormData({
@@ -142,24 +142,29 @@ export function ColaboradoresWidget() {
 
   const handleSubmit = async () => {
     if (!formData.nome.trim()) return;
+    
+    setIsSubmitting(true);
 
     const dadosColaborador = {
       ...formData,
       produtos_detalhados: produtos,
       horarios_detalhados: horarios,
-      // Manter compatibilidade com formato antigo
       produtos: produtos.map(p => p.nome),
       produtos_precos: produtos.reduce((acc, p) => ({ ...acc, [p.nome]: p.preco }), {}),
       horarios: horarios.map(h => `${h.dia}: ${h.inicio} - ${h.fim}`).join('\n')
     };
 
+    let success = false;
     if (editingColaborador) {
-      await updateColaborador(editingColaborador.id, dadosColaborador);
+      success = await updateColaborador(editingColaborador.id, dadosColaborador);
     } else {
-      await saveColaborador(dadosColaborador);
+      success = await saveColaborador(dadosColaborador);
     }
 
-    setIsDialogOpen(false);
+    if (success) {
+      setIsDialogOpen(false);
+    }
+    setIsSubmitting(false);
   };
 
   if (loading) {
@@ -461,8 +466,12 @@ export function ColaboradoresWidget() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit} className="whatsapp-gradient text-white">
-                Salvar Cadastro Completo
+              <Button 
+                onClick={handleSubmit} 
+                className="whatsapp-gradient text-white"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Salvando...' : 'Salvar Cadastro Completo'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -497,9 +506,9 @@ export function ColaboradoresWidget() {
                     </div>
                     
                     <div className="space-y-1 text-sm text-gray-600">
-                      {(colaborador as any).email && <p>Email: {(colaborador as any).email}</p>}
-                      {(colaborador as any).cargo && <p>Cargo: {(colaborador as any).cargo}</p>}
-                      {(colaborador as any).unidade && <p>Unidade: {(colaborador as any).unidade}</p>}
+                      {colaborador.email && <p>Email: {colaborador.email}</p>}
+                      {colaborador.cargo && <p>Cargo: {colaborador.cargo}</p>}
+                      {colaborador.unidade && <p>Unidade: {colaborador.unidade}</p>}
                       
                       {colaborador.produtos && colaborador.produtos.length > 0 && (
                         <div>

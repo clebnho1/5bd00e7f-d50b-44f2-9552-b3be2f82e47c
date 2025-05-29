@@ -78,7 +78,7 @@ export function useColaboradores() {
         description: "Usuário não está logado",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     if (!data.nome?.trim()) {
@@ -87,25 +87,29 @@ export function useColaboradores() {
         description: "Nome do colaborador é obrigatório",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     try {
+      const colaboradorData = {
+        user_id: user.id,
+        nome: data.nome.trim(),
+        email: data.email?.trim() || null,
+        telefone: data.telefone?.trim() || null,
+        cargo: data.cargo?.trim() || null,
+        unidade: data.unidade?.trim() || null,
+        produtos: data.produtos || [],
+        produtos_precos: data.produtos_precos || {},
+        produtos_detalhados: data.produtos_detalhados || [],
+        horarios: data.horarios || '09:00 - 18:00',
+        horarios_detalhados: data.horarios_detalhados || [],
+        ativo: data.ativo ?? true,
+        imagem_url: data.imagem_url || null,
+      };
+
       const { error } = await supabase
         .from('colaboradores')
-        .insert({
-          user_id: user.id,
-          nome: data.nome.trim(),
-          email: data.email?.trim() || null,
-          telefone: data.telefone?.trim() || null,
-          cargo: data.cargo?.trim() || null,
-          unidade: data.unidade?.trim() || null,
-          produtos: data.produtos || [],
-          produtos_precos: data.produtos_precos || {},
-          horarios: data.horarios || '09:00 - 18:00',
-          ativo: data.ativo ?? true,
-          imagem_url: data.imagem_url || null,
-        });
+        .insert(colaboradorData);
 
       if (error) throw error;
 
@@ -114,7 +118,8 @@ export function useColaboradores() {
         description: "Novo colaborador foi adicionado com sucesso.",
       });
 
-      fetchColaboradores();
+      await fetchColaboradores();
+      return true;
     } catch (error: any) {
       console.error('Erro ao salvar colaborador:', error);
       toast({
@@ -122,6 +127,7 @@ export function useColaboradores() {
         description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -132,7 +138,7 @@ export function useColaboradores() {
         description: "Usuário não está logado",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     try {
@@ -149,7 +155,8 @@ export function useColaboradores() {
         description: "Informações atualizadas com sucesso.",
       });
 
-      fetchColaboradores();
+      await fetchColaboradores();
+      return true;
     } catch (error: any) {
       console.error('Erro ao atualizar colaborador:', error);
       toast({
@@ -157,6 +164,7 @@ export function useColaboradores() {
         description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
+      return false;
     }
   };
 

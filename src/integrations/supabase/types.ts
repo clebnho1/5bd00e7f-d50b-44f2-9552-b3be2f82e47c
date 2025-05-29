@@ -140,10 +140,12 @@ export type Database = {
           created_at: string
           email: string | null
           horarios: string | null
+          horarios_detalhados: Json | null
           id: string
           imagem_url: string | null
           nome: string
           produtos: string[] | null
+          produtos_detalhados: Json | null
           produtos_precos: Json | null
           telefone: string | null
           unidade: string | null
@@ -156,10 +158,12 @@ export type Database = {
           created_at?: string
           email?: string | null
           horarios?: string | null
+          horarios_detalhados?: Json | null
           id?: string
           imagem_url?: string | null
           nome: string
           produtos?: string[] | null
+          produtos_detalhados?: Json | null
           produtos_precos?: Json | null
           telefone?: string | null
           unidade?: string | null
@@ -172,10 +176,12 @@ export type Database = {
           created_at?: string
           email?: string | null
           horarios?: string | null
+          horarios_detalhados?: Json | null
           id?: string
           imagem_url?: string | null
           nome?: string
           produtos?: string[] | null
+          produtos_detalhados?: Json | null
           produtos_precos?: Json | null
           telefone?: string | null
           unidade?: string | null
