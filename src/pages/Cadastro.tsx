@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 const Cadastro = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signUp, user, loading: authLoading } = useAuth();
+  const { signUp, user, loading: authLoading, initialized } = useAuth();
   
   const [formData, setFormData] = useState({
     nomeCompleto: '',
@@ -27,13 +27,13 @@ const Cadastro = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  // Redirect if already logged in
+  // Redirect if already logged in - but only after auth is initialized
   useEffect(() => {
-    if (!authLoading && user) {
+    if (initialized && !authLoading && user) {
       console.log('User already logged in, redirecting to dashboard');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, initialized, navigate]);
 
   const planos = [
     { id: 'gratuito', name: 'Gratuito - R$ 0/mês' },
@@ -68,11 +68,13 @@ const Cadastro = () => {
 
     if (!formData.nomeCompleto.trim()) {
       newErrors.nomeCompleto = 'Nome completo é obrigatório';
+    } else if (formData.nomeCompleto.trim().length < 2) {
+      newErrors.nomeCompleto = 'Nome deve ter pelo menos 2 caracteres';
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email é obrigatório';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Email inválido';
     }
 
@@ -100,26 +102,49 @@ const Cadastro = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      console.log('Form validation failed:', errors);
       return;
     }
 
     setIsLoading(true);
     
     try {
-      console.log('Tentando criar conta para:', formData.email);
-      await signUp(formData.email, formData.senha, formData.nomeCompleto, formData.plano);
-      console.log('Conta criada com sucesso, redirecionando para login');
-      navigate('/login');
-    } catch (error) {
-      console.error('Erro no cadastro:', error);
-      // Error is handled in the hook
+      console.log('Submitting registration form for:', formData.email);
+      await signUp(
+        formData.email.trim(), 
+        formData.senha, 
+        formData.nomeCompleto.trim(), 
+        formData.plano
+      );
+      
+      console.log('Registration successful, redirecting to login');
+      // Small delay to show success message before redirect
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      
+      // Check if it's a duplicate user error
+      if (error.message?.includes('já está cadastrado')) {
+        // Don't navigate immediately, let the toast and auto-redirect handle it
+        return;
+      }
+      
+      // For other errors, show them in the form
+      if (error.message?.includes('Email')) {
+        setErrors(prev => ({ ...prev, email: error.message }));
+      } else if (error.message?.includes('senha')) {
+        setErrors(prev => ({ ...prev, senha: error.message }));
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   // Show loading if auth is still initializing
-  if (authLoading) {
+  if (!initialized || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -130,7 +155,7 @@ const Cadastro = () => {
     );
   }
 
-  // Don't render if user is logged in
+  // Don't render if user is logged in (will redirect)
   if (user) {
     return null;
   }
@@ -144,6 +169,7 @@ const Cadastro = () => {
             variant="ghost"
             className="mb-4"
             onClick={() => navigate('/')}
+            disabled={isLoading}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
@@ -174,6 +200,7 @@ const Cadastro = () => {
                   value={formData.nomeCompleto}
                   onChange={(e) => handleInputChange('nomeCompleto', e.target.value)}
                   className={errors.nomeCompleto ? 'border-red-500' : ''}
+                  disabled={isLoading}
                   required
                 />
                 {errors.nomeCompleto && (
@@ -190,6 +217,7 @@ const Cadastro = () => {
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className={errors.email ? 'border-red-500' : ''}
+                  disabled={isLoading}
                   required
                 />
                 {errors.email && (
@@ -207,6 +235,7 @@ const Cadastro = () => {
                     value={formData.senha}
                     onChange={(e) => handleInputChange('senha', e.target.value)}
                     className={errors.senha ? 'border-red-500' : ''}
+                    disabled={isLoading}
                     required
                   />
                   <Button
@@ -215,6 +244,7 @@ const Cadastro = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -238,6 +268,7 @@ const Cadastro = () => {
                     value={formData.confirmarSenha}
                     onChange={(e) => handleInputChange('confirmarSenha', e.target.value)}
                     className={errors.confirmarSenha ? 'border-red-500' : ''}
+                    disabled={isLoading}
                     required
                   />
                   <Button
@@ -246,6 +277,7 @@ const Cadastro = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={isLoading}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -261,7 +293,11 @@ const Cadastro = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="plano">Plano *</Label>
-                <Select value={formData.plano} onValueChange={(value) => handleInputChange('plano', value)}>
+                <Select 
+                  value={formData.plano} 
+                  onValueChange={(value) => handleInputChange('plano', value)}
+                  disabled={isLoading}
+                >
                   <SelectTrigger className={errors.plano ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Selecione um plano" />
                   </SelectTrigger>
@@ -297,7 +333,12 @@ const Cadastro = () => {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Já tem uma conta?{' '}
-                <Button variant="link" className="p-0 h-auto text-whatsapp" onClick={() => navigate('/login')}>
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto text-whatsapp" 
+                  onClick={() => navigate('/login')}
+                  disabled={isLoading}
+                >
                   Fazer login
                 </Button>
               </p>

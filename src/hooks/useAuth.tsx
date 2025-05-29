@@ -12,6 +12,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   loading: boolean;
+  initialized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,59 +21,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('Setting up auth state listener...');
+    console.log('Initializing auth state...');
     
-    // Set up auth state listener
+    let mounted = true;
+
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email || 'no user');
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+      (event, currentSession) => {
+        if (!mounted) return;
+        
+        console.log('Auth state changed:', event, currentSession?.user?.email || 'no user');
+        
+        // Update state synchronously
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        // Mark as initialized after first auth event
+        if (!initialized) {
+          setInitialized(true);
+          setLoading(false);
+        }
       }
     );
 
-    // Check for existing session
+    // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Erro ao verificar sessão inicial:', error);
+          console.error('Error getting initial session:', error);
         } else {
-          console.log('Sessão inicial encontrada:', session?.user?.email || 'nenhuma sessão');
-          setSession(session);
-          setUser(session?.user ?? null);
+          console.log('Initial session found:', initialSession?.user?.email || 'no session');
+          
+          // Only update if we haven't received auth state change yet
+          if (mounted && !initialized) {
+            setSession(initialSession);
+            setUser(initialSession?.user ?? null);
+            setInitialized(true);
+            setLoading(false);
+          }
         }
       } catch (error) {
-        console.error('Erro ao obter sessão:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error during session initialization:', error);
+        if (mounted && !initialized) {
+          setInitialized(true);
+          setLoading(false);
+        }
       }
     };
 
-    getInitialSession();
+    // Small delay to ensure auth state listener is set up first
+    const timeoutId = setTimeout(getInitialSession, 100);
 
     return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
       console.log('Cleaning up auth subscription');
       subscription.unsubscribe();
     };
-  }, []);
+  }, [initialized]);
 
   const signIn = async (email: string, password: string) => {
     if (!email.trim() || !password.trim()) {
+      const errorMsg = "Email e senha são obrigatórios";
       toast({
         title: "Campos obrigatórios",
-        description: "Email e senha são obrigatórios",
+        description: errorMsg,
         variant: "destructive",
       });
-      throw new Error("Email e senha são obrigatórios");
+      throw new Error(errorMsg);
     }
 
     try {
+      setLoading(true);
+      console.log('Attempting sign in for:', email);
+      
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -85,9 +115,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           errorMessage = "Email ou senha incorretos";
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = "Email não confirmado. Verifique sua caixa de entrada";
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = "Muitas tentativas. Tente novamente em alguns minutos";
         }
 
-        console.error('Erro no login:', error);
+        console.error('Sign in error:', error);
         toast({
           title: "Erro no login",
           description: errorMessage,
@@ -96,37 +128,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
+      console.log('Sign in successful');
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
       });
     } catch (error) {
-      console.error('Erro durante login:', error);
+      console.error('Error during sign in:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, name: string, plano: string) => {
     if (!email.trim() || !password.trim() || !name.trim()) {
+      const errorMsg = "Todos os campos são obrigatórios";
       toast({
         title: "Campos obrigatórios",
-        description: "Todos os campos são obrigatórios",
+        description: errorMsg,
         variant: "destructive",
       });
-      throw new Error("Todos os campos são obrigatórios");
+      throw new Error(errorMsg);
     }
 
     if (password.length < 6) {
+      const errorMsg = "A senha deve ter pelo menos 6 caracteres";
       toast({
         title: "Senha muito fraca",
-        description: "A senha deve ter pelo menos 6 caracteres",
+        description: errorMsg,
         variant: "destructive",
       });
-      throw new Error("Senha muito fraca");
+      throw new Error(errorMsg);
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      setLoading(true);
+      console.log('Attempting sign up for:', email);
+      
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -140,15 +180,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         let errorMessage = "Erro no cadastro";
         
-        if (error.message.includes('User already registered')) {
-          errorMessage = "Este email já está cadastrado";
+        if (error.message.includes('User already registered') || 
+            error.message.includes('duplicate key value violates unique constraint')) {
+          errorMessage = "Este email já está cadastrado. Tente fazer login ou use outro email";
+          
+          // Suggest login for existing users
+          toast({
+            title: "Email já cadastrado",
+            description: "Este email já possui uma conta. Redirecionando para login...",
+            variant: "destructive",
+          });
+          
+          // Auto redirect to login after a short delay
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+          
+          throw new Error(errorMessage);
         } else if (error.message.includes('Password should be at least')) {
           errorMessage = "A senha deve ter pelo menos 6 caracteres";
-        } else if (error.message.includes('duplicate key value violates unique constraint')) {
-          errorMessage = "Este email já está cadastrado no sistema";
+        } else if (error.message.includes('Invalid email')) {
+          errorMessage = "Email inválido";
         }
 
-        console.error('Erro no cadastro:', error);
+        console.error('Sign up error:', error);
         toast({
           title: "Erro no cadastro",
           description: errorMessage,
@@ -157,21 +212,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      toast({
-        title: "Cadastro realizado com sucesso!",
-        description: "Verifique seu email para confirmar a conta.",
-      });
+      // Check if user needs email confirmation
+      if (data.user && !data.session) {
+        toast({
+          title: "Verifique seu email",
+          description: "Um link de confirmação foi enviado para seu email.",
+        });
+      } else if (data.session) {
+        toast({
+          title: "Cadastro realizado com sucesso!",
+          description: "Bem-vindo ao sistema!",
+        });
+      }
+
+      console.log('Sign up successful');
     } catch (error) {
-      console.error('Erro durante cadastro:', error);
+      console.error('Error during sign up:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
+      setLoading(true);
+      console.log('Attempting sign out');
+      
       const { error } = await supabase.auth.signOut();
+      
       if (error) {
-        console.error('Erro ao fazer logout:', error);
+        console.error('Sign out error:', error);
         toast({
           title: "Erro ao sair",
           description: error.message || "Erro desconhecido",
@@ -180,33 +251,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
+      console.log('Sign out successful');
       toast({
         title: "Logout realizado",
         description: "Até logo!",
       });
     } catch (error) {
-      console.error('Erro durante logout:', error);
+      console.error('Error during sign out:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const resetPassword = async (email: string) => {
     if (!email.trim()) {
+      const errorMsg = "Email é obrigatório";
       toast({
         title: "Campo obrigatório",
-        description: "Email é obrigatório",
+        description: errorMsg,
         variant: "destructive",
       });
-      throw new Error("Email é obrigatório");
+      throw new Error(errorMsg);
     }
 
     try {
+      setLoading(true);
+      console.log('Attempting password reset for:', email);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
-        console.error('Erro ao enviar email de reset:', error);
+        console.error('Password reset error:', error);
         toast({
           title: "Erro ao enviar email",
           description: error.message || "Erro desconhecido",
@@ -215,13 +293,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
+      console.log('Password reset email sent');
       toast({
         title: "Email enviado!",
         description: "Verifique sua caixa de entrada para redefinir sua senha.",
       });
     } catch (error) {
-      console.error('Erro durante reset de senha:', error);
+      console.error('Error during password reset:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -234,6 +315,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       resetPassword,
       loading,
+      initialized,
     }}>
       {children}
     </AuthContext.Provider>

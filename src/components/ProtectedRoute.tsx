@@ -2,29 +2,37 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, initialized } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login');
+    // Only redirect if auth is fully initialized and no user is found
+    if (initialized && !loading && !user) {
+      console.log('No authenticated user, redirecting to login');
+      navigate('/login', { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, initialized, navigate]);
 
-  if (loading) {
+  // Show loading while auth is initializing
+  if (!initialized || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-whatsapp"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-whatsapp" />
+          <p className="text-gray-600">Verificando autenticação...</p>
+        </div>
       </div>
     );
   }
 
+  // Don't render children if no user (will redirect)
   if (!user) {
     return null;
   }
