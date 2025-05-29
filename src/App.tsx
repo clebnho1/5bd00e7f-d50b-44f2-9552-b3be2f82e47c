@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import EsqueciSenha from "./pages/EsqueciSenha";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import CriarAdmin from "./pages/CriarAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/login" element={<Login />} />
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="/criar-admin" element={<CriarAdmin />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
