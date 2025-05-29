@@ -72,6 +72,14 @@ export function AgenteAIWidget() {
   };
 
   const salvarConfiguracao = async () => {
+    // Validar campos obrigatórios
+    if (!formData.nome.trim()) {
+      return;
+    }
+    if (!formData.nome_empresa.trim()) {
+      return;
+    }
+
     setIsSaving(true);
     
     try {
@@ -110,12 +118,13 @@ export function AgenteAIWidget() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="nome">Nome do Agente</Label>
+              <Label htmlFor="nome">Nome do Agente *</Label>
               <Input
                 id="nome"
                 value={formData.nome}
                 onChange={(e) => handleInputChange('nome', e.target.value)}
                 placeholder="Ex: Sofia, Carlos, Ana..."
+                required
               />
             </div>
 
@@ -220,11 +229,12 @@ export function AgenteAIWidget() {
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="nomeEmpresa">Nome da Empresa</Label>
+              <Label htmlFor="nomeEmpresa">Nome da Empresa *</Label>
               <Input
                 id="nomeEmpresa"
                 value={formData.nome_empresa}
                 onChange={(e) => handleInputChange('nome_empresa', e.target.value)}
+                required
               />
             </div>
 
@@ -277,7 +287,7 @@ export function AgenteAIWidget() {
         <Button 
           onClick={salvarConfiguracao} 
           className="whatsapp-gradient text-white"
-          disabled={isSaving}
+          disabled={isSaving || !formData.nome.trim() || !formData.nome_empresa.trim()}
         >
           {isSaving ? 'Salvando...' : 'Salvar Configurações'}
         </Button>
