@@ -18,6 +18,52 @@ export const sendWebhookData = async (
   try {
     console.log('🔍 Verificando webhook para usuário:', userId);
     
+    // Para eventos do sistema, não verificar usuário
+    if (userId === 'system') {
+      console.log('ℹ️ Evento do sistema, buscando webhook de admin');
+      
+      // Buscar webhook de qualquer admin
+      const { data: adminSettings, error } = await supabase
+        .from('user_settings')
+        .select('webhook_url, users!inner(role)')
+        .eq('users.role', 'admin')
+        .not('webhook_url', 'is', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !adminSettings?.webhook_url) {
+        console.log('ℹ️ Webhook de admin não configurado');
+        return false;
+      }
+
+      const payload: WebhookPayload = {
+        event,
+        user_id: 'system',
+        timestamp: new Date().toISOString(),
+        data,
+        metadata
+      };
+
+      console.log('📤 Enviando webhook do sistema:', { event, webhook_url: adminSettings.webhook_url });
+
+      const response = await fetch(adminSettings.webhook_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (response.ok) {
+        console.log('✅ Webhook do sistema enviado com sucesso:', event);
+        return true;
+      } else {
+        console.error('❌ Webhook do sistema falhou:', response.status, response.statusText);
+        return false;
+      }
+    }
+    
     // Verificar se o usuário existe antes de buscar webhook
     const { data: userExists } = await supabase
       .from('users')
@@ -63,7 +109,7 @@ export const sendWebhookData = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10000) // 10 segundos timeout
+      signal: AbortSignal.timeout(10000)
     });
 
     if (response.ok) {

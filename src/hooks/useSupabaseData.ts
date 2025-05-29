@@ -1,601 +1,60 @@
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import type { Database } from '@/integrations/supabase/types';
+import { sendWebhookSafe } from '@/utils/webhook';
 
-type Tables = Database['public']['Tables'];
-
-export function useAgenteAI() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [agentData, setAgentData] = useState<Tables['agentes_ai']['Row'] | null>(null);
-  const [areasAtuacao, setAreasAtuacao] = useState<Tables['areas_atuacao']['Row'][]>([]);
-  const [estilosComportamento, setEstilosComportamento] = useState<Tables['estilos_comportamento']['Row'][]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      fetchAgenteAI();
-      fetchAreasAtuacao();
-      fetchEstilosComportamento();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const fetchAgenteAI = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('agentes_ai')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setAgentData(data);
-    } catch (error: any) {
-      console.error('Erro ao carregar agente AI:', error);
-      toast({
-        title: "Erro ao carregar agente AI",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAreasAtuacao = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('areas_atuacao')
-        .select('*')
-        .eq('ativo', true)
-        .order('nome');
-
-      if (error) throw error;
-      setAreasAtuacao(data || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar áreas de atuação:', error);
-    }
-  };
-
-  const fetchEstilosComportamento = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('estilos_comportamento')
-        .select('*')
-        .eq('ativo', true)
-        .order('nome');
-
-      if (error) throw error;
-      setEstilosComportamento(data || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar estilos de comportamento:', error);
-    }
-  };
-
-  const saveAgenteAI = async (data: Partial<Tables['agentes_ai']['Insert']>) => {
-    if (!user) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Usuário não está logado",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!data.nome || !data.sexo || !data.area_atuacao || !data.estilo_comportamento || !data.nome_empresa) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('agentes_ai')
-        .upsert({
-          user_id: user.id,
-          nome: data.nome,
-          sexo: data.sexo,
-          area_atuacao: data.area_atuacao,
-          estilo_comportamento: data.estilo_comportamento,
-          usar_emotion: data.usar_emotion ?? true,
-          nome_empresa: data.nome_empresa,
-          telefone_empresa: data.telefone_empresa || null,
-          email_empresa: data.email_empresa || null,
-          website_empresa: data.website_empresa || null,
-          endereco_empresa: data.endereco_empresa || null,
-          funcoes: data.funcoes || null,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Agente AI salvo",
-        description: "Configurações atualizadas com sucesso.",
-      });
-
-      fetchAgenteAI();
-    } catch (error: any) {
-      console.error('Erro ao salvar agente AI:', error);
-      toast({
-        title: "Erro ao salvar agente AI",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
-
-  return { 
-    agentData, 
-    areasAtuacao, 
-    estilosComportamento, 
-    loading, 
-    saveAgenteAI, 
-    refetch: fetchAgenteAI 
-  };
-}
-
-export function useColaboradores() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [colaboradores, setColaboradores] = useState<Tables['colaboradores']['Row'][]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      fetchColaboradores();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const fetchColaboradores = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('colaboradores')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setColaboradores(data || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar colaboradores:', error);
-      toast({
-        title: "Erro ao carregar colaboradores",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveColaborador = async (data: { 
-    nome: string; 
-    produtos?: string[]; 
-    produtos_precos?: Record<string, number>;
-    horarios?: string; 
-    ativo?: boolean;
-    imagem_url?: string;
-  }) => {
-    if (!user) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Usuário não está logado",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!data.nome?.trim()) {
-      toast({
-        title: "Campo obrigatório",
-        description: "Nome do colaborador é obrigatório",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('colaboradores')
-        .insert({
-          user_id: user.id,
-          nome: data.nome.trim(),
-          produtos: data.produtos || [],
-          produtos_precos: data.produtos_precos || {},
-          horarios: data.horarios || '09:00 - 18:00',
-          ativo: data.ativo ?? true,
-          imagem_url: data.imagem_url || null,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Colaborador adicionado",
-        description: "Novo colaborador foi adicionado com sucesso.",
-      });
-
-      fetchColaboradores();
-    } catch (error: any) {
-      console.error('Erro ao salvar colaborador:', error);
-      toast({
-        title: "Erro ao salvar colaborador",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateColaborador = async (id: string, data: Partial<Tables['colaboradores']['Update']>) => {
-    if (!user) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Usuário não está logado",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('colaboradores')
-        .update(data)
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Colaborador atualizado",
-        description: "Informações atualizadas com sucesso.",
-      });
-
-      fetchColaboradores();
-    } catch (error: any) {
-      console.error('Erro ao atualizar colaborador:', error);
-      toast({
-        title: "Erro ao atualizar colaborador",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
-
-  return { colaboradores, loading, saveColaborador, updateColaborador, refetch: fetchColaboradores };
-}
-
-export function useAdministracao() {
-  const { user, isAdmin } = useAuth();
-  const { toast } = useToast();
-  const [users, setUsers] = useState<Tables['users']['Row'][]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user && isAdmin()) {
-      fetchUsers();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const fetchUsers = async () => {
-    if (!user || !isAdmin()) {
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar usuários:', error);
-      toast({
-        title: "Erro ao carregar usuários",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateUser = async (userId: string, data: { name?: string; email?: string }) => {
-    if (!user || !isAdmin()) {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas administradores podem editar usuários",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update(data)
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Usuário atualizado",
-        description: "Informações do usuário atualizadas com sucesso.",
-      });
-
-      fetchUsers();
-    } catch (error: any) {
-      console.error('Erro ao atualizar usuário:', error);
-      toast({
-        title: "Erro ao atualizar usuário",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const resetUserPassword = async (email: string) => {
-    if (!user || !isAdmin()) {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas administradores podem resetar senhas",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Reset de senha enviado",
-        description: "Email de reset de senha foi enviado para o usuário.",
-      });
-    } catch (error: any) {
-      console.error('Erro ao resetar senha:', error);
-      toast({
-        title: "Erro ao resetar senha",
-        description: error.message || "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
-
-  return { users, loading, updateUser, resetUserPassword, refetch: fetchUsers };
-}
-
-export function useWhatsAppInstance() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [instance, setInstance] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const initializationRef = useRef(false);
-
-  console.log('🔧 [useWhatsAppInstance] Hook renderizado', { 
-    userId: user?.id,
-    hasInstance: !!instance,
-    loading,
-    initialized: initializationRef.current
-  });
-
-  useEffect(() => {
-    // Prevent multiple initializations for the same user
-    const userId = user?.id;
-    if (!userId || initializationRef.current) {
-      if (!userId) {
-        setLoading(false);
-      }
-      return;
-    }
-
-    initializationRef.current = true;
-    console.log('🔧 [useWhatsAppInstance] Iniciando busca única para usuário:', userId);
-    
-    fetchInstance();
-
-    // Cleanup on user change
-    return () => {
-      if (user?.id !== userId) {
-        initializationRef.current = false;
-        console.log('🧹 [useWhatsAppInstance] Reset para novo usuário');
-      }
-    };
-  }, [user?.id]);
-
-  const fetchInstance = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    console.log('🔧 [fetchInstance] Buscando instância para:', user.id);
-
-    try {
-      const { data, error } = await supabase
-        .from('whatsapp_instances')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      console.log('🔧 [fetchInstance] Resultado:', { found: !!data, status: data?.status });
-      setInstance(data);
-    } catch (error) {
-      console.error('🔧 [fetchInstance] Erro:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const disconnectInstance = async () => {
-    if (!instance || !user) return;
-
-    try {
-      console.log('Disconnecting instance:', instance.nome_empresa);
-
-      // Tentar desconectar via API da Evolution
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/logout/${instance.nome_empresa}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
-        }
-      });
-
-      // Mesmo se a API falhar, atualizar o status local
-      const { error } = await supabase
-        .from('whatsapp_instances')
-        .update({
-          status: 'desconectado',
-          qr_code: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "WhatsApp desconectado",
-        description: "A instância foi desconectada com sucesso.",
-      });
-
-      fetchInstance();
-    } catch (error) {
-      console.error('Error disconnecting instance:', error);
-      toast({
-        title: "Erro ao desconectar",
-        description: "Não foi possível desconectar a instância.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const saveInstance = async (instanceData: any) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from('whatsapp_instances')
-        .upsert({
-          user_id: user.id,
-          ...instanceData,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setInstance(data);
-      
-      if (!instance) {
-        toast({
-          title: "Instância criada",
-          description: "Instância WhatsApp criada com sucesso. Use o botão 'Gerar QR Code' para conectar.",
-        });
-      } else {
-        toast({
-          title: "Instância atualizada",
-          description: "Dados da instância atualizados com sucesso.",
-        });
-      }
-    } catch (error) {
-      console.error('Error saving instance:', error);
-      toast({
-        title: "Erro ao salvar instância",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    instance,
-    loading,
-    saveInstance,
-    disconnectInstance
-  };
+interface UserSettings {
+  webhook_url?: string;
 }
 
 export function useUserSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [loading, setLoading] = useState(false);
 
+  // Carregar configurações do usuário
   useEffect(() => {
-    if (user) {
-      fetchSettings();
-    } else {
-      setLoading(false);
+    if (user?.id) {
+      loadSettings();
     }
-  }, [user]);
+  }, [user?.id]);
 
-  const fetchSettings = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    
+  const loadSettings = async () => {
+    if (!user?.id) return;
+
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('user_settings')
-        .select('*')
+        .select('webhook_url')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        throw error;
+        console.error('Erro ao carregar configurações:', error);
+        return;
       }
 
-      setSettings(data);
+      setSettings(data || {});
     } catch (error) {
-      console.error('Error fetching settings:', error);
-      toast({
-        title: "Erro ao carregar configurações",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive",
-      });
+      console.error('Erro ao carregar configurações:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveSettings = async (newSettings: any) => {
-    if (!user) return;
+  const saveSettings = async (newSettings: Partial<UserSettings>) => {
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -608,19 +67,42 @@ export function useUserSettings() {
           updated_at: new Date().toISOString()
         });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setSettings({ ...settings, ...newSettings });
+      setSettings(prev => ({ ...prev, ...newSettings }));
+      
+      // Webhook para configurações salvas
+      await sendWebhookSafe(user.id, 'user_settings_updated', {
+        user_id: user.id,
+        settings: newSettings,
+        timestamp: new Date().toISOString()
+      }, {
+        action: 'settings_updated',
+        settings_keys: Object.keys(newSettings)
+      });
       
       toast({
         title: "Configurações salvas",
         description: "Suas configurações foram atualizadas com sucesso.",
       });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('Erro ao salvar configurações:', error);
+      
+      // Webhook para erro ao salvar
+      await sendWebhookSafe(user.id, 'user_settings_error', {
+        user_id: user.id,
+        settings: newSettings,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        timestamp: new Date().toISOString()
+      }, {
+        action: 'settings_save_failed'
+      });
+      
       toast({
-        title: "Erro ao salvar configurações",
-        description: "Tente novamente em alguns instantes.",
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as configurações.",
         variant: "destructive",
       });
     } finally {
@@ -628,40 +110,76 @@ export function useUserSettings() {
     }
   };
 
-  const testWebhook = async (webhookUrl: string) => {
+  const testWebhook = async (webhookUrl: string): Promise<boolean> => {
+    if (!user?.id) return false;
+
     try {
+      const testPayload = {
+        event: 'webhook_test',
+        user_id: user.id,
+        timestamp: new Date().toISOString(),
+        data: {
+          message: 'Teste de webhook do sistema',
+          test: true
+        }
+      };
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          test: true,
-          timestamp: new Date().toISOString(),
-          message: 'Teste de conectividade do webhook'
-        })
+        body: JSON.stringify(testPayload),
+        signal: AbortSignal.timeout(10000)
       });
 
-      if (response.ok) {
+      const isSuccess = response.ok;
+      
+      // Webhook para resultado do teste
+      await sendWebhookSafe(user.id, 'webhook_test_result', {
+        user_id: user.id,
+        webhook_url: webhookUrl,
+        success: isSuccess,
+        status_code: response.status,
+        timestamp: new Date().toISOString()
+      }, {
+        action: 'webhook_test',
+        result: isSuccess ? 'success' : 'failed'
+      });
+
+      if (isSuccess) {
         toast({
-          title: "Webhook Online",
-          description: "O endpoint está respondendo corretamente.",
+          title: "Webhook testado",
+          description: "Webhook está funcionando corretamente!",
         });
-        return true;
       } else {
         toast({
-          title: "Webhook Offline",
-          description: `Erro ${response.status}: ${response.statusText}`,
+          title: "Webhook offline",
+          description: `Webhook retornou status ${response.status}`,
           variant: "destructive",
         });
-        return false;
       }
+
+      return isSuccess;
     } catch (error) {
+      console.error('Erro ao testar webhook:', error);
+      
+      // Webhook para erro no teste
+      await sendWebhookSafe(user.id, 'webhook_test_error', {
+        user_id: user.id,
+        webhook_url: webhookUrl,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        timestamp: new Date().toISOString()
+      }, {
+        action: 'webhook_test_failed'
+      });
+      
       toast({
-        title: "Webhook Offline",
-        description: "Não foi possível conectar ao endpoint.",
+        title: "Erro no teste",
+        description: "Não foi possível testar o webhook.",
         variant: "destructive",
       });
+      
       return false;
     }
   };
@@ -670,6 +188,7 @@ export function useUserSettings() {
     settings,
     loading,
     saveSettings,
-    testWebhook
+    testWebhook,
+    loadSettings
   };
 }

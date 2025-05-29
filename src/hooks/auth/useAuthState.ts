@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { sendWebhookSafe } from '@/utils/webhook';
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -55,6 +56,20 @@ export function useAuthState() {
             
             console.log('🔄 Auth state change:', event, newSession?.user?.email);
             
+            // Webhook para mudanças de estado da autenticação
+            if (newSession?.user?.id) {
+              await sendWebhookSafe(newSession.user.id, 'auth_state_changed', {
+                event,
+                user_id: newSession.user.id,
+                email: newSession.user.email,
+                timestamp: new Date().toISOString(),
+                has_session: !!newSession
+              }, {
+                action: 'auth_state_change',
+                event_type: event
+              });
+            }
+            
             if (event === 'SIGNED_OUT' || !newSession) {
               setUser(null);
               setSession(null);
@@ -79,6 +94,17 @@ export function useAuthState() {
         if (isMounted && currentSession?.user) {
           setSession(currentSession);
           setUser(currentSession.user);
+          
+          // Webhook para sessão existente encontrada
+          await sendWebhookSafe(currentSession.user.id, 'session_restored', {
+            user_id: currentSession.user.id,
+            email: currentSession.user.email,
+            timestamp: new Date().toISOString(),
+            session_expires: currentSession.expires_at
+          }, {
+            action: 'session_restore',
+            automatic: true
+          });
           
           // Busca o role sem aguardar
           setTimeout(() => {

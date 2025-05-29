@@ -71,7 +71,20 @@ export function useWhatsAppAPI() {
         setIsAPIHealthy(true);
         
         if (statusConexao !== normalizedStatus) {
+          const previousStatus = statusConexao;
           setStatusConexao(normalizedStatus);
+          
+          // Webhook para mudança de status
+          await sendWebhookSafe(user.id, 'whatsapp_status_changed', {
+            instance_name: finalInstanceName,
+            previous_status: previousStatus,
+            new_status: normalizedStatus,
+            api_status: apiStatus,
+            timestamp: new Date().toISOString()
+          }, {
+            action: 'status_change',
+            connection_check: true
+          });
           
           if (normalizedStatus === 'open') {
             setStatusMessage('WhatsApp conectado e funcionando');
@@ -100,6 +113,15 @@ export function useWhatsAppAPI() {
           setStatusMessage('Instância não encontrada - precisa ser criada');
           setError(undefined);
           setQrCode('');
+          
+          // Webhook para instância não encontrada
+          await sendWebhookSafe(user.id, 'whatsapp_instance_not_found', {
+            instance_name: finalInstanceName,
+            status: 'not_found',
+            timestamp: new Date().toISOString()
+          }, {
+            action: 'instance_not_found'
+          });
         }
       } else if (response.status >= 500) {
         setIsAPIHealthy(false);
@@ -111,6 +133,16 @@ export function useWhatsAppAPI() {
         } else {
           console.error(`❌ API com problemas persistentes no servidor (${response.status})`);
           setStatusMessage('Servidor com problemas, tente novamente mais tarde');
+          
+          // Webhook para API com problemas
+          await sendWebhookSafe(user.id, 'whatsapp_api_error', {
+            instance_name: finalInstanceName,
+            error: `Server error ${response.status}`,
+            retry_count: retryCount,
+            timestamp: new Date().toISOString()
+          }, {
+            action: 'api_server_error'
+          });
         }
       } else {
         throw new Error(`API respondeu com status ${response.status}`);
@@ -127,6 +159,16 @@ export function useWhatsAppAPI() {
         setStatusMessage('Erro persistente na comunicação com API');
         setError(err instanceof Error ? err.message : 'Erro desconhecido');
         setIsAPIHealthy(false);
+        
+        // Webhook para erro persistente
+        await sendWebhookSafe(user.id, 'whatsapp_persistent_error', {
+          instance_name: finalInstanceName,
+          error: err instanceof Error ? err.message : 'Erro desconhecido',
+          retry_count: retryCount,
+          timestamp: new Date().toISOString()
+        }, {
+          action: 'persistent_error'
+        });
       } else {
         setStatusMessage('Erro temporário, tentando novamente...');
       }
