@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -141,7 +142,9 @@ export function WhatsAppWidget() {
   };
 
   const criarInstancia = async () => {
-    if (!nomeCliente.trim()) {
+    const nomeClienteTrimmed = nomeCliente.trim();
+    
+    if (!nomeClienteTrimmed) {
       toast({
         title: "Nome obrigatório",
         description: "Digite o nome do cliente para criar a instância.",
@@ -150,43 +153,62 @@ export function WhatsAppWidget() {
       return;
     }
 
+    console.log('🔧 [CRIAR_INSTANCIA] Iniciando criação com nome:', nomeClienteTrimmed);
     setIsCreatingInstance(true);
     setError(undefined);
     
     try {
+      const requestBody = {
+        instanceName: nomeClienteTrimmed,
+        token: API_KEY
+      };
+      
+      console.log('🔧 [CRIAR_INSTANCIA] Corpo da requisição:', requestBody);
+
       const response = await fetch(`${API_BASE}/instance/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': API_KEY
         },
-        body: JSON.stringify({
-          name: nomeCliente.trim()
-        })
+        body: JSON.stringify(requestBody)
       });
+
+      console.log('🔧 [CRIAR_INSTANCIA] Status da resposta:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API error (${response.status}):`, errorText);
-        throw new Error(`Erro na API: ${response.status}`);
+        console.error('🔧 [CRIAR_INSTANCIA] Erro da API:', errorText);
+        
+        // Tentar parsear como JSON para obter mensagem mais específica
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || `Erro na API: ${response.status}`);
+        } catch {
+          throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+        }
       }
 
       const data = await response.json();
-      const newInstanceId = data.instance_id || data.instanceId || data.name;
+      console.log('🔧 [CRIAR_INSTANCIA] Resposta da API:', data);
       
-      console.log('Instância criada:', { data, newInstanceId });
+      const newInstanceId = data.instance?.instanceName || data.instanceName || nomeClienteTrimmed;
       
       setInstanceId(newInstanceId);
       
       localStorage.setItem('whatsapp_instance_id', newInstanceId);
-      localStorage.setItem('whatsapp_cliente_nome', nomeCliente.trim());
+      localStorage.setItem('whatsapp_cliente_nome', nomeClienteTrimmed);
 
       toast({
         title: "Instância criada",
         description: `Instância criada com sucesso. ID: ${newInstanceId}`,
       });
+      
+      // Verificar status após criar
+      setTimeout(() => checkConnectionStatus(), 2000);
+      
     } catch (err) {
-      console.error('Erro ao criar instância:', err);
+      console.error('🔧 [CRIAR_INSTANCIA] Erro:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       setError(errorMessage);
       toast({
