@@ -9,14 +9,15 @@ import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap, Power } fr
 import { useWhatsAppInstance } from '@/hooks/useSupabaseData';
 
 export function WhatsAppWidget() {
-  const { instance, loading, saveInstance, disconnectInstance, agenteData } = useWhatsAppInstance();
+  const { instance, loading, saveInstance, disconnectInstance } = useWhatsAppInstance();
   
   const [isCreating, setIsCreating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [instanceName, setInstanceName] = useState('');
 
   const criarInstancia = async () => {
-    if (!agenteData?.nome_empresa) {
+    if (!instanceName.trim()) {
       return;
     }
 
@@ -24,7 +25,7 @@ export function WhatsAppWidget() {
     
     try {
       await saveInstance({
-        nome_empresa: agenteData.nome_empresa,
+        nome_empresa: instanceName.trim(),
         status: 'conectando'
       });
     } finally {
@@ -39,7 +40,7 @@ export function WhatsAppWidget() {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       await saveInstance({
-        nome_empresa: instance?.nome_empresa || agenteData?.nome_empresa,
+        nome_empresa: instance?.nome_empresa,
         status: 'conectado',
         qr_code: null,
         ultima_verificacao: new Date().toISOString()
@@ -111,21 +112,39 @@ export function WhatsAppWidget() {
               Integração Evolution API
             </CardTitle>
             <CardDescription>
-              Configuração automática com base no Agente AI
+              Configure sua instância WhatsApp manualmente
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome da Empresa (do Agente AI)</Label>
-              <Input
-                value={agenteData?.nome_empresa || 'Carregando...'}
-                disabled
-                className="bg-gray-50"
-              />
-              <p className="text-sm text-gray-600">
-                Nome sincronizado automaticamente com o Agente AI
-              </p>
-            </div>
+            {!instance && (
+              <div className="space-y-2">
+                <Label htmlFor="instanceName">Nome da Instância</Label>
+                <Input
+                  id="instanceName"
+                  value={instanceName}
+                  onChange={(e) => setInstanceName(e.target.value)}
+                  placeholder="Digite o nome da sua instância WhatsApp"
+                  className="w-full"
+                />
+                <p className="text-sm text-gray-600">
+                  Escolha um nome único para identificar sua instância WhatsApp
+                </p>
+              </div>
+            )}
+
+            {instance && (
+              <div className="space-y-2">
+                <Label>Nome da Instância</Label>
+                <Input
+                  value={instance.nome_empresa}
+                  disabled
+                  className="bg-gray-50"
+                />
+                <p className="text-sm text-gray-600">
+                  Instância configurada
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Status da Conexão</Label>
@@ -153,7 +172,7 @@ export function WhatsAppWidget() {
                 <strong>API Key:</strong> 0417bf43b0a8669bd6635bcb49d783df
               </p>
               <p className="text-sm text-blue-600">
-                A instância será criada automaticamente com o nome da sua empresa.
+                A instância será criada com o nome que você escolher.
               </p>
             </div>
 
@@ -161,7 +180,7 @@ export function WhatsAppWidget() {
               {(!instance || instance.status === 'desconectado') && (
                 <Button
                   onClick={criarInstancia}
-                  disabled={isCreating || !agenteData?.nome_empresa}
+                  disabled={isCreating || !instanceName.trim()}
                   className="w-full whatsapp-gradient text-white"
                 >
                   {isCreating ? "Criando instância..." : "Criar Instância WhatsApp"}
@@ -235,9 +254,7 @@ export function WhatsAppWidget() {
                 <p className="text-gray-600">
                   {instance?.status === 'conectado'
                     ? 'Sua instância está ativa e funcionando perfeitamente.'
-                    : agenteData?.nome_empresa 
-                      ? 'Crie uma instância para gerar o QR Code de conexão.'
-                      : 'Configure primeiro seu Agente AI com o nome da empresa.'
+                    : 'Digite um nome e crie uma instância para gerar o QR Code de conexão.'
                   }
                 </p>
               </div>
@@ -256,8 +273,8 @@ export function WhatsAppWidget() {
             <div>
               <h4 className="font-medium mb-2">✅ Recursos Ativos</h4>
               <ul className="space-y-1 text-gray-600">
-                <li>• Criação automática de instância</li>
-                <li>• Nome sincronizado com Agente AI</li>
+                <li>• Criação manual de instância</li>
+                <li>• Nome personalizado pelo usuário</li>
                 <li>• QR Code gerado pela API real</li>
                 <li>• Verificação de status em tempo real</li>
                 <li>• Desconexão de instância</li>
@@ -268,7 +285,7 @@ export function WhatsAppWidget() {
               <ul className="space-y-1 text-gray-600">
                 <li>• API: Evolution WhatsApp</li>
                 <li>• Endpoint: apiwhats.lifecombr.com.br</li>
-                <li>• Método: POST /instance/connect/{instance?.nome_empresa}</li>
+                <li>• Método: POST /instance/connect/{instanceName}</li>
                 <li>• Autenticação: API Key</li>
                 <li>• Webhook: Configurado automaticamente</li>
               </ul>

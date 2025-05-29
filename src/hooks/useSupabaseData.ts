@@ -295,7 +295,6 @@ export function useWhatsAppInstance() {
   const { toast } = useToast();
   const [instance, setInstance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [agenteData, setAgenteData] = useState<any>(null);
 
   console.log('🔧 [useWhatsAppInstance] Hook inicializado', { user: !!user });
 
@@ -304,7 +303,6 @@ export function useWhatsAppInstance() {
     
     if (user) {
       fetchInstance();
-      fetchAgenteData();
     } else {
       console.log('🔧 [useWhatsAppInstance] Sem usuário, definindo loading=false');
       setLoading(false);
@@ -338,36 +336,6 @@ export function useWhatsAppInstance() {
     } finally {
       console.log('🔧 [fetchInstance] Definindo loading=false');
       setLoading(false);
-    }
-  };
-
-  const fetchAgenteData = async () => {
-    if (!user) {
-      console.log('🔧 [fetchAgenteData] Sem usuário, usando dados padrão');
-      setAgenteData({ nome_empresa: 'Minha Empresa' });
-      return;
-    }
-
-    console.log('🔧 [fetchAgenteData] Iniciando busca do agente');
-
-    try {
-      const { data, error } = await supabase
-        .from('agentes_ai')
-        .select('nome_empresa')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.log('🔧 [fetchAgenteData] Erro no agente, usando dados padrão');
-        setAgenteData({ nome_empresa: 'Minha Empresa' });
-        return;
-      }
-
-      console.log('🔧 [fetchAgenteData] Dados do agente:', data);
-      setAgenteData(data || { nome_empresa: 'Minha Empresa' });
-    } catch (error) {
-      console.error('🔧 [fetchAgenteData] Erro:', error);
-      setAgenteData({ nome_empresa: 'Minha Empresa' });
     }
   };
 
@@ -463,13 +431,11 @@ export function useWhatsAppInstance() {
     try {
       setLoading(true);
 
-      // Se está criando uma nova instância, usar o nome da empresa do agente
-      if (!instance && agenteData?.nome_empresa) {
-        instanceData.nome_empresa = agenteData.nome_empresa;
-        
+      // Se está criando uma nova instância, usar a API externa
+      if (!instance) {
         try {
           // Criar instância na API externa
-          const apiResult = await createWhatsAppInstance(agenteData.nome_empresa);
+          const apiResult = await createWhatsAppInstance(instanceData.nome_empresa);
           instanceData = { ...instanceData, ...apiResult };
         } catch (apiError) {
           // Se a API falhar, não salvar no banco
@@ -509,16 +475,14 @@ export function useWhatsAppInstance() {
 
   console.log('🔧 [useWhatsAppInstance] Estado atual:', { 
     hasInstance: !!instance, 
-    loading, 
-    hasAgenteData: !!agenteData 
+    loading
   });
 
   return {
     instance,
     loading,
     saveInstance,
-    disconnectInstance,
-    agenteData
+    disconnectInstance
   };
 }
 
