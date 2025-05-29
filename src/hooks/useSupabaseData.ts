@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -298,15 +297,28 @@ export function useWhatsAppInstance() {
   const [loading, setLoading] = useState(true);
   const [agenteData, setAgenteData] = useState<any>(null);
 
+  console.log('🔧 [useWhatsAppInstance] Hook inicializado', { user: !!user });
+
   useEffect(() => {
+    console.log('🔧 [useWhatsAppInstance] useEffect executado', { user: !!user });
+    
     if (user) {
       fetchInstance();
       fetchAgenteData();
+    } else {
+      console.log('🔧 [useWhatsAppInstance] Sem usuário, definindo loading=false');
+      setLoading(false);
     }
   }, [user]);
 
   const fetchInstance = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('🔧 [fetchInstance] Sem usuário, saindo');
+      setLoading(false);
+      return;
+    }
+
+    console.log('🔧 [fetchInstance] Iniciando busca da instância');
 
     try {
       const { data, error } = await supabase
@@ -319,16 +331,24 @@ export function useWhatsAppInstance() {
         throw error;
       }
 
+      console.log('🔧 [fetchInstance] Instância encontrada:', !!data);
       setInstance(data);
     } catch (error) {
-      console.error('Error fetching instance:', error);
+      console.error('🔧 [fetchInstance] Erro:', error);
     } finally {
+      console.log('🔧 [fetchInstance] Definindo loading=false');
       setLoading(false);
     }
   };
 
   const fetchAgenteData = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('🔧 [fetchAgenteData] Sem usuário, usando dados padrão');
+      setAgenteData({ nome_empresa: 'Minha Empresa' });
+      return;
+    }
+
+    console.log('🔧 [fetchAgenteData] Iniciando busca do agente');
 
     try {
       const { data, error } = await supabase
@@ -338,14 +358,15 @@ export function useWhatsAppInstance() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.log('No agente data found, using default');
+        console.log('🔧 [fetchAgenteData] Erro no agente, usando dados padrão');
         setAgenteData({ nome_empresa: 'Minha Empresa' });
         return;
       }
 
+      console.log('🔧 [fetchAgenteData] Dados do agente:', data);
       setAgenteData(data || { nome_empresa: 'Minha Empresa' });
     } catch (error) {
-      console.error('Error fetching agente data:', error);
+      console.error('🔧 [fetchAgenteData] Erro:', error);
       setAgenteData({ nome_empresa: 'Minha Empresa' });
     }
   };
@@ -486,6 +507,12 @@ export function useWhatsAppInstance() {
     }
   };
 
+  console.log('🔧 [useWhatsAppInstance] Estado atual:', { 
+    hasInstance: !!instance, 
+    loading, 
+    hasAgenteData: !!agenteData 
+  });
+
   return {
     instance,
     loading,
@@ -504,6 +531,8 @@ export function useUserSettings() {
   useEffect(() => {
     if (user) {
       fetchSettings();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
