@@ -5,20 +5,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Settings, Edit, Key, Users as UsersIcon, Shield } from 'lucide-react';
+import { Settings, Edit, Key, Users as UsersIcon, Shield, Eye, Calendar } from 'lucide-react';
 import { useAdministracao } from '@/hooks/useAdministracao';
 import { useAuth } from '@/hooks/useAuth';
 
 export function AdministracaoWidget() {
   const { isAdmin } = useAuth();
-  const { users, loading, updateUser, resetUserPassword } = useAdministracao();
+  const { users, loading, updateUser, updateUserPlan, resetUserPassword, generateTemporaryPassword } = useAdministracao();
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [tempPassword, setTempPassword] = useState<string>('');
   const [formData, setFormData] = useState({
     name: '',
     email: ''
+  });
+  const [planData, setPlanData] = useState({
+    plano: '',
+    expirationDate: ''
   });
 
   if (!isAdmin()) {
@@ -37,6 +45,10 @@ export function AdministracaoWidget() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handlePlanChange = (field: string, value: string) => {
+    setPlanData(prev => ({ ...prev, [field]: value }));
+  };
+
   const openEditDialog = (user: any) => {
     setEditingUser(user);
     setFormData({
@@ -44,6 +56,22 @@ export function AdministracaoWidget() {
       email: user.email
     });
     setIsEditDialogOpen(true);
+  };
+
+  const openPlanDialog = (user: any) => {
+    setEditingUser(user);
+    setPlanData({
+      plano: user.plano,
+      expirationDate: user.plano_expires_at ? new Date(user.plano_expires_at).toISOString().split('T')[0] : 
+                      user.trial_expires_at ? new Date(user.trial_expires_at).toISOString().split('T')[0] : ''
+    });
+    setIsPlanDialogOpen(true);
+  };
+
+  const openPasswordDialog = (user: any) => {
+    setEditingUser(user);
+    setTempPassword('');
+    setIsPasswordDialogOpen(true);
   };
 
   const handleSubmit = async () => {
@@ -57,9 +85,29 @@ export function AdministracaoWidget() {
     setIsEditDialogOpen(false);
   };
 
+  const handlePlanSubmit = async () => {
+    if (!editingUser || !planData.plano) return;
+
+    const expirationDate = planData.expirationDate ? new Date(planData.expirationDate).toISOString() : undefined;
+    
+    await updateUserPlan(editingUser.id, planData.plano, expirationDate);
+    setIsPlanDialogOpen(false);
+  };
+
   const handleResetPassword = async (user: any) => {
     if (confirm(`Tem certeza que deseja enviar um email de reset de senha para ${user.email}?`)) {
       await resetUserPassword(user.email);
+    }
+  };
+
+  const handleGeneratePassword = async () => {
+    if (!editingUser) return;
+    
+    if (confirm(`Tem certeza que deseja gerar uma nova senha temporária para ${editingUser.email}?`)) {
+      const newPassword = await generateTemporaryPassword(editingUser.id, editingUser.email);
+      if (newPassword) {
+        setTempPassword(newPassword);
+      }
     }
   };
 
@@ -110,12 +158,12 @@ export function AdministracaoWidget() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Plano Premium</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {users.filter(u => u.plano === 'premium').length}
+                <p className="text-sm font-medium text-gray-600">Plano Profissional</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {users.filter(u => u.plano === 'profissional').length}
                 </p>
               </div>
-              <Shield className="h-8 w-8 text-purple-600" />
+              <Shield className="h-8 w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
@@ -172,6 +220,11 @@ export function AdministracaoWidget() {
                         Expira em: {new Date(user.plano_expires_at).toLocaleDateString('pt-BR')}
                       </span>
                     )}
+                    {user.trial_expires_at && (
+                      <span className="ml-4">
+                        Trial expira em: {new Date(user.trial_expires_at).toLocaleDateString('pt-BR')}
+                      </span>
+                    )}
                   </div>
                 </div>
                 
@@ -180,15 +233,33 @@ export function AdministracaoWidget() {
                     variant="outline"
                     size="sm"
                     onClick={() => openEditDialog(user)}
+                    title="Editar usuário"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => openPlanDialog(user)}
+                    title="Alterar plano"
+                  >
+                    <Calendar className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleResetPassword(user)}
+                    title="Reset senha por email"
                   >
                     <Key className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openPasswordDialog(user)}
+                    title="Gerar senha temporária"
+                  >
+                    <Eye className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -241,6 +312,92 @@ export function AdministracaoWidget() {
             </Button>
             <Button onClick={handleSubmit} className="whatsapp-gradient text-white">
               Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Plano */}
+      <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle>Alterar Plano do Usuário</DialogTitle>
+            <DialogDescription>
+              Atualize o plano e data de expiração do usuário
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="plano">Plano</Label>
+              <Select value={planData.plano} onValueChange={(value) => handlePlanChange('plano', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gratuito">Gratuito</SelectItem>
+                  <SelectItem value="profissional">Profissional</SelectItem>
+                  <SelectItem value="empresarial">Empresarial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expirationDate">Data de Expiração</Label>
+              <Input
+                id="expirationDate"
+                type="date"
+                value={planData.expirationDate}
+                onChange={(e) => handlePlanChange('expirationDate', e.target.value)}
+              />
+              <p className="text-xs text-gray-500">
+                Deixe em branco para usar o padrão (7 dias para gratuito, 30 dias para pagos)
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPlanDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handlePlanSubmit} className="whatsapp-gradient text-white">
+              Atualizar Plano
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Senha Temporária */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle>Gerar Senha Temporária</DialogTitle>
+            <DialogDescription>
+              Gere uma nova senha temporária para o usuário
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {tempPassword ? (
+              <div className="space-y-2">
+                <Label>Senha Temporária Gerada:</Label>
+                <div className="p-3 bg-gray-100 rounded-md font-mono text-sm break-all">
+                  {tempPassword}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Copie esta senha e forneça ao usuário. Por segurança, esta senha não será mostrada novamente.
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-600 mb-4">
+                  Clique no botão abaixo para gerar uma nova senha temporária para {editingUser?.email}
+                </p>
+                <Button onClick={handleGeneratePassword} className="whatsapp-gradient text-white">
+                  Gerar Senha Temporária
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

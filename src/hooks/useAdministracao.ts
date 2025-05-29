@@ -107,6 +107,70 @@ export function useAdministracao() {
     }
   };
 
+  const updateUserPlan = async (userId: string, plano: string, expirationDate?: string) => {
+    if (!user || !isAdmin()) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem alterar planos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const userToUpdate = users.find(u => u.id === userId);
+      
+      let updateData: any = { 
+        plano,
+        plano_active: true,
+        updated_at: new Date().toISOString()
+      };
+
+      if (plano === 'gratuito') {
+        updateData.trial_expires_at = expirationDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        updateData.plano_expires_at = null;
+      } else {
+        updateData.plano_expires_at = expirationDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        updateData.trial_expires_at = null;
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Plano atualizado",
+        description: `Plano do usuário alterado para ${plano}`,
+      });
+
+      // Enviar webhook
+      await sendWebhookSafe(user.id, 'admin_plan_updated', {
+        target_user_id: userId,
+        target_user_email: userToUpdate?.email,
+        old_plan: userToUpdate?.plano,
+        new_plan: plano,
+        expiration_date: updateData.plano_expires_at || updateData.trial_expires_at,
+        admin_user_id: user.id,
+        admin_user_email: user.email
+      }, {
+        action: 'plan_update',
+        admin_action: true
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Erro ao atualizar plano:', error);
+      toast({
+        title: "Erro ao atualizar plano",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
   const resetUserPassword = async (email: string) => {
     if (!user || !isAdmin()) {
       toast({
@@ -162,11 +226,63 @@ export function useAdministracao() {
     }
   };
 
+  const generateTemporaryPassword = async (userId: string, email: string) => {
+    if (!user || !isAdmin()) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem gerar senhas temporárias",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    try {
+      // Gerar senha temporária
+      const tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+      
+      // Atualizar senha do usuário
+      const { error } = await supabase.auth.admin.updateUserById(userId, {
+        password: tempPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Senha temporária gerada",
+        description: "Nova senha temporária foi definida para o usuário.",
+      });
+
+      // Enviar webhook
+      await sendWebhookSafe(user.id, 'admin_temp_password_generated', {
+        target_user_id: userId,
+        target_user_email: email,
+        admin_user_id: user.id,
+        admin_user_email: user.email,
+        temp_password_generated: true
+      }, {
+        action: 'temp_password_generated',
+        admin_action: true
+      });
+
+      return tempPassword;
+    } catch (error: any) {
+      console.error('Erro ao gerar senha temporária:', error);
+      toast({
+        title: "Erro ao gerar senha",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   return { 
     users, 
     loading: loading || authLoading, 
     updateUser, 
-    resetUserPassword, 
+    updateUserPlan,
+    resetUserPassword,
+    generateTemporaryPassword,
     refetch: fetchUsers 
   };
 }
