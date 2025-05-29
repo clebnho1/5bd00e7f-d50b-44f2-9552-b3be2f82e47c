@@ -1,21 +1,130 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap, Power, Plus } from 'lucide-react';
+import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap, Power, Plus, Trash2 } from 'lucide-react';
 import { useWhatsAppInstance } from '@/hooks/useSupabaseData';
+import { useToast } from '@/hooks/use-toast';
 
 export function WhatsAppWidget() {
   const { instance, loading, saveInstance, disconnectInstance } = useWhatsAppInstance();
+  const { toast } = useToast();
   
   const [isCreating, setIsCreating] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isCleaningAll, setIsCleaningAll] = useState(false);
   const [instanceName, setInstanceName] = useState('');
+
+  const clearLocalData = () => {
+    try {
+      // Limpa localStorage
+      const whatsAppKeys = Object.keys(localStorage).filter(key => 
+        key.toLowerCase().includes('whatsapp') || 
+        key.toLowerCase().includes('instance') ||
+        key.toLowerCase().includes('qr')
+      );
+      
+      whatsAppKeys.forEach(key => {
+        localStorage.removeItem(key);
+      });
+
+      // Limpa sessionStorage
+      const sessionKeys = Object.keys(sessionStorage).filter(key => 
+        key.toLowerCase().includes('whatsapp') || 
+        key.toLowerCase().includes('instance') ||
+        key.toLowerCase().includes('qr')
+      );
+      
+      sessionKeys.forEach(key => {
+        sessionStorage.removeItem(key);
+      });
+
+      // Limpa cookies relacionados ao WhatsApp
+      document.cookie.split(";").forEach(cookie => {
+        const eqPos = cookie.indexOf("=");
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        if (name.toLowerCase().includes('whatsapp') || 
+            name.toLowerCase().includes('instance') ||
+            name.toLowerCase().includes('qr')) {
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+      });
+
+      console.log('🧹 Dados locais do WhatsApp limpos com sucesso');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao limpar dados locais:', error);
+      return false;
+    }
+  };
+
+  const disconnectAndCleanAll = async () => {
+    if (!instance) return;
+
+    setIsCleaningAll(true);
+    
+    try {
+      console.log('🔄 Iniciando desconexão completa para:', instance.nome_empresa);
+
+      // 1. Tentar desconectar via API da Evolution
+      try {
+        const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/logout/${instance.nome_empresa}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+          }
+        });
+
+        if (response.ok) {
+          console.log('✅ Instância desconectada da API com sucesso');
+        } else {
+          console.warn('⚠️ Falha na API, mas continuando com limpeza local');
+        }
+      } catch (apiError) {
+        console.warn('⚠️ Erro na API, mas continuando com limpeza:', apiError);
+      }
+
+      // 2. Atualizar status no banco de dados
+      await saveInstance({
+        nome_empresa: instance.nome_empresa,
+        status: 'desconectado',
+        qr_code: null,
+        ultima_verificacao: new Date().toISOString()
+      });
+
+      // 3. Limpar dados locais
+      const localCleanSuccess = clearLocalData();
+
+      // 4. Mostrar resultado
+      if (localCleanSuccess) {
+        toast({
+          title: "Desconexão completa realizada",
+          description: "Instância desconectada e dados locais limpos com sucesso.",
+        });
+      } else {
+        toast({
+          title: "Desconexão parcial",
+          description: "Instância desconectada, mas houve problemas ao limpar dados locais.",
+          variant: "destructive",
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Erro na desconexão completa:', error);
+      toast({
+        title: "Erro na desconexão",
+        description: "Não foi possível realizar a desconexão completa.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCleaningAll(false);
+    }
+  };
 
   const criarInstancia = async () => {
     if (!instanceName.trim()) {
@@ -326,6 +435,15 @@ export function WhatsAppWidget() {
                         <Power className={`h-4 w-4 mr-2 ${isDisconnecting ? 'animate-spin' : ''}`} />
                         {isDisconnecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
                       </Button>
+
+                      <Button
+                        onClick={disconnectAndCleanAll}
+                        disabled={isCleaningAll}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        <Trash2 className={`h-4 w-4 mr-2 ${isCleaningAll ? 'animate-spin' : ''}`} />
+                        {isCleaningAll ? 'Limpando Tudo...' : 'Desconectar e Limpar Dados'}
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -416,6 +534,7 @@ export function WhatsAppWidget() {
                 <li>• Geração de QR Code via GET</li>
                 <li>• Verificação de status em tempo real</li>
                 <li>• Desconexão de instância</li>
+                <li>• Limpeza completa de dados locais</li>
               </ul>
             </div>
             <div>
