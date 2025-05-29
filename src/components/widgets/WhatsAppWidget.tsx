@@ -81,7 +81,7 @@ export function WhatsAppWidget() {
     const status = apiStatus?.toLowerCase();
     
     if (status === 'open' || status === 'connected') return 'open';
-    if (status === 'connecting' || status === 'qr') return 'connecting';
+    if (status === 'connecting' || status === 'qr' || status === 'qrcode') return 'connecting';
     if (status === 'closed' || status === 'disconnected') return 'closed';
     if (status === 'error' || status === 'failed') return 'error';
     
@@ -110,7 +110,6 @@ export function WhatsAppWidget() {
         const data = await response.json();
         console.log('🔍 [CHECK_STATUS] Dados recebidos:', data);
         
-        // Corrigir a extração do status da resposta
         const apiStatus = data.instance?.state || data.state || 'unknown';
         const normalizedStatus = normalizeStatus(apiStatus);
         
@@ -123,7 +122,7 @@ export function WhatsAppWidget() {
           setError(undefined);
           setQrCode('');
         } else if (normalizedStatus === 'connecting') {
-          setStatusMessage('Aguardando conexão');
+          setStatusMessage('Aguardando leitura do QR Code');
         } else if (normalizedStatus === 'closed') {
           setStatusMessage('Desconectado');
         } else if (normalizedStatus === 'error') {
@@ -167,11 +166,18 @@ export function WhatsAppWidget() {
     setError(undefined);
     
     try {
-      // Formato correto para a API Evolution
+      // Formato correto conforme o checklist
       const requestBody = {
         instanceName: nomeClienteTrimmed,
+        integration: "WHATSAPP-BAILEYS",
         qrcode: true,
-        integration: "WHATSAPP-BAILEYS"
+        rejectCall: true,
+        msgCall: "Não aceitamos chamadas.",
+        groupsIgnore: true,
+        alwaysOnline: true,
+        readMessages: true,
+        readStatus: true,
+        syncFullHistory: true
       };
       
       console.log('🔧 [CRIAR_INSTANCIA] Corpo da requisição:', requestBody);
@@ -191,10 +197,8 @@ export function WhatsAppWidget() {
         const errorText = await response.text();
         console.error('🔧 [CRIAR_INSTANCIA] Erro da API:', errorText);
         
-        // Tentar parsear como JSON para obter mensagem mais específica
         try {
           const errorData = JSON.parse(errorText);
-          // Se a instância já existe, apenas definir o instanceId
           if (errorData.message?.includes('already in use') || errorData.message?.includes('já existe')) {
             console.log('🔧 [CRIAR_INSTANCIA] Instância já existe, definindo instanceId');
             setInstanceId(nomeClienteTrimmed);
@@ -206,7 +210,6 @@ export function WhatsAppWidget() {
               description: `Conectando à instância existente: ${nomeClienteTrimmed}`,
             });
             
-            // Verificar status após definir a instância
             setTimeout(() => checkConnectionStatus(), 1000);
             return;
           }
@@ -220,7 +223,8 @@ export function WhatsAppWidget() {
       const data = await response.json();
       console.log('🔧 [CRIAR_INSTANCIA] Resposta da API:', data);
       
-      const newInstanceId = data.instance?.instanceName || data.instanceName || nomeClienteTrimmed;
+      // Conforme checklist: deve retornar { "instance": "cliente123" }
+      const newInstanceId = data.instance?.instanceName || data.instance || data.instanceName || nomeClienteTrimmed;
       
       setInstanceId(newInstanceId);
       
@@ -232,7 +236,6 @@ export function WhatsAppWidget() {
         description: `Instância criada com sucesso. ID: ${newInstanceId}`,
       });
       
-      // Verificar status após criar
       setTimeout(() => checkConnectionStatus(), 2000);
       
     } catch (err) {
@@ -266,8 +269,8 @@ export function WhatsAppWidget() {
     setError(undefined);
     
     try {
-      // Usar o endpoint correto para conectar e obter QR Code
-      console.log('📱 [CONECTAR_WHATSAPP] Tentando conectar e gerar QR Code...');
+      // Usando o endpoint correto conforme checklist
+      console.log('📱 [CONECTAR_WHATSAPP] Fazendo requisição GET para gerar QR Code...');
       const response = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
         method: 'GET',
         headers: {
@@ -282,21 +285,21 @@ export function WhatsAppWidget() {
         const data = await response.json();
         console.log('📱 [CONECTAR_WHATSAPP] Dados recebidos:', data);
         
-        // Tentar extrair QR Code de diferentes campos possíveis
-        const qrCodeData = data.qrcode?.code || data.qr_code || data.base64 || data.qrCode || data.code;
+        // Conforme checklist: deve retornar { "qrcode": "data:image/png;base64,...", "status": "qrcode", "message": "Scan the QR Code to connect" }
+        const qrCodeData = data.qrcode;
         
         if (qrCodeData) {
           console.log('📱 [CONECTAR_WHATSAPP] QR Code encontrado');
           setQrCode(qrCodeData);
           setStatusConexao('connecting');
-          setStatusMessage('Aguardando leitura do QR Code');
+          setStatusMessage('Escaneie o QR Code com seu WhatsApp');
           toast({
             title: "QR Code gerado",
             description: "Escaneie o QR Code com seu WhatsApp para conectar.",
           });
           
-          // Verificar status após 3 segundos
-          setTimeout(() => checkConnectionStatus(), 3000);
+          // Verificar status após 5 segundos
+          setTimeout(() => checkConnectionStatus(), 5000);
         } else if (data.message && (data.message.includes('já está conectada') || data.message.includes('already connected'))) {
           toast({
             title: "Já conectado",
@@ -305,17 +308,11 @@ export function WhatsAppWidget() {
           setStatusConexao('open');
           setStatusMessage('Conectado');
         } else {
-          // Se não tem QR Code, verificar se precisa ser gerado
           console.log('📱 [CONECTAR_WHATSAPP] Sem QR Code na resposta, verificando status...');
           await checkConnectionStatus();
           
-          if (statusConexao === 'connecting') {
-            toast({
-              title: "Instância conectando",
-              description: "Aguarde a geração do QR Code...",
-            });
-          } else {
-            throw new Error('QR Code não foi gerado. Tente novamente.');
+          if (statusConexao !== 'open') {
+            throw new Error('QR Code não foi gerado. Verifique se a instância foi criada corretamente.');
           }
         }
       } else {
