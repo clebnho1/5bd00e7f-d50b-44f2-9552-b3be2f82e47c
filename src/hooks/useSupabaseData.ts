@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -354,49 +353,6 @@ export function useWhatsAppInstance() {
     }
   };
 
-  const createWhatsAppInstance = async (instanceName: string) => {
-    try {
-      console.log('Creating WhatsApp instance with name:', instanceName);
-      
-      // Usar o endpoint correto da Evolution API
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connect/${instanceName}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
-        }
-      });
-
-      console.log('API Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', errorText);
-        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
-      }
-
-      const apiData = await response.json();
-      console.log('API Response data:', apiData);
-
-      // Retornar os dados da API real
-      return {
-        qr_code: apiData.qrCode || apiData.qr_code || null,
-        status: 'conectando',
-        api_response: apiData
-      };
-    } catch (error) {
-      console.error('Error creating WhatsApp instance:', error);
-      
-      toast({
-        title: "Erro ao criar instância",
-        description: `Falha na conexão com a Evolution API: ${error.message}`,
-        variant: "destructive",
-      });
-
-      throw error; // Re-throw para que o chamador possa tratar
-    }
-  };
-
   const disconnectInstance = async () => {
     if (!instance || !user) return;
 
@@ -446,18 +402,6 @@ export function useWhatsAppInstance() {
     try {
       setLoading(true);
 
-      // Se está criando uma nova instância, usar a API externa
-      if (!instance) {
-        try {
-          // Criar instância na API externa
-          const apiResult = await createWhatsAppInstance(instanceData.nome_empresa);
-          instanceData = { ...instanceData, ...apiResult };
-        } catch (apiError) {
-          // Se a API falhar, não salvar no banco
-          return;
-        }
-      }
-
       const { data, error } = await supabase
         .from('whatsapp_instances')
         .upsert({
@@ -472,10 +416,17 @@ export function useWhatsAppInstance() {
 
       setInstance(data);
       
-      toast({
-        title: "Instância WhatsApp criada",
-        description: "A integração foi configurada com sucesso.",
-      });
+      if (!instance) {
+        toast({
+          title: "Instância criada",
+          description: "Instância WhatsApp criada com sucesso. Use o botão 'Gerar QR Code' para conectar.",
+        });
+      } else {
+        toast({
+          title: "Instância atualizada",
+          description: "Dados da instância atualizados com sucesso.",
+        });
+      }
     } catch (error) {
       console.error('Error saving instance:', error);
       toast({

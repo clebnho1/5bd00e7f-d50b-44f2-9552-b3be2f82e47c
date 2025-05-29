@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap, Power } from 'lucide-react';
+import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap, Power, Plus } from 'lucide-react';
 import { useWhatsAppInstance } from '@/hooks/useSupabaseData';
 
 export function WhatsAppWidget() {
   const { instance, loading, saveInstance, disconnectInstance } = useWhatsAppInstance();
   
   const [isCreating, setIsCreating] = useState(false);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [instanceName, setInstanceName] = useState('');
@@ -26,10 +27,47 @@ export function WhatsAppWidget() {
     try {
       await saveInstance({
         nome_empresa: instanceName.trim(),
-        status: 'conectando'
+        status: 'desconectado',
+        qr_code: null
       });
+      setInstanceName(''); // Limpar o campo após criar
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const gerarQRCode = async () => {
+    if (!instance) return;
+
+    setIsGeneratingQR(true);
+    
+    try {
+      // Chamar a API da Evolution para gerar QR Code
+      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connect/${instance.nome_empresa}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na API: ${response.status}`);
+      }
+
+      const apiData = await response.json();
+      
+      // Atualizar a instância com o QR Code
+      await saveInstance({
+        nome_empresa: instance.nome_empresa,
+        status: 'conectando',
+        qr_code: apiData.qrCode || apiData.qr_code || null,
+        ultima_verificacao: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Erro ao gerar QR Code:', error);
+    } finally {
+      setIsGeneratingQR(false);
     }
   };
 
@@ -116,52 +154,100 @@ export function WhatsAppWidget() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!instance && (
-              <div className="space-y-2">
-                <Label htmlFor="instanceName">Nome da Instância</Label>
-                <Input
-                  id="instanceName"
-                  value={instanceName}
-                  onChange={(e) => setInstanceName(e.target.value)}
-                  placeholder="Digite o nome da sua instância WhatsApp"
+            {!instance ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="instanceName">Nome da Instância</Label>
+                  <Input
+                    id="instanceName"
+                    value={instanceName}
+                    onChange={(e) => setInstanceName(e.target.value)}
+                    placeholder="Digite o nome da sua instância WhatsApp"
+                    className="w-full"
+                  />
+                  <p className="text-sm text-gray-600">
+                    Escolha um nome único para identificar sua instância WhatsApp
+                  </p>
+                </div>
+
+                <Button
+                  onClick={criarInstancia}
+                  disabled={isCreating || !instanceName.trim()}
                   className="w-full"
-                />
-                <p className="text-sm text-gray-600">
-                  Escolha um nome único para identificar sua instância WhatsApp
-                </p>
-              </div>
-            )}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {isCreating ? "Criando instância..." : "Criar Instância"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>Nome da Instância</Label>
+                  <Input
+                    value={instance.nome_empresa}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                  <p className="text-sm text-gray-600">
+                    Instância configurada
+                  </p>
+                </div>
 
-            {instance && (
-              <div className="space-y-2">
-                <Label>Nome da Instância</Label>
-                <Input
-                  value={instance.nome_empresa}
-                  disabled
-                  className="bg-gray-50"
-                />
-                <p className="text-sm text-gray-600">
-                  Instância configurada
-                </p>
-              </div>
-            )}
+                <div className="space-y-2">
+                  <Label>Status da Conexão</Label>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${statusInfo.color}`} />
+                    <Badge variant="outline" className="flex items-center gap-2">
+                      <statusInfo.icon className="h-3 w-3" />
+                      {statusInfo.text}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600">{statusInfo.description}</p>
+                  {instance?.ultima_verificacao && (
+                    <p className="text-sm font-medium">
+                      Última verificação: {new Date(instance.ultima_verificacao).toLocaleString('pt-BR')}
+                    </p>
+                  )}
+                </div>
 
-            <div className="space-y-2">
-              <Label>Status da Conexão</Label>
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${statusInfo.color}`} />
-                <Badge variant="outline" className="flex items-center gap-2">
-                  <statusInfo.icon className="h-3 w-3" />
-                  {statusInfo.text}
-                </Badge>
-              </div>
-              <p className="text-sm text-gray-600">{statusInfo.description}</p>
-              {instance?.ultima_verificacao && (
-                <p className="text-sm font-medium">
-                  Última verificação: {new Date(instance.ultima_verificacao).toLocaleString('pt-BR')}
-                </p>
-              )}
-            </div>
+                <div className="space-y-2">
+                  {instance.status === 'desconectado' && (
+                    <Button
+                      onClick={gerarQRCode}
+                      disabled={isGeneratingQR}
+                      className="w-full whatsapp-gradient text-white"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      {isGeneratingQR ? "Gerando QR Code..." : "Gerar QR Code"}
+                    </Button>
+                  )}
+
+                  {(instance.status === 'conectando' || instance.status === 'conectado') && (
+                    <div className="space-y-2">
+                      <Button
+                        onClick={verificarStatus}
+                        disabled={isChecking}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
+                        Verificar Status
+                      </Button>
+                      
+                      <Button
+                        onClick={handleDisconnect}
+                        disabled={isDisconnecting}
+                        className="w-full"
+                        variant="destructive"
+                      >
+                        <Power className={`h-4 w-4 mr-2 ${isDisconnecting ? 'animate-spin' : ''}`} />
+                        {isDisconnecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             <div className="bg-blue-50 p-4 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-2">🔗 Integração Evolution API</h4>
@@ -172,44 +258,11 @@ export function WhatsAppWidget() {
                 <strong>API Key:</strong> 0417bf43b0a8669bd6635bcb49d783df
               </p>
               <p className="text-sm text-blue-600">
-                A instância será criada com o nome que você escolher.
+                {!instance 
+                  ? "Digite um nome e crie sua instância primeiro."
+                  : "Use o botão 'Gerar QR Code' para conectar."
+                }
               </p>
-            </div>
-
-            <div className="space-y-2">
-              {(!instance || instance.status === 'desconectado') && (
-                <Button
-                  onClick={criarInstancia}
-                  disabled={isCreating || !instanceName.trim()}
-                  className="w-full whatsapp-gradient text-white"
-                >
-                  {isCreating ? "Criando instância..." : "Criar Instância WhatsApp"}
-                </Button>
-              )}
-
-              {instance && (instance.status === 'conectando' || instance.status === 'conectado') && (
-                <div className="space-y-2">
-                  <Button
-                    onClick={verificarStatus}
-                    disabled={isChecking}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
-                    Verificar Status
-                  </Button>
-                  
-                  <Button
-                    onClick={handleDisconnect}
-                    disabled={isDisconnecting}
-                    className="w-full"
-                    variant="destructive"
-                  >
-                    <Power className={`h-4 w-4 mr-2 ${isDisconnecting ? 'animate-spin' : ''}`} />
-                    {isDisconnecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
-                  </Button>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -254,7 +307,9 @@ export function WhatsAppWidget() {
                 <p className="text-gray-600">
                   {instance?.status === 'conectado'
                     ? 'Sua instância está ativa e funcionando perfeitamente.'
-                    : 'Digite um nome e crie uma instância para gerar o QR Code de conexão.'
+                    : !instance 
+                      ? 'Crie uma instância primeiro para poder gerar o QR Code.'
+                      : 'Clique em "Gerar QR Code" para conectar sua instância.'
                   }
                 </p>
               </div>
@@ -275,7 +330,7 @@ export function WhatsAppWidget() {
               <ul className="space-y-1 text-gray-600">
                 <li>• Criação manual de instância</li>
                 <li>• Nome personalizado pelo usuário</li>
-                <li>• QR Code gerado pela API real</li>
+                <li>• Geração manual de QR Code</li>
                 <li>• Verificação de status em tempo real</li>
                 <li>• Desconexão de instância</li>
               </ul>
