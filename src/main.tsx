@@ -24,48 +24,27 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  // Bloqueia setInterval e setTimeout para terceiros
-  const originalSetInterval = window.setInterval;
-  const originalSetTimeout = window.setTimeout;
-  
-  // @ts-ignore
-  window.setInterval = function(callback: any, delay: any, ...args: any[]) {
-    const callbackStr = callback.toString();
-    if (callbackStr.includes('google') || callbackStr.includes('analytics') || callbackStr.includes('gtm') || callbackStr.includes('facebook')) {
-      console.warn('🚫 Blocked third-party interval');
-      return -1;
-    }
-    return originalSetInterval(callback, delay, ...args);
-  };
-  
-  // @ts-ignore
-  window.setTimeout = function(callback: any, delay: any, ...args: any[]) {
-    const callbackStr = callback.toString();
-    if (callbackStr.includes('google') || callbackStr.includes('analytics') || callbackStr.includes('gtm') || callbackStr.includes('facebook')) {
-      console.warn('🚫 Blocked third-party timeout');
-      return -1;
-    }
-    return originalSetTimeout(callback, delay, ...args);
-  };
-
-  // Override console para filtrar mensagens de terceiros
+  // Override console para filtrar mensagens de terceiros e warnings obsoletos
   const originalConsoleError = console.error;
   const originalConsoleWarn = console.warn;
   
   console.error = function(...args: any[]) {
     const message = args.join(' ').toLowerCase();
-    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || message.includes('doubleclick')) {
-      return; // Silencia erros de terceiros
+    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || 
+        message.includes('doubleclick') || message.includes('net::err_http2_protocol_error')) {
+      return; // Silencia erros de terceiros e HTTP2
     }
     originalConsoleError.apply(console, args);
   };
   
   console.warn = function(...args: any[]) {
     const message = args.join(' ').toLowerCase();
-    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || message.includes('doubleclick') || 
-        message.includes('unrecognized feature') || message.includes('permission policy') || 
-        message.includes('ambient-light-sensor') || message.includes('battery') || message.includes('vr')) {
-      return; // Silencia warnings de terceiros e permissions policy
+    if (message.includes('google') || message.includes('analytics') || message.includes('gtm') || 
+        message.includes('doubleclick') || message.includes('unrecognized feature') || 
+        message.includes('permission policy') || message.includes('ambient-light-sensor') || 
+        message.includes('battery') || message.includes('vr') || 
+        message.includes('preloaded resource')) {
+      return; // Silencia warnings de terceiros, permissions policy e preload
     }
     originalConsoleWarn.apply(console, args);
   };

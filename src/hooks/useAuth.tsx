@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode, useRef, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
-  const mountedRef = useRef(false);
+  const mountedRef = useRef(true);
   const initRef = useRef(false);
 
   console.log('🚀 [AUTH_PROVIDER] Renderizado', { mounted: mountedRef.current, initialized: initRef.current });
@@ -66,7 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    mountedRef.current = true;
     initRef.current = true;
     console.log('🔄 [INIT] Iniciando inicialização única da autenticação');
 
@@ -74,30 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       try {
-        // 1. Primeiro obter sessão atual
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        console.log('📨 [SESSION] Sessão obtida:', {
-          hasSession: !!currentSession,
-          hasUser: !!currentSession?.user,
-          error: sessionError?.message
-        });
-
-        if (sessionError) {
-          console.error('❌ [SESSION_ERROR]', sessionError);
-        }
-
-        // 2. Configurar estados iniciais
-        if (mountedRef.current) {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          
-          if (currentSession?.user) {
-            await fetchUserRole(currentSession.user.id);
-          }
-        }
-
-        // 3. Configurar listener APÓS estados iniciais
+        // 1. Configurar listener PRIMEIRO
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!mountedRef.current) return;
@@ -112,8 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(newSession);
             setUser(newSession?.user ?? null);
             
-            if (newSession?.user && event === 'SIGNED_IN') {
-              // Buscar role apenas para novos logins
+            // Buscar role apenas para usuários logados, com debounce
+            if (newSession?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
               setTimeout(() => {
                 if (mountedRef.current) {
                   fetchUserRole(newSession.user.id);
@@ -126,8 +101,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
 
         authSubscription = subscription;
+
+        // 2. Depois obter sessão atual
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         
+        console.log('📨 [SESSION] Sessão obtida:', {
+          hasSession: !!currentSession,
+          hasUser: !!currentSession?.user,
+          error: sessionError?.message
+        });
+
+        if (sessionError) {
+          console.error('❌ [SESSION_ERROR]', sessionError);
+        }
+
+        // 3. Configurar estados iniciais
         if (mountedRef.current) {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          
+          if (currentSession?.user) {
+            fetchUserRole(currentSession.user.id);
+          }
+          
           setLoading(false);
           console.log('✅ [INIT] Inicialização concluída');
         }
@@ -145,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       console.log('🧹 [CLEANUP] Limpando AuthProvider');
       mountedRef.current = false;
-      initRef.current = false;
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
