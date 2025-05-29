@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Check, Star } from 'lucide-react';
+import { Crown, Check, Star, AlertTriangle } from 'lucide-react';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
 
 const plans = [
@@ -11,36 +11,42 @@ const plans = [
     id: 'gratuito',
     name: 'Gratuito',
     price: 'R$ 0',
-    description: 'Ideal para começar',
+    period: '7 dias trial',
+    description: 'Ideal para testar a plataforma',
     features: [
       'Até 100 mensagens/mês',
       '1 agente AI',
-      'Suporte básico'
+      'Suporte básico',
+      'Trial de 7 dias'
     ]
   },
   {
-    id: 'profissional',
-    name: 'Profissional',
-    price: 'R$ 49',
+    id: 'basico',
+    name: 'Básico',
+    price: 'R$ 399',
+    period: '/mês',
     description: 'Para pequenas empresas',
     features: [
       'Até 5.000 mensagens/mês',
       '5 agentes AI',
       'Suporte prioritário',
-      'Análises avançadas'
+      'Análises avançadas',
+      'Webhook personalizado'
     ]
   },
   {
-    id: 'empresarial',
-    name: 'Empresarial',
-    price: 'R$ 149',
+    id: 'premium',
+    name: 'Premium',
+    price: 'R$ 699',
+    period: '/mês',
     description: 'Para grandes empresas',
     features: [
       'Mensagens ilimitadas',
       'Agentes AI ilimitados',
       'Suporte 24/7',
       'API personalizada',
-      'Integrações avançadas'
+      'Integrações avançadas',
+      'Relatórios detalhados'
     ]
   }
 ];
@@ -58,10 +64,55 @@ export function SubscriptionManager() {
     );
   }
 
+  const isExpired = currentSubscription && 
+    ((currentSubscription.plan === 'gratuito' && currentSubscription.trial_expires_at && new Date(currentSubscription.trial_expires_at) < new Date()) ||
+     (currentSubscription.plan !== 'gratuito' && currentSubscription.plano_expires_at && new Date(currentSubscription.plano_expires_at) < new Date()));
+
+  const isExpiringSoon = currentSubscription && 
+    ((currentSubscription.plan === 'gratuito' && currentSubscription.trial_expires_at && 
+      new Date(currentSubscription.trial_expires_at) > new Date() && 
+      new Date(currentSubscription.trial_expires_at) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)) ||
+     (currentSubscription.plan !== 'gratuito' && currentSubscription.plano_expires_at && 
+      new Date(currentSubscription.plano_expires_at) > new Date() && 
+      new Date(currentSubscription.plano_expires_at) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)));
+
   return (
     <div className="space-y-6">
+      {/* Alertas de Vencimento */}
+      {isExpired && (
+        <Card className="border-red-500 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-700">
+              <AlertTriangle className="h-5 w-5" />
+              Plano Vencido
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-600">
+              Seu plano venceu. Renove agora para continuar usando todas as funcionalidades.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {isExpiringSoon && !isExpired && (
+        <Card className="border-yellow-500 bg-yellow-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-700">
+              <AlertTriangle className="h-5 w-5" />
+              Plano Vencendo em Breve
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-yellow-600">
+              Seu plano vence em 2 dias. Renove agora para evitar interrupções no serviço.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Plano Atual */}
-      <Card>
+      <Card className={isExpired ? 'border-red-500' : ''}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5" />
@@ -72,21 +123,36 @@ export function SubscriptionManager() {
           {currentSubscription ? (
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold capitalize">
+                <h3 className={`text-lg font-semibold capitalize ${isExpired ? 'text-red-600' : ''}`}>
                   {currentSubscription.plan}
+                  {isExpired && ' (Vencido)'}
                 </h3>
                 <p className="text-gray-600">
-                  Status: <Badge variant="secondary">{currentSubscription.status}</Badge>
+                  Status: <Badge variant={isExpired ? "destructive" : currentSubscription.plano_active ? "default" : "secondary"}>
+                    {isExpired ? 'Vencido' : currentSubscription.plano_active ? 'Ativo' : 'Inativo'}
+                  </Badge>
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
                   Desde: {new Date(currentSubscription.started_at).toLocaleDateString('pt-BR')}
                 </p>
+                {currentSubscription.plan === 'gratuito' && currentSubscription.trial_expires_at && (
+                  <p className="text-sm text-gray-500">
+                    Trial expira em: {new Date(currentSubscription.trial_expires_at).toLocaleDateString('pt-BR')}
+                  </p>
+                )}
+                {currentSubscription.plano_expires_at && (
+                  <p className="text-sm text-gray-500">
+                    Expira em: {new Date(currentSubscription.plano_expires_at).toLocaleDateString('pt-BR')}
+                  </p>
+                )}
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold">
+                <p className={`text-2xl font-bold ${isExpired ? 'text-red-600' : ''}`}>
                   {plans.find(p => p.id === currentSubscription.plan)?.price || 'R$ 0'}
                 </p>
-                <p className="text-sm text-gray-500">/mês</p>
+                <p className="text-sm text-gray-500">
+                  {plans.find(p => p.id === currentSubscription.plan)?.period || '/mês'}
+                </p>
               </div>
             </div>
           ) : (
@@ -103,7 +169,7 @@ export function SubscriptionManager() {
           
           return (
             <Card key={plan.id} className={`relative ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}>
-              {plan.id === 'profissional' && (
+              {plan.id === 'basico' && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <Badge className="bg-orange-500 text-white">
                     <Star className="w-3 h-3 mr-1" />
@@ -117,7 +183,7 @@ export function SubscriptionManager() {
                 <CardDescription>{plan.description}</CardDescription>
                 <div className="mt-4">
                   <span className="text-3xl font-bold">{plan.price}</span>
-                  <span className="text-gray-500">/mês</span>
+                  <span className="text-gray-500">{plan.period}</span>
                 </div>
               </CardHeader>
               
@@ -134,10 +200,12 @@ export function SubscriptionManager() {
                 <Button
                   className="w-full"
                   variant={isCurrentPlan ? "secondary" : isUpgrade ? "default" : "outline"}
-                  disabled={isCurrentPlan}
+                  disabled={isCurrentPlan && !isExpired}
                   onClick={() => updateSubscription(plan.id)}
                 >
-                  {isCurrentPlan ? 'Plano Atual' : isUpgrade ? 'Fazer Upgrade' : 'Fazer Downgrade'}
+                  {isCurrentPlan && !isExpired ? 'Plano Atual' : 
+                   isExpired ? 'Renovar Plano' :
+                   isUpgrade ? 'Fazer Upgrade' : 'Contratar Plano'}
                 </Button>
               </CardContent>
             </Card>

@@ -204,6 +204,44 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_notifications: {
+        Row: {
+          created_at: string | null
+          dashboard_sent: boolean | null
+          email_sent: boolean | null
+          id: string
+          notification_type: string
+          sent_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dashboard_sent?: boolean | null
+          email_sent?: boolean | null
+          id?: string
+          notification_type: string
+          sent_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dashboard_sent?: boolean | null
+          email_sent?: boolean | null
+          id?: string
+          notification_type?: string
+          sent_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string | null
@@ -282,7 +320,10 @@ export type Database = {
           id: string
           name: string
           plano: Database["public"]["Enums"]["plano_tipo"]
+          plano_active: boolean | null
+          plano_expires_at: string | null
           role: Database["public"]["Enums"]["user_role"]
+          trial_expires_at: string | null
           updated_at: string
         }
         Insert: {
@@ -291,7 +332,10 @@ export type Database = {
           id: string
           name: string
           plano?: Database["public"]["Enums"]["plano_tipo"]
+          plano_active?: boolean | null
+          plano_expires_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          trial_expires_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -300,7 +344,10 @@ export type Database = {
           id?: string
           name?: string
           plano?: Database["public"]["Enums"]["plano_tipo"]
+          plano_active?: boolean | null
+          plano_expires_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          trial_expires_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -351,6 +398,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_expired_plans: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_user_webhook_url: {
         Args: { user_id_param: string }
         Returns: {
@@ -389,7 +440,7 @@ export type Database = {
       }
     }
     Enums: {
-      plano_tipo: "gratuito" | "profissional" | "empresarial"
+      plano_tipo: "gratuito" | "basico" | "premium"
       user_role: "admin" | "user"
       whatsapp_status: "desconectado" | "conectando" | "conectado" | "erro"
     }
@@ -507,7 +558,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      plano_tipo: ["gratuito", "profissional", "empresarial"],
+      plano_tipo: ["gratuito", "basico", "premium"],
       user_role: ["admin", "user"],
       whatsapp_status: ["desconectado", "conectando", "conectado", "erro"],
     },
