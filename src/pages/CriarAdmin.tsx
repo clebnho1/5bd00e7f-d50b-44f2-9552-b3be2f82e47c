@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, UserPlus } from 'lucide-react';
 
@@ -26,9 +25,13 @@ const CriarAdmin = () => {
   const handleCreateAdmin = async () => {
     setIsLoading(true);
     setError('');
+    setSuccess(false);
     
     try {
-      console.log('Criando usuário admin:', 'clebermosmann@gmail.com');
+      console.log('🚀 Iniciando criação de usuário admin...');
+      console.log('📧 Email:', 'clebermosmann@gmail.com');
+      console.log('👤 Nome:', 'Cleber Mosmann');
+      console.log('📋 Plano:', 'profissional');
       
       await signUp(
         'clebermosmann@gmail.com',
@@ -37,17 +40,36 @@ const CriarAdmin = () => {
         'profissional'
       );
       
-      console.log('Admin criado com sucesso!');
+      console.log('✅ Admin criado com sucesso no Supabase!');
       setSuccess(true);
       
-      // Redirecionar para login após 2 segundos
+      // Redirecionar para login após 3 segundos
       setTimeout(() => {
         navigate('/login');
-      }, 2000);
+      }, 3000);
       
     } catch (error: any) {
-      console.error('Erro ao criar admin:', error);
-      setError(error.message || 'Erro ao criar usuário admin');
+      console.error('❌ Erro detalhado ao criar admin:', error);
+      console.error('📄 Mensagem do erro:', error.message);
+      console.error('🔍 Stack trace:', error.stack);
+      
+      let errorMessage = 'Erro desconhecido ao criar usuário';
+      
+      if (error.message?.includes('User already registered') || 
+          error.message?.includes('já está cadastrado') ||
+          error.message?.includes('duplicate key')) {
+        errorMessage = 'Este email já possui uma conta no sistema';
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Email necessita confirmação';
+      } else if (error.message?.includes('Invalid email')) {
+        errorMessage = 'Email inválido';
+      } else if (error.message?.includes('Password')) {
+        errorMessage = 'Problema com a senha fornecida';
+      } else {
+        errorMessage = error.message || 'Erro ao criar usuário admin';
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +108,7 @@ const CriarAdmin = () => {
             <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
               <div>
                 <Label className="text-sm font-medium">Email:</Label>
-                <p className="text-gray-700">clebermosmann@gmail.com</p>
+                <p className="text-gray-700 font-mono">clebermosmann@gmail.com</p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Nome:</Label>
@@ -98,21 +120,34 @@ const CriarAdmin = () => {
               </div>
               <div>
                 <Label className="text-sm font-medium">Senha:</Label>
-                <p className="text-gray-700">123456</p>
+                <p className="text-gray-700 font-mono">123456</p>
               </div>
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500 text-lg">❌</span>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Erro ao criar usuário:</p>
+                    <p className="text-sm text-red-600 mt-1">{error}</p>
+                  </div>
+                </div>
               </div>
             )}
 
             {success && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-600">
-                  ✅ Usuário admin criado com sucesso! Redirecionando para login...
-                </p>
+              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                <div className="flex items-start gap-2">
+                  <span className="text-green-500 text-lg">✅</span>
+                  <div>
+                    <p className="text-sm font-medium text-green-800">Sucesso!</p>
+                    <p className="text-sm text-green-600 mt-1">
+                      Usuário admin criado com sucesso no Supabase! 
+                      Redirecionando para login em 3 segundos...
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -124,24 +159,30 @@ const CriarAdmin = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando usuário...
+                  Criando usuário no Supabase...
                 </>
               ) : success ? (
-                "✅ Usuário criado!"
+                "✅ Usuário criado com sucesso!"
               ) : (
-                "Criar Usuário Admin"
+                "🚀 Criar Usuário Admin"
               )}
             </Button>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <Button 
                 variant="link" 
                 onClick={() => navigate('/login')}
                 disabled={isLoading}
                 className="text-sm"
               >
-                Voltar para Login
+                ← Voltar para Login
               </Button>
+              
+              {success && (
+                <p className="text-xs text-gray-500">
+                  Após criado, faça login com as credenciais acima
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
