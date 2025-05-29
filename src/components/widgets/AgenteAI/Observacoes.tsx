@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +12,7 @@ interface ObservacoesProps {
   onInputChange: (field: string, value: string) => void;
 }
 
-export function Observacoes({ formData, onInputChange }: ObservacoesProps) {
+export const Observacoes = memo(function Observacoes({ formData, onInputChange }: ObservacoesProps) {
   return (
     <Card>
       <CardHeader>
@@ -38,4 +38,4 @@ export function Observacoes({ formData, onInputChange }: ObservacoesProps) {
       </CardContent>
     </Card>
   );
-}
+});

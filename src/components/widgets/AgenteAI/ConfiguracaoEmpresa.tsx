@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,7 @@ interface ConfiguracaoEmpresaProps {
   onInputChange: (field: string, value: string) => void;
 }
 
-export function ConfiguracaoEmpresa({ formData, onInputChange }: ConfiguracaoEmpresaProps) {
+export const ConfiguracaoEmpresa = memo(function ConfiguracaoEmpresa({ formData, onInputChange }: ConfiguracaoEmpresaProps) {
   return (
     <Card>
       <CardHeader>
@@ -61,4 +61,4 @@ export function ConfiguracaoEmpresa({ formData, onInputChange }: ConfiguracaoEmp
       </CardContent>
     </Card>
   );
-}
+});

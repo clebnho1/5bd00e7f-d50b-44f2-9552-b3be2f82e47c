@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Bot, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { useAgenteAI } from '@/hooks/useAgenteAI';
 import { useSelectOptions } from '@/hooks/useSelectOptions';
 import { IdentidadeAgente } from './AgenteAI/IdentidadeAgente';
@@ -12,7 +12,7 @@ import { RedesSociais } from './AgenteAI/RedesSociais';
 import { Observacoes } from './AgenteAI/Observacoes';
 import { useAgenteForm } from './AgenteAI/useAgenteForm';
 
-export function AgenteAIWidget() {
+export const AgenteAIWidget = memo(function AgenteAIWidget() {
   const { agentData, loading, saveAgenteAI } = useAgenteAI();
   const { areasAtuacao, estilosComportamento, loading: optionsLoading } = useSelectOptions();
   const { formData, handleInputChange, prepareDataForSave } = useAgenteForm(agentData);
@@ -88,4 +88,4 @@ export function AgenteAIWidget() {
       </form>
     </div>
   );
-}
+});

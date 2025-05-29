@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +15,7 @@ interface ComportamentoAgenteProps {
   onInputChange: (field: string, value: string | boolean) => void;
 }
 
-export function ComportamentoAgente({ 
+export const ComportamentoAgente = memo(function ComportamentoAgente({ 
   formData, 
   estilosComportamento, 
   onInputChange 
@@ -59,4 +59,4 @@ export function ComportamentoAgente({
       </CardContent>
     </Card>
   );
-}
+});
