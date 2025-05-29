@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,6 +94,8 @@ export function WhatsAppWidget() {
 
     setIsCheckingStatus(true);
     try {
+      console.log('🔍 [CHECK_STATUS] Verificando status para:', targetInstance);
+      
       const response = await fetch(`${API_BASE}/instance/connectionState/${targetInstance}`, {
         method: 'GET',
         headers: {
@@ -103,9 +104,11 @@ export function WhatsAppWidget() {
         }
       });
 
+      console.log('🔍 [CHECK_STATUS] Status da resposta:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        console.log('Status da conexão:', data);
+        console.log('🔍 [CHECK_STATUS] Dados recebidos:', data);
         
         const normalizedStatus = normalizeStatus(data.state || 'unknown');
         setStatusConexao(normalizedStatus);
@@ -113,7 +116,7 @@ export function WhatsAppWidget() {
         if (normalizedStatus === 'open') {
           setStatusMessage('Conectado e funcionando');
           setError(undefined);
-          setQrCode(''); // Clear QR code when connected
+          setQrCode('');
         } else if (normalizedStatus === 'connecting') {
           setStatusMessage('Aguardando conexão');
         } else if (normalizedStatus === 'closed') {
@@ -125,14 +128,16 @@ export function WhatsAppWidget() {
           setStatusMessage('Status desconhecido');
         }
       } else if (response.status === 404) {
+        console.log('🔍 [CHECK_STATUS] Instância não encontrada (404)');
         setStatusConexao('closed');
         setStatusMessage('Instância não encontrada');
-        setError('Instância não existe ou foi removida');
+        // Não definir como erro se a instância simplesmente não existe ainda
+        setError(undefined);
       } else {
         throw new Error(`API respondeu com status ${response.status}`);
       }
     } catch (err) {
-      console.error('Erro ao verificar status da conexão:', err);
+      console.error('🔍 [CHECK_STATUS] Erro:', err);
       setStatusConexao('error');
       setStatusMessage('Erro ao verificar conexão');
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -185,6 +190,23 @@ export function WhatsAppWidget() {
         // Tentar parsear como JSON para obter mensagem mais específica
         try {
           const errorData = JSON.parse(errorText);
+          // Se a instância já existe, apenas definir o instanceId
+          if (errorData.message?.includes('already in use') || errorData.message?.includes('já existe')) {
+            console.log('🔧 [CRIAR_INSTANCIA] Instância já existe, definindo instanceId');
+            setInstanceId(nomeClienteTrimmed);
+            localStorage.setItem('whatsapp_instance_id', nomeClienteTrimmed);
+            localStorage.setItem('whatsapp_cliente_nome', nomeClienteTrimmed);
+            
+            toast({
+              title: "Instância já existe",
+              description: `Conectando à instância existente: ${nomeClienteTrimmed}`,
+            });
+            
+            // Verificar status após definir a instância
+            setTimeout(() => checkConnectionStatus(), 1000);
+            return;
+          }
+          
           throw new Error(errorData.message || `Erro na API: ${response.status}`);
         } catch {
           throw new Error(`Erro na API: ${response.status} - ${errorText}`);
