@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,26 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+  // Log every navigation attempt
+  useEffect(() => {
+    console.log('=== LOGIN COMPONENT MOUNTED ===');
+    console.log('Current URL:', window.location.href);
+    
+    // Override navigate function to log all navigation attempts
+    const originalNavigate = navigate;
+    const loggedNavigate = (to: string, options?: any) => {
+      console.log('=== NAVIGATION INTERCEPTED ===');
+      console.log('Attempting to navigate to:', to);
+      console.log('From URL:', window.location.href);
+      console.log('Stack trace:', new Error().stack);
+      return originalNavigate(to, options);
+    };
+    
+    return () => {
+      console.log('=== LOGIN COMPONENT UNMOUNTING ===');
+    };
+  }, [navigate]);
 
   // Redirect if already logged in - but only after auth is initialized
   useEffect(() => {
@@ -61,13 +82,17 @@ const Login = () => {
 
   const handleForgotPasswordClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     console.log('=== FORGOT PASSWORD BUTTON CLICKED ===');
+    console.log('Event target:', e.target);
+    console.log('Event currentTarget:', e.currentTarget);
     console.log('Navigating to /esqueci-senha');
     navigate('/esqueci-senha');
   };
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     console.log('=== BACK BUTTON CLICKED ===');
     console.log('Navigating to /');
     navigate('/');
@@ -75,6 +100,7 @@ const Login = () => {
 
   const handleCreateAccountClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     console.log('=== CREATE ACCOUNT BUTTON CLICKED ===');
     console.log('Navigating to /cadastro');
     navigate('/cadastro');
@@ -82,6 +108,7 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     console.log('=== LOGIN SUBMIT BUTTON CLICKED ===');
     console.log('=== LOGIN ATTEMPT START ===');
@@ -292,3 +319,4 @@ const Login = () => {
 };
 
 export default Login;
+
