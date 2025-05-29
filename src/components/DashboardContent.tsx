@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,6 +61,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
       title: 'Administração',
       description: 'Relatórios e logs',
       icon: BarChart,
+      hasOwnPage: true,
     },
   ];
 
@@ -73,6 +75,10 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
         navigate('/agenteai');
         return;
       }
+      if (widgetId === 'administracao') {
+        navigate('/administracao');
+        return;
+      }
     }
     
     // Para widgets sem página própria, abre como widget interno
@@ -82,8 +88,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
   const renderWidget = () => {
     const widgetToRender = selectedWidget || activeWidget;
     
-    // Se for agente-ai e tem página própria, não renderiza aqui
-    if (widgetToRender === 'agente-ai') {
+    // Se for widget com página própria, não renderiza aqui
+    if (['agente-ai', 'administracao'].includes(widgetToRender)) {
       return null;
     }
     
@@ -104,8 +110,6 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
         return <WhatsAppWidget />;
       case 'configuracoes':
         return <ConfiguracoesWidget />;
-      case 'administracao':
-        return <AdministracaoWidget />;
       default:
         return null;
     }
@@ -161,7 +165,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
       </div>
 
       {/* Widget Ativo (apenas para widgets sem página própria) */}
-      {displayWidget && displayWidget !== 'agente-ai' && (
+      {displayWidget && !['agente-ai', 'administracao'].includes(displayWidget) && (
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
