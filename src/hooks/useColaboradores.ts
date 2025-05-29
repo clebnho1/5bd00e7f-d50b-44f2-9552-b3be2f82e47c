@@ -49,10 +49,26 @@ export function useColaboradores() {
   };
 
   const saveColaborador = async (data: { 
-    nome: string; 
+    nome: string;
+    email?: string;
+    telefone?: string;
+    cargo?: string;
+    unidade?: string;
     produtos?: string[]; 
     produtos_precos?: Record<string, number>;
-    horarios?: string; 
+    produtos_detalhados?: Array<{
+      nome: string;
+      comissao: number;
+      preco: number;
+      descricao: string;
+      imagem: string;
+    }>;
+    horarios?: string;
+    horarios_detalhados?: Array<{
+      dia: string;
+      inicio: string;
+      fim: string;
+    }>;
     ativo?: boolean;
     imagem_url?: string;
   }) => {
@@ -80,6 +96,10 @@ export function useColaboradores() {
         .insert({
           user_id: user.id,
           nome: data.nome.trim(),
+          email: data.email?.trim() || null,
+          telefone: data.telefone?.trim() || null,
+          cargo: data.cargo?.trim() || null,
+          unidade: data.unidade?.trim() || null,
           produtos: data.produtos || [],
           produtos_precos: data.produtos_precos || {},
           horarios: data.horarios || '09:00 - 18:00',
