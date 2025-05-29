@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -282,25 +281,6 @@ export function WhatsAppWidget() {
       if (response.ok) {
         const data = await response.json();
         console.log('📱 [CONECTAR_WHATSAPP] Dados recebidos:', data);
-        
-        // SOLUÇÃO PARA O PROBLEMA IDENTIFICADO: Tratar resposta {"count": 0}
-        if (data.count !== undefined && data.count === 0) {
-          console.log('📱 [CONECTAR_WHATSAPP] API retornou count: 0 - Instância precisa ser recriada');
-          
-          toast({
-            title: "Instância inválida",
-            description: "A instância está corrompida. Vamos deletá-la e criar uma nova.",
-            variant: "destructive",
-          });
-          
-          // Deletar instância atual e criar nova
-          await excluirInstancia();
-          setTimeout(() => {
-            criarInstancia();
-          }, 2000);
-          
-          return;
-        }
         
         // Verificar diferentes possíveis estruturas de resposta para QR Code
         let qrCodeData = null;
