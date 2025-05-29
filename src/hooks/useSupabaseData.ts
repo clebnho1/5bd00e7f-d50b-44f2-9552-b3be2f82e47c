@@ -108,7 +108,7 @@ export function useColaboradores() {
     }
   };
 
-  const saveColaborador = async (data: Partial<Tables['colaboradores']['Insert']>) => {
+  const saveColaborador = async (data: { nome: string; produtos?: string[]; horarios?: string; ativo?: boolean }) => {
     if (!user) return;
 
     try {
@@ -116,7 +116,10 @@ export function useColaboradores() {
         .from('colaboradores')
         .insert({
           user_id: user.id,
-          ...data,
+          nome: data.nome,
+          produtos: data.produtos || [],
+          horarios: data.horarios || null,
+          ativo: data.ativo ?? true,
         });
 
       if (error) throw error;
@@ -198,7 +201,7 @@ export function useWhatsAppInstance() {
     }
   };
 
-  const saveInstance = async (data: Partial<Tables['whatsapp_instances']['Insert']>) => {
+  const saveInstance = async (data: { nome_empresa: string; status?: Database['public']['Enums']['whatsapp_status']; qr_code?: string | null; ultima_verificacao?: string | null }) => {
     if (!user) return;
 
     try {
@@ -206,7 +209,10 @@ export function useWhatsAppInstance() {
         .from('whatsapp_instances')
         .upsert({
           user_id: user.id,
-          ...data,
+          nome_empresa: data.nome_empresa,
+          status: data.status || 'desconectado',
+          qr_code: data.qr_code || null,
+          ultima_verificacao: data.ultima_verificacao || null,
         });
 
       if (error) throw error;
