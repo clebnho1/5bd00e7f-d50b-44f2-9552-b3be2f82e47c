@@ -31,6 +31,8 @@ export function WhatsAppWidget() {
     const savedInstanceId = localStorage.getItem('whatsapp_instance_id');
     const savedNomeCliente = localStorage.getItem('whatsapp_cliente_nome');
     
+    console.log('Carregando dados salvos:', { savedInstanceId, savedNomeCliente });
+    
     if (savedInstanceId) {
       setInstanceId(savedInstanceId);
     }
@@ -42,6 +44,7 @@ export function WhatsAppWidget() {
   // Verificar status da conexão periodicamente (a cada 5s)
   useEffect(() => {
     if (instanceId) {
+      console.log('Iniciando verificação de status para:', instanceId);
       checkConnectionStatus();
       intervalRef.current = setInterval(checkConnectionStatus, 5000);
     }
@@ -67,6 +70,7 @@ export function WhatsAppWidget() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Status da conexão:', data);
         setStatusConexao(data.state || 'Desconectado');
       }
     } catch (error) {
@@ -104,6 +108,8 @@ export function WhatsAppWidget() {
 
       const data = await response.json();
       const newInstanceId = data.instance_id || data.instanceId || data.name;
+      
+      console.log('Instância criada:', { data, newInstanceId });
       
       setInstanceId(newInstanceId);
       
@@ -148,6 +154,8 @@ export function WhatsAppWidget() {
 
       const data = await response.json();
       const qrCodeData = data.qrCode || data.qr_code || data.base64;
+      
+      console.log('Conectar WhatsApp response:', data);
       
       if (qrCodeData) {
         setQrCode(qrCodeData);
@@ -255,8 +263,15 @@ export function WhatsAppWidget() {
     return 'text-red-600';
   };
 
+  console.log('WhatsApp Widget State:', { 
+    nomeCliente, 
+    instanceId, 
+    statusConexao, 
+    hasQrCode: !!qrCode 
+  });
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Button 
@@ -309,69 +324,71 @@ export function WhatsAppWidget() {
             </div>
           </div>
 
+          {/* Campo ID da Instância (somente leitura) - SEMPRE MOSTRAR SE EXISTIR */}
           {instanceId && (
-            <>
-              {/* Campo ID da Instância (somente leitura) */}
-              <div className="space-y-2">
-                <Label htmlFor="instanceId" className="text-gray-700 font-medium">
-                  ID da Instância
-                </Label>
-                <Input
-                  id="instanceId"
-                  value={instanceId}
-                  readOnly
-                  className="bg-gray-50 text-gray-600"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="instanceId" className="text-gray-700 font-medium">
+                ID da Instância
+              </Label>
+              <Input
+                id="instanceId"
+                value={instanceId}
+                readOnly
+                className="bg-gray-50 text-gray-600"
+              />
+            </div>
+          )}
 
-              {/* Indicador Status da Conexão */}
-              <div className="space-y-2">
-                <Label className="text-gray-700 font-medium">Status da Conexão</Label>
-                <div className={`font-semibold text-lg ${getStatusColor()}`}>
-                  {statusConexao}
-                </div>
+          {/* Indicador Status da Conexão - SEMPRE MOSTRAR SE INSTÂNCIA EXISTIR */}
+          {instanceId && (
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Status da Conexão</Label>
+              <div className={`font-semibold text-lg ${getStatusColor()}`}>
+                {statusConexao}
               </div>
+            </div>
+          )}
 
-              {/* Botões de Ação */}
-              <div className="flex gap-3 pt-4">
-                {/* Botão Conectar WhatsApp */}
-                <Button
-                  onClick={conectarWhatsApp}
-                  disabled={isConnecting}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  {isConnecting ? "Conectando..." : "Conectar WhatsApp"}
-                </Button>
-                
-                {/* Botão Desconectar */}
-                <Button
-                  onClick={desconectar}
-                  disabled={isDisconnecting}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {isDisconnecting ? "Desconectando..." : "Desconectar"}
-                </Button>
-                
-                {/* Botão Excluir Instância */}
-                <Button
-                  onClick={excluirInstancia}
-                  disabled={isDeleting}
-                  variant="destructive"
-                  className="flex-1"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {isDeleting ? "Excluindo..." : "Excluir Instância"}
-                </Button>
-              </div>
-            </>
+          {/* Botões de Ação - SEMPRE MOSTRAR SE INSTÂNCIA EXISTIR */}
+          {instanceId && (
+            <div className="flex gap-3 pt-4">
+              {/* Botão Conectar WhatsApp */}
+              <Button
+                onClick={conectarWhatsApp}
+                disabled={isConnecting}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                {isConnecting ? "Conectando..." : "Conectar WhatsApp"}
+              </Button>
+              
+              {/* Botão Desconectar */}
+              <Button
+                onClick={desconectar}
+                disabled={isDisconnecting}
+                variant="outline"
+                className="flex-1"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                {isDisconnecting ? "Desconectando..." : "Desconectar"}
+              </Button>
+              
+              {/* Botão Excluir Instância */}
+              <Button
+                onClick={excluirInstancia}
+                disabled={isDeleting}
+                variant="destructive"
+                className="flex-1"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {isDeleting ? "Excluindo..." : "Excluir Instância"}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Card QR Code */}
+      {/* Card QR Code - SEMPRE MOSTRAR SE INSTÂNCIA EXISTIR */}
       {instanceId && (
         <Card className="bg-white shadow-lg">
           <CardHeader>
