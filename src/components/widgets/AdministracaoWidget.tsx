@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,152 +9,191 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Activity, BarChart3, Clock, Search, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProtectedWidget } from '@/components/ProtectedWidget';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Usuario {
   id: string;
-  nome: string;
+  name: string;
   email: string;
   plano: string;
-  status: 'ativo' | 'inativo';
-  ultimoLogin: string;
-  dataCriacao: string;
+  role: string;
+  created_at: string;
 }
 
 interface LogActivity {
   id: string;
-  usuario: string;
+  user_id: string;
   widget: string;
-  acao: string;
-  timestamp: string;
-  detalhes: string;
+  action: string;
+  created_at: string;
+  description: string;
+  metadata: any;
 }
 
 export function AdministracaoWidget() {
   const { toast } = useToast();
   
-  const [usuarios] = useState<Usuario[]>([
-    {
-      id: '1',
-      nome: 'João Silva',
-      email: 'joao@exemplo.com',
-      plano: 'professional',
-      status: 'ativo',
-      ultimoLogin: '2024-01-15 14:30',
-      dataCriacao: '2024-01-01'
-    },
-    {
-      id: '2',
-      nome: 'Maria Santos',
-      email: 'maria@exemplo.com',
-      plano: 'enterprise',
-      status: 'ativo',
-      ultimoLogin: '2024-01-15 10:15',
-      dataCriacao: '2023-12-15'
-    },
-    {
-      id: '3',
-      nome: 'Pedro Costa',
-      email: 'pedro@exemplo.com',
-      plano: 'free',
-      status: 'inativo',
-      ultimoLogin: '2024-01-10 16:45',
-      dataCriacao: '2024-01-08'
-    }
-  ]);
-
-  const [logs] = useState<LogActivity[]>([
-    {
-      id: '1',
-      usuario: 'João Silva',
-      widget: 'Agente AI',
-      acao: 'Atualização de configurações',
-      timestamp: '2024-01-15 14:30:25',
-      detalhes: 'Alterou nome do agente de "Carlos" para "Sofia"'
-    },
-    {
-      id: '2',
-      usuario: 'Maria Santos',
-      widget: 'Colaboradores',
-      acao: 'Novo colaborador',
-      timestamp: '2024-01-15 10:15:10',
-      detalhes: 'Adicionou colaborador "Ana Silva"'
-    },
-    {
-      id: '3',
-      usuario: 'João Silva',
-      widget: 'WhatsApp',
-      acao: 'Conexão estabelecida',
-      timestamp: '2024-01-15 09:45:33',
-      detalhes: 'Instância WhatsApp conectada com sucesso'
-    },
-    {
-      id: '4',
-      usuario: 'Pedro Costa',
-      widget: 'Sistema',
-      acao: 'Login',
-      timestamp: '2024-01-14 16:20:15',
-      detalhes: 'Usuário realizou login no sistema'
-    }
-  ]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [logs, setLogs] = useState<LogActivity[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [filtros, setFiltros] = useState({
     usuarioSearch: '',
     planoFilter: 'todos',
-    statusFilter: 'todos',
+    roleFilter: 'todos',
     widgetFilter: 'todos',
     acaoFilter: ''
   });
 
-  const estatisticas = {
-    totalUsuarios: usuarios.length,
-    usuariosAtivos: usuarios.filter(u => u.status === 'ativo').length,
-    usuariosPorPlano: {
-      free: usuarios.filter(u => u.plano === 'free').length,
-      professional: usuarios.filter(u => u.plano === 'professional').length,
-      enterprise: usuarios.filter(u => u.plano === 'enterprise').length
-    },
-    logsHoje: logs.filter(log => log.timestamp.startsWith('2024-01-15')).length
+  useEffect(() => {
+    fetchUsuarios();
+    fetchLogs();
+  }, []);
+
+  const fetchUsuarios = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUsuarios(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar usuários:', error);
+      toast({
+        title: "Erro ao carregar usuários",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setLogs(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar logs:', error);
+      toast({
+        title: "Erro ao carregar logs",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getPlanoInfo = (plano: string) => {
     const planos = {
-      free: { nome: 'Gratuito', cor: 'bg-gray-100 text-gray-800' },
-      professional: { nome: 'Profissional', cor: 'bg-blue-100 text-blue-800' },
-      enterprise: { nome: 'Empresarial', cor: 'bg-purple-100 text-purple-800' }
+      gratuito: { nome: 'Gratuito', cor: 'bg-gray-100 text-gray-800' },
+      profissional: { nome: 'Profissional', cor: 'bg-blue-100 text-blue-800' },
+      empresarial: { nome: 'Empresarial', cor: 'bg-purple-100 text-purple-800' }
     };
-    return planos[plano as keyof typeof planos] || planos.free;
+    return planos[plano as keyof typeof planos] || planos.gratuito;
   };
 
-  const alterarStatusUsuario = (userId: string, novoStatus: 'ativo' | 'inativo') => {
-    console.log(`Alterando status do usuário ${userId} para ${novoStatus}`);
-    toast({
-      title: "Status alterado",
-      description: `Usuário foi ${novoStatus === 'ativo' ? 'ativado' : 'desativado'} com sucesso.`,
-    });
+  const getRoleInfo = (role: string) => {
+    const roles = {
+      admin: { nome: 'Admin', cor: 'bg-red-100 text-red-800' },
+      user: { nome: 'Usuário', cor: 'bg-green-100 text-green-800' }
+    };
+    return roles[role as keyof typeof roles] || roles.user;
   };
 
-  const alterarPlanoUsuario = (userId: string, novoPlano: string) => {
-    console.log(`Alterando plano do usuário ${userId} para ${novoPlano}`);
-    toast({
-      title: "Plano alterado",
-      description: "Plano do usuário foi atualizado com sucesso.",
-    });
+  const alterarPlanoUsuario = async (userId: string, novoPlano: string) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ plano: novoPlano })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Plano alterado",
+        description: "Plano do usuário foi atualizado com sucesso.",
+      });
+
+      fetchUsuarios();
+    } catch (error: any) {
+      console.error('Erro ao alterar plano:', error);
+      toast({
+        title: "Erro ao alterar plano",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const alterarRoleUsuario = async (userId: string, novaRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ role: novaRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Role alterada",
+        description: "Role do usuário foi atualizada com sucesso.",
+      });
+
+      fetchUsuarios();
+    } catch (error: any) {
+      console.error('Erro ao alterar role:', error);
+      toast({
+        title: "Erro ao alterar role",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
   };
 
   const usuariosFiltrados = usuarios.filter(usuario => {
     return (
-      usuario.nome.toLowerCase().includes(filtros.usuarioSearch.toLowerCase()) &&
+      usuario.name.toLowerCase().includes(filtros.usuarioSearch.toLowerCase()) &&
       (filtros.planoFilter === 'todos' || usuario.plano === filtros.planoFilter) &&
-      (filtros.statusFilter === 'todos' || usuario.status === filtros.statusFilter)
+      (filtros.roleFilter === 'todos' || usuario.role === filtros.roleFilter)
     );
   });
 
   const logsFiltrados = logs.filter(log => {
     return (
       (filtros.widgetFilter === 'todos' || log.widget === filtros.widgetFilter) &&
-      (filtros.acaoFilter === '' || log.acao.toLowerCase().includes(filtros.acaoFilter.toLowerCase()))
+      (filtros.acaoFilter === '' || log.action.toLowerCase().includes(filtros.acaoFilter.toLowerCase()))
     );
   });
+
+  const estatisticas = {
+    totalUsuarios: usuarios.length,
+    usuariosAdmin: usuarios.filter(u => u.role === 'admin').length,
+    usuariosPorPlano: {
+      gratuito: usuarios.filter(u => u.plano === 'gratuito').length,
+      profissional: usuarios.filter(u => u.plano === 'profissional').length,
+      empresarial: usuarios.filter(u => u.plano === 'empresarial').length
+    },
+    logsHoje: logs.filter(log => {
+      const hoje = new Date().toISOString().split('T')[0];
+      return log.created_at.startsWith(hoje);
+    }).length
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
+      </div>
+    );
+  }
 
   return (
     <ProtectedWidget requiredRole="admin" widgetName="Administração">
@@ -172,7 +212,7 @@ export function AdministracaoWidget() {
             <CardContent>
               <div className="text-2xl font-bold">{estatisticas.totalUsuarios}</div>
               <p className="text-xs text-muted-foreground">
-                {estatisticas.usuariosAtivos} ativos
+                {estatisticas.usuariosAdmin} administradores
               </p>
             </CardContent>
           </Card>
@@ -182,7 +222,7 @@ export function AdministracaoWidget() {
               <CardTitle className="text-sm font-medium">Plano Gratuito</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{estatisticas.usuariosPorPlano.free}</div>
+              <div className="text-2xl font-bold">{estatisticas.usuariosPorPlano.gratuito}</div>
               <p className="text-xs text-muted-foreground">usuários</p>
             </CardContent>
           </Card>
@@ -192,7 +232,7 @@ export function AdministracaoWidget() {
               <CardTitle className="text-sm font-medium">Plano Profissional</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{estatisticas.usuariosPorPlano.professional}</div>
+              <div className="text-2xl font-bold">{estatisticas.usuariosPorPlano.profissional}</div>
               <p className="text-xs text-muted-foreground">usuários</p>
             </CardContent>
           </Card>
@@ -242,22 +282,22 @@ export function AdministracaoWidget() {
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50">
                         <SelectItem value="todos">Todos os planos</SelectItem>
-                        <SelectItem value="free">Gratuito</SelectItem>
-                        <SelectItem value="professional">Profissional</SelectItem>
-                        <SelectItem value="enterprise">Empresarial</SelectItem>
+                        <SelectItem value="gratuito">Gratuito</SelectItem>
+                        <SelectItem value="profissional">Profissional</SelectItem>
+                        <SelectItem value="empresarial">Empresarial</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Status</label>
-                    <Select value={filtros.statusFilter} onValueChange={(value) => setFiltros(prev => ({ ...prev, statusFilter: value }))}>
+                    <label className="text-sm font-medium">Role</label>
+                    <Select value={filtros.roleFilter} onValueChange={(value) => setFiltros(prev => ({ ...prev, roleFilter: value }))}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Todos os status" />
+                        <SelectValue placeholder="Todas as roles" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50">
-                        <SelectItem value="todos">Todos os status</SelectItem>
-                        <SelectItem value="ativo">Ativo</SelectItem>
-                        <SelectItem value="inativo">Inativo</SelectItem>
+                        <SelectItem value="todos">Todas as roles</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="user">Usuário</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -273,20 +313,19 @@ export function AdministracaoWidget() {
                 <div className="space-y-4">
                   {usuariosFiltrados.map((usuario) => {
                     const planoInfo = getPlanoInfo(usuario.plano);
+                    const roleInfo = getRoleInfo(usuario.role);
                     return (
                       <div key={usuario.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{usuario.nome}</h4>
-                            <Badge variant={usuario.status === 'ativo' ? 'default' : 'secondary'}>
-                              {usuario.status}
+                            <h4 className="font-medium">{usuario.name}</h4>
+                            <Badge className={roleInfo.cor}>
+                              {roleInfo.nome}
                             </Badge>
                           </div>
                           <p className="text-sm text-gray-600">{usuario.email}</p>
                           <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>Último login: {usuario.ultimoLogin}</span>
-                            <span>•</span>
-                            <span>Criado em: {usuario.dataCriacao}</span>
+                            <span>Criado em: {new Date(usuario.created_at).toLocaleDateString('pt-BR')}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -298,22 +337,30 @@ export function AdministracaoWidget() {
                               <SelectValue placeholder="Alterar plano" />
                             </SelectTrigger>
                             <SelectContent className="bg-white z-50">
-                              <SelectItem value="free">Gratuito</SelectItem>
-                              <SelectItem value="professional">Profissional</SelectItem>
-                              <SelectItem value="enterprise">Empresarial</SelectItem>
+                              <SelectItem value="gratuito">Gratuito</SelectItem>
+                              <SelectItem value="profissional">Profissional</SelectItem>
+                              <SelectItem value="empresarial">Empresarial</SelectItem>
                             </SelectContent>
                           </Select>
-                          <Button
-                            variant={usuario.status === 'ativo' ? 'destructive' : 'default'}
-                            size="sm"
-                            onClick={() => alterarStatusUsuario(usuario.id, usuario.status === 'ativo' ? 'inativo' : 'ativo')}
-                          >
-                            {usuario.status === 'ativo' ? 'Desativar' : 'Ativar'}
-                          </Button>
+                          <Select onValueChange={(value) => alterarRoleUsuario(usuario.id, value)}>
+                            <SelectTrigger className="w-24">
+                              <SelectValue placeholder="Role" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-50">
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     );
                   })}
+                  
+                  {usuariosFiltrados.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Nenhum usuário encontrado</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -367,15 +414,25 @@ export function AdministracaoWidget() {
                       <div className="w-2 h-2 bg-whatsapp rounded-full mt-2" />
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{log.usuario}</span>
+                          <span className="font-medium">User ID: {log.user_id}</span>
                           <Badge variant="outline" className="text-xs">{log.widget}</Badge>
-                          <span className="text-xs text-gray-500">{log.timestamp}</span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(log.created_at).toLocaleString('pt-BR')}
+                          </span>
                         </div>
-                        <p className="text-sm text-gray-700">{log.acao}</p>
-                        <p className="text-xs text-gray-500">{log.detalhes}</p>
+                        <p className="text-sm text-gray-700">{log.action}</p>
+                        {log.description && (
+                          <p className="text-xs text-gray-500">{log.description}</p>
+                        )}
                       </div>
                     </div>
                   ))}
+                  
+                  {logsFiltrados.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Nenhum log encontrado</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -387,33 +444,48 @@ export function AdministracaoWidget() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="h-5 w-5" />
-                    Uso por Widget
+                    Distribuição de Planos
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Agente AI</span>
-                      <span className="text-sm font-medium">45%</span>
+                      <span className="text-sm">Gratuito</span>
+                      <span className="text-sm font-medium">{estatisticas.usuariosPorPlano.gratuito}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-whatsapp h-2 rounded-full" style={{ width: '45%' }} />
+                      <div 
+                        className="bg-gray-500 h-2 rounded-full" 
+                        style={{ 
+                          width: `${estatisticas.totalUsuarios > 0 ? (estatisticas.usuariosPorPlano.gratuito / estatisticas.totalUsuarios) * 100 : 0}%` 
+                        }} 
+                      />
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Colaboradores</span>
-                      <span className="text-sm font-medium">30%</span>
+                      <span className="text-sm">Profissional</span>
+                      <span className="text-sm font-medium">{estatisticas.usuariosPorPlano.profissional}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full" style={{ width: '30%' }} />
+                      <div 
+                        className="bg-blue-500 h-2 rounded-full" 
+                        style={{ 
+                          width: `${estatisticas.totalUsuarios > 0 ? (estatisticas.usuariosPorPlano.profissional / estatisticas.totalUsuarios) * 100 : 0}%` 
+                        }} 
+                      />
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">WhatsApp</span>
-                      <span className="text-sm font-medium">25%</span>
+                      <span className="text-sm">Empresarial</span>
+                      <span className="text-sm font-medium">{estatisticas.usuariosPorPlano.empresarial}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-purple-500 h-2 rounded-full" style={{ width: '25%' }} />
+                      <div 
+                        className="bg-purple-500 h-2 rounded-full" 
+                        style={{ 
+                          width: `${estatisticas.totalUsuarios > 0 ? (estatisticas.usuariosPorPlano.empresarial / estatisticas.totalUsuarios) * 100 : 0}%` 
+                        }} 
+                      />
                     </div>
                   </div>
                 </CardContent>
@@ -423,14 +495,27 @@ export function AdministracaoWidget() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    Atividade por Horário
+                    Resumo Geral
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">Gráfico de atividade por horário</p>
-                    <p className="text-sm text-gray-500">Implementação futura</p>
+                  <div className="space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total de usuários:</span>
+                      <span className="font-medium">{estatisticas.totalUsuarios}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Administradores:</span>
+                      <span className="font-medium">{estatisticas.usuariosAdmin}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Logs hoje:</span>
+                      <span className="font-medium">{estatisticas.logsHoje}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total de logs:</span>
+                      <span className="font-medium">{logs.length}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
