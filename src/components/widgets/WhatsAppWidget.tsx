@@ -1,133 +1,100 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MessageCircle, QrCode, Settings, ArrowLeft } from 'lucide-react';
-import { useWhatsAppInstance } from '@/hooks/useSupabaseData';
+import { MessageCircle, QrCode, Settings, ArrowLeft, Trash2, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 export function WhatsAppWidget() {
-  const { instance, loading, saveInstance, disconnectInstance } = useWhatsAppInstance();
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  const [isCreating, setIsCreating] = useState(false);
-  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
-  const [instanceName, setInstanceName] = useState('');
+  const [nomeCliente, setNomeCliente] = useState('');
+  const [instanceId, setInstanceId] = useState('');
+  const [qrCode, setQrCode] = useState('');
+  const [statusConexao, setStatusConexao] = useState('Desconectado');
+  const [isCreatingInstance, setIsCreatingInstance] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const API_BASE = 'https://apiwhats.lifecombr.com.br';
+  const API_KEY = '0417bf43b0a8669bd6635bcb49d783df';
+
+  // Carregar dados salvos do localStorage
   useEffect(() => {
-    if (instance) {
-      setInstanceName(instance.nome_empresa);
+    const savedInstanceId = localStorage.getItem('whatsapp_instance_id');
+    const savedNomeCliente = localStorage.getItem('whatsapp_cliente_nome');
+    
+    if (savedInstanceId) {
+      setInstanceId(savedInstanceId);
     }
-  }, [instance]);
-
-  const clearLocalData = () => {
-    // Limpar localStorage relacionado ao WhatsApp
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.includes('whatsapp') || key.includes('instance') || key.includes('qr'))) {
-        keysToRemove.push(key);
-      }
+    if (savedNomeCliente) {
+      setNomeCliente(savedNomeCliente);
     }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
+  }, []);
 
-    // Limpar sessionStorage relacionado ao WhatsApp
-    const sessionKeysToRemove = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && (key.includes('whatsapp') || key.includes('instance') || key.includes('qr'))) {
-        sessionKeysToRemove.push(key);
-      }
+  // Verificar status da conexão periodicamente
+  useEffect(() => {
+    if (instanceId) {
+      checkConnectionStatus();
+      intervalRef.current = setInterval(checkConnectionStatus, 5000);
     }
-    sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
 
-    // Limpar cookies relacionados ao WhatsApp
-    const cookies = document.cookie.split(';');
-    cookies.forEach(cookie => {
-      const eqPos = cookie.indexOf('=');
-      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-      if (name.includes('whatsapp') || name.includes('instance') || name.includes('qr')) {
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
-    });
+    };
+  }, [instanceId]);
 
-    console.log('Dados locais relacionados ao WhatsApp foram limpos');
-  };
-
-  const disconnectAndCleanAll = async () => {
-    if (!instance) return;
+  const checkConnectionStatus = async () => {
+    if (!instanceId) return;
 
     try {
-      console.log('Iniciando desconexão completa e limpeza de dados...');
-
-      // 1. Desconectar via API da Evolution
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/disconnect/${instance.nome_empresa}`, {
-        method: 'DELETE',
+      const response = await fetch(`${API_BASE}/instance/connectionState/${instanceId}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+          'apikey': API_KEY
         }
       });
 
-      // 2. Atualizar status no banco mesmo se a API falhar
-      await saveInstance({
-        nome_empresa: instance.nome_empresa,
-        status: 'desconectado',
-        qr_code: null,
-        ultima_verificacao: new Date().toISOString()
-      });
-
-      // 3. Limpar dados locais
-      clearLocalData();
-
-      toast({
-        title: "WhatsApp desconectado e dados limpos",
-        description: "A instância foi desconectada e todos os dados locais foram removidos.",
-      });
-
-      console.log('Desconexão completa realizada com sucesso');
+      if (response.ok) {
+        const data = await response.json();
+        setStatusConexao(data.state || 'Desconectado');
+      }
     } catch (error) {
-      console.error('Erro durante desconexão completa:', error);
-      
-      // Mesmo com erro, tentar limpar dados locais
-      clearLocalData();
-      
-      toast({
-        title: "Erro na desconexão",
-        description: "Houve um problema, mas os dados locais foram limpos.",
-        variant: "destructive",
-      });
+      console.error('Erro ao verificar status da conexão:', error);
     }
   };
 
   const criarInstancia = async () => {
-    if (!instanceName.trim()) {
+    if (!nomeCliente.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Digite o nome do cliente para criar a instância.",
+        variant: "destructive",
+      });
       return;
     }
 
-    setIsCreating(true);
+    setIsCreatingInstance(true);
     
     try {
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/create`, {
+      const response = await fetch(`${API_BASE}/instance/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+          'apikey': API_KEY
         },
         body: JSON.stringify({
-          instanceName: instanceName.trim(),
-          token: instanceName.trim(),
-          qrcode: true,
-          chatwoot_account_id: null,
-          chatwoot_token: null,
-          chatwoot_url: null,
-          chatwoot_sign_msg: false,
-          chatwoot_reopen_conversation: false,
-          chatwoot_conversation_pending: false
+          name: nomeCliente.trim()
         })
       });
 
@@ -135,15 +102,18 @@ export function WhatsAppWidget() {
         throw new Error(`Erro na API: ${response.status}`);
       }
 
-      await saveInstance({
-        nome_empresa: instanceName.trim(),
-        status: 'criado',
-        qr_code: null
-      });
+      const data = await response.json();
+      const newInstanceId = data.instance_id || data.instanceId || data.name;
+      
+      setInstanceId(newInstanceId);
+      
+      // Salvar no localStorage
+      localStorage.setItem('whatsapp_instance_id', newInstanceId);
+      localStorage.setItem('whatsapp_cliente_nome', nomeCliente.trim());
 
       toast({
         title: "Instância criada",
-        description: "Instância WhatsApp criada com sucesso.",
+        description: `Instância criada com sucesso. ID: ${newInstanceId}`,
       });
     } catch (error) {
       console.error('Erro ao criar instância:', error);
@@ -153,21 +123,22 @@ export function WhatsAppWidget() {
         variant: "destructive",
       });
     } finally {
-      setIsCreating(false);
+      setIsCreatingInstance(false);
     }
   };
 
-  const gerarQRCode = async () => {
-    if (!instance) return;
+  const conectarWhatsApp = async () => {
+    if (!instanceId) return;
 
-    setIsGeneratingQR(true);
+    setIsConnecting(true);
+    setQrCode('');
     
     try {
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connect/${instance.nome_empresa}`, {
+      const response = await fetch(`${API_BASE}/instance/connect/${instanceId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+          'apikey': API_KEY
         }
       });
 
@@ -175,38 +146,114 @@ export function WhatsAppWidget() {
         throw new Error(`Erro na API: ${response.status}`);
       }
 
-      const apiData = await response.json();
+      const data = await response.json();
+      const qrCodeData = data.qrCode || data.qr_code || data.base64;
       
-      await saveInstance({
-        nome_empresa: instance.nome_empresa,
-        status: 'aguardando_conexao',
-        qr_code: apiData.qrCode || apiData.qr_code || apiData.base64 || null,
-        ultima_verificacao: new Date().toISOString()
-      });
-
-      toast({
-        title: "QR Code gerado",
-        description: "QR Code gerado com sucesso. Escaneie com seu WhatsApp.",
-      });
+      if (qrCodeData) {
+        setQrCode(qrCodeData);
+        toast({
+          title: "QR Code gerado",
+          description: "Escaneie o QR Code com seu WhatsApp para conectar.",
+        });
+      }
     } catch (error) {
-      console.error('Erro ao gerar QR Code:', error);
+      console.error('Erro ao conectar WhatsApp:', error);
       toast({
-        title: "Erro ao gerar QR Code",
+        title: "Erro ao conectar",
         description: "Tente novamente em alguns instantes.",
         variant: "destructive",
       });
     } finally {
-      setIsGeneratingQR(false);
+      setIsConnecting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-      </div>
-    );
-  }
+  const desconectar = async () => {
+    if (!instanceId) return;
+
+    setIsDisconnecting(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/instance/logout/${instanceId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': API_KEY
+        }
+      });
+
+      if (response.ok) {
+        setQrCode('');
+        setStatusConexao('Desconectado');
+        toast({
+          title: "WhatsApp desconectado",
+          description: "A instância foi desconectada com sucesso.",
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao desconectar:', error);
+      toast({
+        title: "Erro ao desconectar",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
+  const excluirInstancia = async () => {
+    if (!instanceId) return;
+
+    setIsDeleting(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/instance/delete/${instanceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': API_KEY
+        }
+      });
+
+      if (response.ok) {
+        // Limpar todos os dados
+        setInstanceId('');
+        setNomeCliente('');
+        setQrCode('');
+        setStatusConexao('Desconectado');
+        
+        // Limpar localStorage
+        localStorage.removeItem('whatsapp_instance_id');
+        localStorage.removeItem('whatsapp_cliente_nome');
+        
+        // Parar verificação de status
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+
+        toast({
+          title: "Instância excluída",
+          description: "A instância foi excluída com sucesso.",
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao excluir instância:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const getStatusColor = () => {
+    if (statusConexao === 'open' || statusConexao === 'connected') return 'text-green-600';
+    if (statusConexao === 'connecting' || statusConexao === 'qr') return 'text-yellow-600';
+    return 'text-red-600';
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -220,105 +267,129 @@ export function WhatsAppWidget() {
           <ArrowLeft className="h-4 w-4" />
           Voltar ao Dashboard
         </Button>
-        <h1 className="text-2xl font-bold text-gray-800">WhatsApp</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Gerenciar WhatsApp do Cliente</h1>
       </div>
-
-      <p className="text-gray-600 mb-8">Gerencie sua conexão com WhatsApp</p>
 
       {/* Card de Configuração */}
       <Card className="bg-green-500 text-white border-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Settings className="h-5 w-5" />
-            Configuração
+            Configuração da Instância
           </CardTitle>
           <CardDescription className="text-green-100">
-            Configure sua instância do WhatsApp
+            Configure a instância WhatsApp para o cliente
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="instanceName" className="text-white">Nome da Instância</Label>
+            <Label htmlFor="nomeCliente" className="text-white">Nome do Cliente</Label>
             <div className="flex gap-2">
               <Input
-                id="instanceName"
-                value={instanceName}
-                onChange={(e) => setInstanceName(e.target.value)}
-                placeholder="Digite o nome da sua instância"
+                id="nomeCliente"
+                value={nomeCliente}
+                onChange={(e) => setNomeCliente(e.target.value)}
+                placeholder="Digite o nome do cliente"
                 className="bg-white text-gray-900 border-0 flex-1"
-                disabled={!!instance}
+                disabled={!!instanceId}
               />
-              {!instance ? (
+              {!instanceId && (
                 <Button
                   onClick={criarInstancia}
-                  disabled={isCreating || !instanceName.trim()}
+                  disabled={isCreatingInstance || !nomeCliente.trim()}
                   className="bg-gray-800 hover:bg-gray-700 text-white px-8"
                 >
-                  {isCreating ? "Criando..." : "Salvar"}
-                </Button>
-              ) : (
-                <Button
-                  onClick={gerarQRCode}
-                  disabled={isGeneratingQR}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-8"
-                >
-                  {isGeneratingQR ? "Gerando..." : "Gerar QR Code"}
+                  {isCreatingInstance ? "Criando..." : "Criar Instância"}
                 </Button>
               )}
             </div>
           </div>
-          
-          {/* Botão de desconectar e limpar dados */}
-          {instance && (
-            <div className="pt-4 border-t border-green-400">
-              <Button
-                onClick={disconnectAndCleanAll}
-                variant="destructive"
-                className="w-full bg-red-600 hover:bg-red-700 text-white"
-              >
-                Desconectar e Limpar Dados
-              </Button>
-              <p className="text-green-100 text-xs mt-2 text-center">
-                Isso irá desconectar completamente e limpar todos os dados locais
-              </p>
-            </div>
+
+          {instanceId && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="instanceId" className="text-white">ID da Instância</Label>
+                <Input
+                  id="instanceId"
+                  value={instanceId}
+                  readOnly
+                  className="bg-gray-100 text-gray-700 border-0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-white">Status da Conexão</Label>
+                <div className={`font-semibold ${getStatusColor()}`}>
+                  {statusConexao}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={conectarWhatsApp}
+                  disabled={isConnecting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
+                >
+                  {isConnecting ? "Conectando..." : "Conectar WhatsApp"}
+                </Button>
+                
+                <Button
+                  onClick={desconectar}
+                  disabled={isDisconnecting}
+                  variant="outline"
+                  className="bg-white text-gray-800 hover:bg-gray-100 flex-1"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {isDisconnecting ? "Desconectando..." : "Desconectar"}
+                </Button>
+                
+                <Button
+                  onClick={excluirInstancia}
+                  disabled={isDeleting}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeleting ? "Excluindo..." : ""}
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {/* Card do QR Code */}
-      <Card className="bg-green-500 text-white border-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <QrCode className="h-5 w-5" />
-            QR Code
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {instance?.qr_code ? (
-            <div className="bg-white rounded-lg p-6 text-center">
-              <img
-                src={instance.qr_code}
-                alt="QR Code WhatsApp"
-                className="w-64 h-64 mx-auto border border-gray-200 rounded-lg"
-              />
-              <p className="text-gray-600 mt-4 text-sm">
-                Escaneie este código com seu WhatsApp para conectar
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg p-12 text-center">
-              <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">
-                {!instance 
-                  ? 'Crie uma instância primeiro para gerar o QR Code'
-                  : 'Clique em "Gerar QR Code" para conectar sua instância'
-                }
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {instanceId && (
+        <Card className="bg-green-500 text-white border-0">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <QrCode className="h-5 w-5" />
+              QR Code
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {qrCode ? (
+              <div className="bg-white rounded-lg p-6 text-center">
+                <img
+                  src={qrCode}
+                  alt="QR Code WhatsApp"
+                  className="w-64 h-64 mx-auto border border-gray-200 rounded-lg"
+                />
+                <p className="text-gray-600 mt-4 text-sm">
+                  Escaneie este código com seu WhatsApp para conectar
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg p-12 text-center">
+                <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">
+                  Clique em "Conectar WhatsApp" para gerar o QR Code
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
