@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Activity, BarChart3, Clock, Search, Filter } from 'lucide-react';
+import { Users, Activity, BarChart3, Clock, Search, Filter, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProtectedWidget } from '@/components/ProtectedWidget';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Database } from '@/integrations/supabase/types';
 
 type PlanoTipo = Database['public']['Enums']['plano_tipo'];
@@ -35,10 +37,12 @@ interface LogActivity {
 
 export function AdministracaoWidget() {
   const { toast } = useToast();
+  const { isAdmin, user } = useAuth();
   
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [logs, setLogs] = useState<LogActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [filtros, setFiltros] = useState({
     usuarioSearch: '',
@@ -49,27 +53,40 @@ export function AdministracaoWidget() {
   });
 
   useEffect(() => {
-    fetchUsuarios();
-    fetchLogs();
-  }, []);
+    console.log('🔍 [ADMIN_WIDGET] Inicializando widget de administração');
+    console.log('🔍 [ADMIN_WIDGET] User:', user?.email, 'isAdmin:', isAdmin());
+    
+    if (isAdmin()) {
+      fetchData();
+    } else {
+      console.log('❌ [ADMIN_WIDGET] Usuário não é admin');
+      setLoading(false);
+    }
+  }, [user, isAdmin]);
+
+  const fetchData = async () => {
+    console.log('🔄 [ADMIN_WIDGET] Iniciando carregamento de dados');
+    await Promise.all([fetchUsuarios(), fetchLogs()]);
+  };
 
   const fetchUsuarios = async () => {
     try {
-      console.log('Fetching usuarios...');
+      console.log('👥 [USUARIOS] Buscando usuários...');
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Erro ao carregar usuários:', error);
+        console.error('❌ [USUARIOS] Erro ao carregar usuários:', error);
         throw error;
       }
       
-      console.log('Usuarios loaded:', data?.length || 0);
+      console.log('✅ [USUARIOS] Usuários carregados:', data?.length || 0);
       setUsuarios(data || []);
     } catch (error: any) {
-      console.error('Erro ao carregar usuários:', error);
+      console.error('💥 [USUARIOS] Erro ao carregar usuários:', error);
       toast({
         title: "Erro ao carregar usuários",
         description: error.message || "Erro desconhecido",
@@ -80,7 +97,8 @@ export function AdministracaoWidget() {
 
   const fetchLogs = async () => {
     try {
-      console.log('Fetching logs...');
+      console.log('📊 [LOGS] Buscando logs...');
+      
       const { data, error } = await supabase
         .from('activity_logs')
         .select('*')
@@ -88,14 +106,14 @@ export function AdministracaoWidget() {
         .limit(50);
 
       if (error) {
-        console.error('Erro ao carregar logs:', error);
+        console.error('❌ [LOGS] Erro ao carregar logs:', error);
         throw error;
       }
       
-      console.log('Logs loaded:', data?.length || 0);
+      console.log('✅ [LOGS] Logs carregados:', data?.length || 0);
       setLogs(data || []);
     } catch (error: any) {
-      console.error('Erro ao carregar logs:', error);
+      console.error('💥 [LOGS] Erro ao carregar logs:', error);
       toast({
         title: "Erro ao carregar logs",
         description: error.message || "Erro desconhecido",
@@ -104,6 +122,16 @@ export function AdministracaoWidget() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+    toast({
+      title: "Dados atualizados",
+      description: "Os dados foram recarregados com sucesso.",
+    });
   };
 
   const getPlanoInfo = (plano: PlanoTipo) => {
@@ -125,6 +153,8 @@ export function AdministracaoWidget() {
 
   const alterarPlanoUsuario = async (userId: string, novoPlano: string) => {
     try {
+      console.log('🔄 [PLANO] Alterando plano do usuário:', userId, 'para:', novoPlano);
+      
       const { error } = await supabase
         .from('users')
         .update({ plano: novoPlano as PlanoTipo })
@@ -139,7 +169,7 @@ export function AdministracaoWidget() {
 
       fetchUsuarios();
     } catch (error: any) {
-      console.error('Erro ao alterar plano:', error);
+      console.error('❌ [PLANO] Erro ao alterar plano:', error);
       toast({
         title: "Erro ao alterar plano",
         description: error.message || "Erro desconhecido",
@@ -150,6 +180,8 @@ export function AdministracaoWidget() {
 
   const alterarRoleUsuario = async (userId: string, novaRole: string) => {
     try {
+      console.log('🔄 [ROLE] Alterando role do usuário:', userId, 'para:', novaRole);
+      
       const { error } = await supabase
         .from('users')
         .update({ role: novaRole as UserRole })
@@ -164,7 +196,7 @@ export function AdministracaoWidget() {
 
       fetchUsuarios();
     } catch (error: any) {
-      console.error('Erro ao alterar role:', error);
+      console.error('❌ [ROLE] Erro ao alterar role:', error);
       toast({
         title: "Erro ao alterar role",
         description: error.message || "Erro desconhecido",
@@ -213,9 +245,21 @@ export function AdministracaoWidget() {
   return (
     <ProtectedWidget requiredRole="admin" widgetName="Administração">
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Users className="h-6 w-6 text-whatsapp" />
-          <h2 className="text-2xl font-bold">Administração do Sistema</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="h-6 w-6 text-whatsapp" />
+            <h2 className="text-2xl font-bold">Administração do Sistema</h2>
+          </div>
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
+          </Button>
         </div>
 
         {/* Estatísticas */}
