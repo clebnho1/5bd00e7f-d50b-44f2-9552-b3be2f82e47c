@@ -21,8 +21,8 @@ const plans = [
     ]
   },
   {
-    id: 'basico',
-    name: 'Básico',
+    id: 'profissional',
+    name: 'Profissional',
     price: 'R$ 399',
     period: '/mês',
     description: 'Para pequenas empresas',
@@ -35,8 +35,8 @@ const plans = [
     ]
   },
   {
-    id: 'premium',
-    name: 'Premium',
+    id: 'empresarial',
+    name: 'Empresarial',
     price: 'R$ 699',
     period: '/mês',
     description: 'Para grandes empresas',
@@ -169,7 +169,7 @@ export function SubscriptionManager() {
           
           return (
             <Card key={plan.id} className={`relative ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}>
-              {plan.id === 'basico' && (
+              {plan.id === 'profissional' && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <Badge className="bg-orange-500 text-white">
                     <Star className="w-3 h-3 mr-1" />

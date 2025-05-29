@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -32,7 +31,7 @@ const Cadastro = () => {
   }, [user, authLoading, navigate]);
 
   const planos = [
-    { id: 'gratuito', name: 'Gratuito - R$ 0/mês' },
+    { id: 'gratuito', name: 'Gratuito - R$ 0/mês (7 dias trial)' },
     { id: 'profissional', name: 'Profissional - R$ 399/mês' },
     { id: 'empresarial', name: 'Empresarial - R$ 699/mês' }
   ];
