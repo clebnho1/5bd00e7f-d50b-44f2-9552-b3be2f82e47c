@@ -23,7 +23,7 @@ const Login = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const validateForm = (email: string, senha: string) => {
+  const validateForm = (email: string, senha: string): boolean => {
     console.log('🔍 Validating form...');
     const newErrors: {[key: string]: string} = {};
 
@@ -47,6 +47,9 @@ const Login = () => {
     console.log('=== LOGIN ATTEMPT START ===');
     console.log('Login form submitted with:', { email, senha: '***' });
     
+    // Clear previous errors
+    setErrors({});
+    
     // Prevent multiple submissions
     if (isLoading) {
       console.log('Already submitting, ignoring duplicate submission');
@@ -66,28 +69,27 @@ const Login = () => {
       await signIn(email.trim(), senha);
       console.log('SignIn function completed successfully');
       console.log('=== LOGIN ATTEMPT SUCCESS ===');
-      // After successful login, redirect to dashboard (final step in flow)
-      navigate('/dashboard', { replace: true });
+      // Navigation is handled by useEffect when user state changes
     } catch (error: any) {
       console.error('=== LOGIN ATTEMPT FAILED ===');
       console.error('Login error:', error);
       
       // Tratamento específico de erros de login
-      if (error.message?.includes('Email') || error.message?.includes('incorretos')) {
-        setErrors(prev => ({ 
-          ...prev, 
+      const errorMessage = error?.message || 'Erro no login';
+      
+      if (errorMessage.includes('Email') || errorMessage.includes('incorretos') || errorMessage.includes('Invalid login credentials')) {
+        setErrors({ 
           email: 'Email ou senha incorretos',
           senha: 'Email ou senha incorretos'
-        }));
-      } else if (error.message?.includes('confirmado')) {
-        setErrors(prev => ({ ...prev, email: 'Email não confirmado' }));
-      } else if (error.message?.includes('tentativas')) {
-        setErrors(prev => ({ ...prev, email: 'Muitas tentativas. Aguarde alguns minutos' }));
+        });
+      } else if (errorMessage.includes('confirmado') || errorMessage.includes('Email not confirmed')) {
+        setErrors({ email: 'Email não confirmado. Verifique sua caixa de entrada' });
+      } else if (errorMessage.includes('tentativas')) {
+        setErrors({ email: 'Muitas tentativas. Aguarde alguns minutos' });
       } else {
-        setErrors(prev => ({ 
-          ...prev, 
+        setErrors({ 
           email: 'Erro no login. Tente novamente.' 
-        }));
+        });
       }
     } finally {
       console.log('Setting loading to false');
@@ -103,7 +105,7 @@ const Login = () => {
 
   const handleBackClick = () => {
     console.log('=== BACK BUTTON CLICKED ===');
-    navigate('/cadastro'); // Go back to cadastro in the flow
+    navigate('/cadastro');
   };
 
   const handleCreateAccountClick = () => {

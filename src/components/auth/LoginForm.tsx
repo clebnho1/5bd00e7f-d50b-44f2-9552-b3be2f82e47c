@@ -29,6 +29,8 @@ export const LoginForm = ({ onSubmit, isLoading, errors }: LoginFormProps) => {
     e.stopPropagation();
     console.log('🚀 preventDefault() and stopPropagation() called');
     
+    if (isLoading) return;
+    
     onSubmit(formData.email, formData.senha);
   };
 
@@ -69,7 +71,7 @@ export const LoginForm = ({ onSubmit, isLoading, errors }: LoginFormProps) => {
             placeholder="Digite sua senha"
             value={formData.senha}
             onChange={(e) => handleInputChange('senha', e.target.value)}
-            className={errors.senha ? 'border-red-500' : ''}
+            className={errors.senha ? 'border-red-500 pr-10' : 'pr-10'}
             disabled={isLoading}
             autoComplete="current-password"
             required
@@ -101,7 +103,7 @@ export const LoginForm = ({ onSubmit, isLoading, errors }: LoginFormProps) => {
       <Button
         type="submit"
         className="w-full whatsapp-gradient text-white"
-        disabled={isLoading}
+        disabled={isLoading || !formData.email.trim() || !formData.senha.trim()}
       >
         {isLoading ? (
           <>
