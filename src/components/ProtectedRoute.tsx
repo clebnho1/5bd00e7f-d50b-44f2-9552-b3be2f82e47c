@@ -12,14 +12,28 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
+  console.log('🛡️ [DEBUG] ProtectedRoute render:', {
+    user: !!user,
+    loading,
+    timestamp: new Date().toISOString(),
+    pathname: window.location.pathname
+  });
+
   useEffect(() => {
+    console.log('🔄 [DEBUG] ProtectedRoute useEffect:', {
+      user: !!user,
+      loading,
+      willRedirect: !loading && !user
+    });
+
     if (!loading && !user) {
-      console.log('❌ Usuário não autenticado, redirecionando para login');
+      console.log('❌ [DEBUG] Usuário não autenticado, redirecionando para login');
       navigate('/login', { replace: true });
     }
   }, [user, loading, navigate]);
 
   if (loading) {
+    console.log('⏳ [DEBUG] Mostrando tela de carregamento');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="flex flex-col items-center gap-3">
@@ -31,9 +45,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
+    console.log('🚫 [DEBUG] Usuário não existe, retornando null (vai redirecionar)');
     return null;
   }
 
-  console.log('✅ Usuário autenticado, renderizando conteúdo protegido');
+  console.log('✅ [DEBUG] Usuário autenticado, renderizando conteúdo protegido');
   return <>{children}</>;
 }

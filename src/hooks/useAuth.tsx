@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,40 +27,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
 
+  console.log('🔄 [DEBUG] AuthProvider render - Estado atual:', {
+    user: !!user,
+    session: !!session,
+    loading,
+    userRole,
+    timestamp: new Date().toISOString()
+  });
+
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
 
+    console.log('🚀 [DEBUG] useEffect iniciado - mounted:', mounted);
+
     const initializeAuth = async () => {
       try {
-        console.log('🚀 Inicializando autenticação...');
+        console.log('🔍 [DEBUG] Iniciando initializeAuth...');
+        console.log('📊 [DEBUG] Estado antes da inicialização:', {
+          user: !!user,
+          session: !!session,
+          loading,
+          mounted
+        });
         
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
+        console.log('📨 [DEBUG] getSession resposta:', {
+          hasSession: !!initialSession,
+          hasUser: !!initialSession?.user,
+          error: error?.message,
+          mounted
+        });
+        
         if (error) {
-          console.error('❌ Erro ao obter sessão inicial:', error);
+          console.error('❌ [DEBUG] Erro ao obter sessão inicial:', error);
           if (mounted) {
+            console.log('🔧 [DEBUG] Definindo loading como false devido ao erro');
             setLoading(false);
           }
           return;
         }
 
         if (mounted) {
-          console.log('✅ Sessão inicial obtida:', !!initialSession?.user);
+          console.log('✅ [DEBUG] Sessão inicial obtida, atualizando estado:', {
+            hasSession: !!initialSession,
+            hasUser: !!initialSession?.user,
+            mounted
+          });
+          
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
           
           if (initialSession?.user) {
-            console.log('👤 Buscando role do usuário...');
+            console.log('👤 [DEBUG] Usuário encontrado, buscando role...');
             await fetchUserRole(initialSession.user.id);
           }
           
+          console.log('🎯 [DEBUG] Definindo loading como false após inicialização');
           setLoading(false);
-          console.log('🎉 Autenticação inicializada com sucesso');
+          console.log('🎉 [DEBUG] Autenticação inicializada com sucesso');
+        } else {
+          console.log('⚠️ [DEBUG] Componente desmontado, ignorando atualização');
         }
       } catch (error) {
-        console.error('💥 Erro durante inicialização:', error);
+        console.error('💥 [DEBUG] Erro durante inicialização:', error);
         if (mounted) {
+          console.log('🔧 [DEBUG] Definindo loading como false devido ao erro catch');
           setLoading(false);
         }
       }
@@ -69,22 +101,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log('🔄 Mudança de estado auth:', event, !!currentSession?.user);
+        console.log('🔄 [DEBUG] onAuthStateChange disparado:', {
+          event,
+          hasSession: !!currentSession,
+          hasUser: !!currentSession?.user,
+          mounted,
+          timestamp: new Date().toISOString()
+        });
         
         if (mounted) {
+          console.log('📝 [DEBUG] Atualizando estado com nova sessão');
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           
           if (currentSession?.user && event === 'SIGNED_IN') {
+            console.log('🔐 [DEBUG] Usuário logado, buscando role...');
             await fetchUserRole(currentSession.user.id);
           } else if (!currentSession?.user) {
+            console.log('👤 [DEBUG] Usuário deslogado, limpando role');
             setUserRole(null);
           }
           
           // Garantir que loading seja false após qualquer mudança de auth
           if (loading) {
+            console.log('🔧 [DEBUG] Definindo loading como false após mudança de auth');
             setLoading(false);
           }
+          
+          console.log('📊 [DEBUG] Estado após onAuthStateChange:', {
+            user: !!currentSession?.user,
+            session: !!currentSession,
+            loading: false,
+            event
+          });
+        } else {
+          console.log('⚠️ [DEBUG] onAuthStateChange: componente desmontado, ignorando');
         }
       }
     );
@@ -92,14 +143,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Timeout de segurança para garantir que loading seja false
     timeoutId = setTimeout(() => {
       if (mounted && loading) {
-        console.log('⏰ Timeout de segurança: definindo loading como false');
+        console.log('⏰ [DEBUG] Timeout de segurança: definindo loading como false');
+        console.log('📊 [DEBUG] Estado no timeout:', {
+          mounted,
+          loading,
+          user: !!user,
+          session: !!session
+        });
         setLoading(false);
+      } else {
+        console.log('⏰ [DEBUG] Timeout executado mas condições não atendidas:', {
+          mounted,
+          loading,
+          user: !!user,
+          session: !!session
+        });
       }
     }, 3000);
 
     initializeAuth();
 
     return () => {
+      console.log('🧹 [DEBUG] Cleanup: desmontando AuthProvider');
       mounted = false;
       if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
@@ -108,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      console.log('🔍 Buscando role para usuário:', userId);
+      console.log('🔍 [DEBUG] Buscando role para usuário:', userId);
       const { data, error } = await supabase
         .from('users')
         .select('role')
@@ -116,19 +181,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
-        console.error('❌ Erro ao buscar role:', error);
+        console.error('❌ [DEBUG] Erro ao buscar role:', error);
         return;
       }
 
-      console.log('✅ Role encontrado:', data.role);
+      console.log('✅ [DEBUG] Role encontrado:', data.role);
       setUserRole(data.role);
     } catch (error) {
-      console.error('💥 Erro ao buscar role do usuário:', error);
+      console.error('💥 [DEBUG] Erro ao buscar role do usuário:', error);
     }
   };
 
   const isAdmin = () => {
-    return userRole === 'admin' || user?.email === 'admin@admin.com';
+    const result = userRole === 'admin' || user?.email === 'admin@admin.com';
+    console.log('🔐 [DEBUG] isAdmin check:', {
+      userRole,
+      email: user?.email,
+      result
+    });
+    return result;
   };
 
   const signIn = async (email: string, password: string) => {
@@ -334,18 +405,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const contextValue = {
+    user,
+    session,
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+    loading,
+    isAdmin,
+    userRole,
+  };
+
+  console.log('🎯 [DEBUG] Provendo contexto:', {
+    user: !!user,
+    session: !!session,
+    loading,
+    userRole,
+    timestamp: new Date().toISOString()
+  });
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      signIn,
-      signUp,
-      signOut,
-      resetPassword,
-      loading,
-      isAdmin,
-      userRole,
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -356,5 +437,14 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  
+  console.log('🔗 [DEBUG] useAuth chamado, retornando:', {
+    user: !!context.user,
+    session: !!context.session,
+    loading: context.loading,
+    userRole: context.userRole,
+    timestamp: new Date().toISOString()
+  });
+  
   return context;
 }
