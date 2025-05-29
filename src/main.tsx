@@ -4,9 +4,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Bloqueia TODOS os serviços de terceiros ANTES de qualquer outra coisa
-import "./utils/blockAllThirdParty";
-import "./utils/cleanupFirebase";
+// Comentando temporariamente para eliminar warnings "Unrecognized feature"
+// import "./utils/blockAllThirdParty";
+// import "./utils/cleanupFirebase";
 
 // Remove recursos não utilizados do navegador
 if (typeof window !== 'undefined') {
