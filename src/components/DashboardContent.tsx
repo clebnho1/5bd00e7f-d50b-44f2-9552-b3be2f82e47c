@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,12 +13,20 @@ interface DashboardContentProps {
   activeWidget: string;
 }
 
+interface Widget {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<any>;
+  hasOwnPage?: boolean;
+}
+
 export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget }) => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
 
-  const userWidgets = [
+  const userWidgets: Widget[] = [
     {
       id: 'agente-ai',
       title: 'Agente AI',
@@ -41,7 +48,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
     },
   ];
 
-  const adminWidgets = [
+  const adminWidgets: Widget[] = [
     {
       id: 'configuracoes',
       title: 'Configurações',
