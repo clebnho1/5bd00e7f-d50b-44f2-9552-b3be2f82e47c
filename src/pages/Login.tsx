@@ -21,42 +21,29 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  // Log every navigation attempt
-  useEffect(() => {
-    console.log('=== LOGIN COMPONENT MOUNTED ===');
-    console.log('Current URL:', window.location.href);
-    console.log('Form handlers being attached...');
-    
-    return () => {
-      console.log('=== LOGIN COMPONENT UNMOUNTING ===');
-    };
-  }, []);
-
-  // Add debugging for form element
-  useEffect(() => {
-    const formElement = document.querySelector('form');
-    if (formElement) {
-      console.log('🔍 FORM ELEMENT FOUND:', formElement);
-      console.log('🔍 Form onSubmit handler:', formElement.onsubmit);
-      console.log('🔍 Form action:', formElement.action);
-      console.log('🔍 Form method:', formElement.method);
-      
-      // Check for other event listeners
-      const listeners = (formElement as any)._listeners || [];
-      console.log('🔍 Existing form listeners:', listeners);
-    } else {
-      console.log('❌ FORM ELEMENT NOT FOUND');
-    }
-  }, [formData]); // Re-check when form re-renders
-
   // Redirect if already logged in - but only after auth is initialized
   useEffect(() => {
-    console.log('Login useEffect - Auth state:', { user: !!user, authLoading, initialized });
     if (initialized && !authLoading && user) {
       console.log('User already logged in, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [user, authLoading, initialized, navigate]);
+
+  // Debug form after it's actually rendered
+  useEffect(() => {
+    if (initialized && !authLoading && !user) {
+      console.log('🔍 DEBUGGING FORM AFTER RENDER');
+      const formElement = document.querySelector('form');
+      if (formElement) {
+        console.log('✅ FORM ELEMENT FOUND:', formElement);
+        console.log('🔍 Form onSubmit handler:', formElement.onsubmit);
+        console.log('🔍 Form action:', formElement.action);
+        console.log('🔍 Form method:', formElement.method);
+      } else {
+        console.log('❌ FORM ELEMENT STILL NOT FOUND AFTER RENDER');
+      }
+    }
+  }, [initialized, authLoading, user, formData]);
 
   const handleInputChange = (field: string, value: string) => {
     console.log(`📝 Input changed - ${field}:`, value);
@@ -91,9 +78,6 @@ const Login = () => {
     e.preventDefault();
     e.stopPropagation();
     console.log('=== FORGOT PASSWORD BUTTON CLICKED ===');
-    console.log('Event target:', e.target);
-    console.log('Event currentTarget:', e.currentTarget);
-    console.log('Navigating to /esqueci-senha');
     navigate('/esqueci-senha');
   };
 
@@ -101,7 +85,6 @@ const Login = () => {
     e.preventDefault();
     e.stopPropagation();
     console.log('=== BACK BUTTON CLICKED ===');
-    console.log('Navigating to /');
     navigate('/');
   };
 
@@ -109,7 +92,6 @@ const Login = () => {
     e.preventDefault();
     e.stopPropagation();
     console.log('=== CREATE ACCOUNT BUTTON CLICKED ===');
-    console.log('Navigating to /cadastro');
     navigate('/cadastro');
   };
 
@@ -117,19 +99,13 @@ const Login = () => {
     console.log('🚀 === HANDLE SUBMIT FUNCTION CALLED ===');
     console.log('🚀 Event object:', e);
     console.log('🚀 Event type:', e.type);
-    console.log('🚀 Event target:', e.target);
-    console.log('🚀 Event currentTarget:', e.currentTarget);
     
     e.preventDefault();
     e.stopPropagation();
     
     console.log('🚀 preventDefault() and stopPropagation() called');
-    console.log('🚀 Current URL after preventDefault:', window.location.href);
-    
-    console.log('=== LOGIN SUBMIT BUTTON CLICKED ===');
     console.log('=== LOGIN ATTEMPT START ===');
     console.log('Login form submitted with:', { email: formData.email, senha: '***' });
-    console.log('Current route before validation:', window.location.pathname);
     
     // Prevent multiple submissions
     if (isLoading) {
@@ -143,18 +119,16 @@ const Login = () => {
     }
     
     setIsLoading(true);
-    console.log('Loading state set, current route:', window.location.pathname);
+    console.log('Loading state set, attempting sign in...');
     
     try {
       console.log('About to call signIn function...');
       await signIn(formData.email.trim(), formData.senha);
       console.log('SignIn function completed successfully');
-      console.log('Current route after signIn:', window.location.pathname);
       console.log('=== LOGIN ATTEMPT SUCCESS ===');
     } catch (error: any) {
       console.error('=== LOGIN ATTEMPT FAILED ===');
       console.error('Login error:', error);
-      console.log('Current route after error:', window.location.pathname);
       
       // Tratamento específico de erros de login
       if (error.message?.includes('Email') || error.message?.includes('incorretos')) {
@@ -174,7 +148,7 @@ const Login = () => {
         }));
       }
     } finally {
-      console.log('Setting loading to false, current route:', window.location.pathname);
+      console.log('Setting loading to false');
       setIsLoading(false);
       console.log('=== LOGIN ATTEMPT END ===');
     }
@@ -195,11 +169,10 @@ const Login = () => {
 
   // Don't render if user is logged in (will redirect)
   if (user) {
-    console.log('User is logged in, not rendering login form');
     return null;
   }
 
-  console.log('🎨 Rendering login form with handleSubmit:', typeof handleSubmit);
+  console.log('🎨 Rendering login form');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
@@ -235,17 +208,10 @@ const Login = () => {
             <form 
               onSubmit={(e) => {
                 console.log('📋 FORM onSubmit TRIGGERED - Raw event:', e);
-                console.log('📋 About to call handleSubmit...');
                 handleSubmit(e);
               }}
               className="space-y-4" 
               noValidate
-              onSubmitCapture={(e) => {
-                console.log('📋 FORM onSubmitCapture TRIGGERED:', e);
-              }}
-              onClick={(e) => {
-                console.log('📋 FORM onClick:', e.target);
-              }}
             >
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
