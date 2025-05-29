@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole 
   });
 
-  const fetchUserRole = useCallback(async (userId: string) => {
+  const fetchUserRole = async (userId: string) => {
     try {
       console.log('🔍 [ROLE] Buscando role para usuário:', userId);
       
@@ -58,41 +57,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('💥 [ROLE_CRASH]', error);
       setUserRole('user');
     }
-  }, []);
+  };
 
   useEffect(() => {
-    let mounted = true;
+    console.log('🔄 [INIT] Iniciando autenticação');
+    
+    let isMounted = true;
 
-    const initAuth = async () => {
+    // Função para processar mudanças de autenticação
+    const handleAuthChange = async (event: string, newSession: Session | null) => {
+      if (!isMounted) return;
+      
+      console.log('🔄 [AUTH_CHANGE] Evento:', {
+        event,
+        hasSession: !!newSession,
+        hasUser: !!newSession?.user
+      });
+      
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      
+      if (newSession?.user) {
+        await fetchUserRole(newSession.user.id);
+      } else {
+        setUserRole(null);
+      }
+    };
+
+    // Configurar listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+
+    // Obter sessão atual
+    const initSession = async () => {
       try {
-        console.log('🔄 [INIT] Iniciando autenticação');
-
-        // Configurar listener de mudanças de auth
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, newSession) => {
-            if (!mounted) return;
-            
-            console.log('🔄 [AUTH_CHANGE] Evento:', {
-              event,
-              hasSession: !!newSession,
-              hasUser: !!newSession?.user
-            });
-            
-            setSession(newSession);
-            setUser(newSession?.user ?? null);
-            
-            if (newSession?.user && event === 'SIGNED_IN') {
-              await fetchUserRole(newSession.user.id);
-            } else if (!newSession?.user) {
-              setUserRole(null);
-            }
-            
-            // Definir loading como false apenas após processar a mudança
-            setLoading(false);
-          }
-        );
-
-        // Obter sessão atual
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         console.log('📨 [SESSION] Sessão obtida:', {
@@ -100,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hasUser: !!currentSession?.user
         });
 
-        if (mounted) {
+        if (isMounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           
@@ -111,26 +108,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           console.log('✅ [INIT] Inicialização concluída');
         }
-
-        return () => {
-          subscription.unsubscribe();
-        };
-
       } catch (error) {
         console.error('💥 [INIT_ERROR]', error);
-        if (mounted) {
+        if (isMounted) {
           setLoading(false);
         }
       }
     };
 
-    initAuth();
+    initSession();
 
     return () => {
-      mounted = false;
+      isMounted = false;
+      subscription.unsubscribe();
       console.log('🧹 [CLEANUP] Limpando AuthProvider');
     };
-  }, [fetchUserRole]);
+  }, []); // Sem dependencies para evitar re-renders
 
   const refreshUserRole = async () => {
     if (user) {
