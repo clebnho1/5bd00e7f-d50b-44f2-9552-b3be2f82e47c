@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,11 +25,29 @@ const Login = () => {
   useEffect(() => {
     console.log('=== LOGIN COMPONENT MOUNTED ===');
     console.log('Current URL:', window.location.href);
+    console.log('Form handlers being attached...');
     
     return () => {
       console.log('=== LOGIN COMPONENT UNMOUNTING ===');
     };
-  }, [navigate]);
+  }, []);
+
+  // Add debugging for form element
+  useEffect(() => {
+    const formElement = document.querySelector('form');
+    if (formElement) {
+      console.log('🔍 FORM ELEMENT FOUND:', formElement);
+      console.log('🔍 Form onSubmit handler:', formElement.onsubmit);
+      console.log('🔍 Form action:', formElement.action);
+      console.log('🔍 Form method:', formElement.method);
+      
+      // Check for other event listeners
+      const listeners = (formElement as any)._listeners || [];
+      console.log('🔍 Existing form listeners:', listeners);
+    } else {
+      console.log('❌ FORM ELEMENT NOT FOUND');
+    }
+  }, [formData]); // Re-check when form re-renders
 
   // Redirect if already logged in - but only after auth is initialized
   useEffect(() => {
@@ -42,7 +59,7 @@ const Login = () => {
   }, [user, authLoading, initialized, navigate]);
 
   const handleInputChange = (field: string, value: string) => {
-    console.log(`Input changed - ${field}:`, value);
+    console.log(`📝 Input changed - ${field}:`, value);
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -51,7 +68,7 @@ const Login = () => {
   };
 
   const validateForm = () => {
-    console.log('Validating form...');
+    console.log('🔍 Validating form...');
     const newErrors: {[key: string]: string} = {};
 
     if (!formData.email.trim()) {
@@ -66,7 +83,7 @@ const Login = () => {
 
     setErrors(newErrors);
     const isValid = Object.keys(newErrors).length === 0;
-    console.log('Form validation result:', isValid);
+    console.log('✅ Form validation result:', isValid);
     return isValid;
   };
 
@@ -97,8 +114,17 @@ const Login = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('🚀 === HANDLE SUBMIT FUNCTION CALLED ===');
+    console.log('🚀 Event object:', e);
+    console.log('🚀 Event type:', e.type);
+    console.log('🚀 Event target:', e.target);
+    console.log('🚀 Event currentTarget:', e.currentTarget);
+    
     e.preventDefault();
     e.stopPropagation();
+    
+    console.log('🚀 preventDefault() and stopPropagation() called');
+    console.log('🚀 Current URL after preventDefault:', window.location.href);
     
     console.log('=== LOGIN SUBMIT BUTTON CLICKED ===');
     console.log('=== LOGIN ATTEMPT START ===');
@@ -173,7 +199,7 @@ const Login = () => {
     return null;
   }
 
-  console.log('Rendering login form');
+  console.log('🎨 Rendering login form with handleSubmit:', typeof handleSubmit);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
@@ -206,7 +232,21 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <form 
+              onSubmit={(e) => {
+                console.log('📋 FORM onSubmit TRIGGERED - Raw event:', e);
+                console.log('📋 About to call handleSubmit...');
+                handleSubmit(e);
+              }}
+              className="space-y-4" 
+              noValidate
+              onSubmitCapture={(e) => {
+                console.log('📋 FORM onSubmitCapture TRIGGERED:', e);
+              }}
+              onClick={(e) => {
+                console.log('📋 FORM onClick:', e.target);
+              }}
+            >
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
@@ -247,7 +287,7 @@ const Login = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => {
-                      console.log('=== PASSWORD VISIBILITY TOGGLE CLICKED ===');
+                      console.log('👁️ PASSWORD VISIBILITY TOGGLE CLICKED');
                       setShowPassword(!showPassword);
                     }}
                     disabled={isLoading}
@@ -281,6 +321,12 @@ const Login = () => {
                 type="submit"
                 className="w-full whatsapp-gradient text-white"
                 disabled={isLoading}
+                onClick={(e) => {
+                  console.log('🔴 SUBMIT BUTTON CLICKED - Raw event:', e);
+                  console.log('🔴 Button type:', e.currentTarget.type);
+                  console.log('🔴 Form element:', e.currentTarget.form);
+                  // Don't prevent default here, let the form handle it
+                }}
               >
                 {isLoading ? (
                   <>
