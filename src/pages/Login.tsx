@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,19 +58,13 @@ const Login = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      console.log('Form validation failed:', errors);
       return;
     }
     
     setIsLoading(true);
     
     try {
-      console.log('Attempting login for:', formData.email);
       await signIn(formData.email.trim(), formData.senha);
-      
-      console.log('Login successful, redirecting to dashboard');
-      // Redirect will be handled by the useEffect watching user state
-      
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -85,7 +80,6 @@ const Login = () => {
       } else if (error.message?.includes('tentativas')) {
         setErrors(prev => ({ ...prev, email: 'Muitas tentativas. Aguarde alguns minutos' }));
       } else {
-        // Erro genérico
         setErrors(prev => ({ 
           ...prev, 
           email: 'Erro no login. Tente novamente.' 
