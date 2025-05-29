@@ -5,41 +5,39 @@ import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
-type Subscription = Database['public']['Tables']['subscriptions']['Row'];
+type User = Database['public']['Tables']['users']['Row'];
 
 export function useSubscriptions() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchSubscriptions();
+      fetchUserSubscription();
     } else {
       setLoading(false);
     }
   }, [user]);
 
-  const fetchSubscriptions = async () => {
+  const fetchUserSubscription = async () => {
     if (!user) return;
     
     try {
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('users')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('id', user.id)
+        .single();
 
       if (error) throw error;
       
-      setSubscriptions(data || []);
-      setCurrentSubscription(data?.[0] || null);
+      setCurrentSubscription(data);
     } catch (error: any) {
-      console.error('Erro ao carregar assinaturas:', error);
+      console.error('Erro ao carregar dados do usuário:', error);
       toast({
-        title: "Erro ao carregar assinaturas",
+        title: "Erro ao carregar dados do usuário",
         description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
@@ -52,9 +50,24 @@ export function useSubscriptions() {
     if (!user || !currentSubscription) return;
 
     try {
+      // Calcular data de expiração baseada no plano
+      let updateData: any = { 
+        plano: plan,
+        updated_at: new Date().toISOString(),
+        plano_active: true
+      };
+
+      if (plan === 'gratuito') {
+        updateData.trial_expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 dias
+        updateData.plano_expires_at = null;
+      } else {
+        updateData.trial_expires_at = null;
+        updateData.plano_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 dias
+      }
+
       const { error } = await supabase
-        .from('subscriptions')
-        .update({ plan, updated_at: new Date().toISOString() })
+        .from('users')
+        .update(updateData)
         .eq('id', currentSubscription.id);
 
       if (error) throw error;
@@ -64,9 +77,9 @@ export function useSubscriptions() {
         description: `Seu plano foi alterado para ${plan}`,
       });
 
-      fetchSubscriptions();
+      fetchUserSubscription();
     } catch (error: any) {
-      console.error('Erro ao atualizar assinatura:', error);
+      console.error('Erro ao atualizar plano:', error);
       toast({
         title: "Erro ao atualizar plano",
         description: error.message || "Erro desconhecido",
@@ -76,10 +89,9 @@ export function useSubscriptions() {
   };
 
   return {
-    subscriptions,
     currentSubscription,
     loading,
     updateSubscription,
-    refetch: fetchSubscriptions
+    refetch: fetchUserSubscription
   };
 }

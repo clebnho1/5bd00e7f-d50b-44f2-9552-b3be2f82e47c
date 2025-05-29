@@ -65,14 +65,14 @@ export function SubscriptionManager() {
   }
 
   const isExpired = currentSubscription && 
-    ((currentSubscription.plan === 'gratuito' && currentSubscription.trial_expires_at && new Date(currentSubscription.trial_expires_at) < new Date()) ||
-     (currentSubscription.plan !== 'gratuito' && currentSubscription.plano_expires_at && new Date(currentSubscription.plano_expires_at) < new Date()));
+    ((currentSubscription.plano === 'gratuito' && currentSubscription.trial_expires_at && new Date(currentSubscription.trial_expires_at) < new Date()) ||
+     (currentSubscription.plano !== 'gratuito' && currentSubscription.plano_expires_at && new Date(currentSubscription.plano_expires_at) < new Date()));
 
   const isExpiringSoon = currentSubscription && 
-    ((currentSubscription.plan === 'gratuito' && currentSubscription.trial_expires_at && 
+    ((currentSubscription.plano === 'gratuito' && currentSubscription.trial_expires_at && 
       new Date(currentSubscription.trial_expires_at) > new Date() && 
       new Date(currentSubscription.trial_expires_at) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)) ||
-     (currentSubscription.plan !== 'gratuito' && currentSubscription.plano_expires_at && 
+     (currentSubscription.plano !== 'gratuito' && currentSubscription.plano_expires_at && 
       new Date(currentSubscription.plano_expires_at) > new Date() && 
       new Date(currentSubscription.plano_expires_at) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)));
 
@@ -124,7 +124,7 @@ export function SubscriptionManager() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className={`text-lg font-semibold capitalize ${isExpired ? 'text-red-600' : ''}`}>
-                  {currentSubscription.plan}
+                  {currentSubscription.plano}
                   {isExpired && ' (Vencido)'}
                 </h3>
                 <p className="text-gray-600">
@@ -133,9 +133,9 @@ export function SubscriptionManager() {
                   </Badge>
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Desde: {new Date(currentSubscription.started_at).toLocaleDateString('pt-BR')}
+                  Desde: {new Date(currentSubscription.created_at).toLocaleDateString('pt-BR')}
                 </p>
-                {currentSubscription.plan === 'gratuito' && currentSubscription.trial_expires_at && (
+                {currentSubscription.plano === 'gratuito' && currentSubscription.trial_expires_at && (
                   <p className="text-sm text-gray-500">
                     Trial expira em: {new Date(currentSubscription.trial_expires_at).toLocaleDateString('pt-BR')}
                   </p>
@@ -148,10 +148,10 @@ export function SubscriptionManager() {
               </div>
               <div className="text-right">
                 <p className={`text-2xl font-bold ${isExpired ? 'text-red-600' : ''}`}>
-                  {plans.find(p => p.id === currentSubscription.plan)?.price || 'R$ 0'}
+                  {plans.find(p => p.id === currentSubscription.plano)?.price || 'R$ 0'}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {plans.find(p => p.id === currentSubscription.plan)?.period || '/mês'}
+                  {plans.find(p => p.id === currentSubscription.plano)?.period || '/mês'}
                 </p>
               </div>
             </div>
@@ -164,8 +164,8 @@ export function SubscriptionManager() {
       {/* Planos Disponíveis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((plan) => {
-          const isCurrentPlan = currentSubscription?.plan === plan.id;
-          const isUpgrade = currentSubscription && plans.findIndex(p => p.id === currentSubscription.plan) < plans.findIndex(p => p.id === plan.id);
+          const isCurrentPlan = currentSubscription?.plano === plan.id;
+          const isUpgrade = currentSubscription && plans.findIndex(p => p.id === currentSubscription.plano) < plans.findIndex(p => p.id === plan.id);
           
           return (
             <Card key={plan.id} className={`relative ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}>
