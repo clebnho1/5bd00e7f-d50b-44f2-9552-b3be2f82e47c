@@ -111,7 +111,6 @@ export function WhatsAppWidget() {
         const data = await response.json();
         console.log('🔍 [CHECK_STATUS] Dados recebidos:', data);
         
-        // Corrigindo a extração do status conforme a estrutura real da API
         const apiStatus = data.instance?.state || data.state || 'unknown';
         const normalizedStatus = normalizeStatus(apiStatus);
         
@@ -168,7 +167,6 @@ export function WhatsAppWidget() {
     setError(undefined);
     
     try {
-      // Usando as configurações corretas do checklist
       const requestBody = {
         instanceName: nomeClienteTrimmed,
         integration: "WHATSAPP-BAILEYS",
@@ -225,7 +223,6 @@ export function WhatsAppWidget() {
       const data = await response.json();
       console.log('🔧 [CRIAR_INSTANCIA] Resposta da API:', data);
       
-      // Conforme checklist: deve retornar { "instance": "cliente123" }
       const newInstanceId = data.instance?.instanceName || data.instance || data.instanceName || nomeClienteTrimmed;
       
       setInstanceId(newInstanceId);
@@ -271,7 +268,6 @@ export function WhatsAppWidget() {
     setError(undefined);
     
     try {
-      // Usando o endpoint correto conforme checklist
       console.log('📱 [CONECTAR_WHATSAPP] Fazendo requisição para gerar QR Code...');
       const response = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
         method: 'GET',
@@ -287,18 +283,33 @@ export function WhatsAppWidget() {
         const data = await response.json();
         console.log('📱 [CONECTAR_WHATSAPP] Dados recebidos:', data);
         
-        // Verificar diferentes possíveis estruturas de resposta
+        // SOLUÇÃO PARA O PROBLEMA IDENTIFICADO: Tratar resposta {"count": 0}
+        if (data.count !== undefined && data.count === 0) {
+          console.log('📱 [CONECTAR_WHATSAPP] API retornou count: 0 - Instância precisa ser recriada');
+          
+          toast({
+            title: "Instância inválida",
+            description: "A instância está corrompida. Vamos deletá-la e criar uma nova.",
+            variant: "destructive",
+          });
+          
+          // Deletar instância atual e criar nova
+          await excluirInstancia();
+          setTimeout(() => {
+            criarInstancia();
+          }, 2000);
+          
+          return;
+        }
+        
+        // Verificar diferentes possíveis estruturas de resposta para QR Code
         let qrCodeData = null;
         
-        // Formato esperado pelo checklist
         if (data.qrcode) {
           qrCodeData = data.qrcode;
-        }
-        // Outras possíveis estruturas
-        else if (data.qr) {
+        } else if (data.qr) {
           qrCodeData = data.qr;
-        }
-        else if (data.base64) {
+        } else if (data.base64) {
           qrCodeData = data.base64;
         }
         
@@ -328,12 +339,11 @@ export function WhatsAppWidget() {
           setStatusConexao('open');
           setStatusMessage('Conectado');
         } else {
-          // Se não há QR code, pode ser que a instância já esteja conectada
           console.log('📱 [CONECTAR_WHATSAPP] Verificando se já está conectado...');
           await checkConnectionStatus();
           
           if (statusConexao !== 'open') {
-            throw new Error('QR Code não foi gerado. Tente criar uma nova instância.');
+            throw new Error('QR Code não foi gerado. A instância pode estar corrompida.');
           }
         }
       } else {
