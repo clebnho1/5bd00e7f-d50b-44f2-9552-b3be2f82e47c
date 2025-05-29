@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,7 @@ interface LogActivity {
 
 export function AdministracaoWidget() {
   const { toast } = useToast();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, refreshUserRole } = useAuth();
   
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [logs, setLogs] = useState<LogActivity[]>([]);
@@ -56,13 +55,22 @@ export function AdministracaoWidget() {
     console.log('🔍 [ADMIN_WIDGET] Inicializando widget de administração');
     console.log('🔍 [ADMIN_WIDGET] User:', user?.email, 'isAdmin:', isAdmin());
     
-    if (isAdmin()) {
-      fetchData();
-    } else {
-      console.log('❌ [ADMIN_WIDGET] Usuário não é admin');
-      setLoading(false);
-    }
-  }, [user, isAdmin]);
+    const initializeWidget = async () => {
+      if (user?.email === 'admin@admin.com') {
+        // Para o usuário admin, atualizar role antes de carregar dados
+        await refreshUserRole();
+      }
+      
+      if (isAdmin()) {
+        await fetchData();
+      } else {
+        console.log('❌ [ADMIN_WIDGET] Usuário não é admin');
+        setLoading(false);
+      }
+    };
+
+    initializeWidget();
+  }, [user, isAdmin, refreshUserRole]);
 
   const fetchData = async () => {
     console.log('🔄 [ADMIN_WIDGET] Iniciando carregamento de dados');

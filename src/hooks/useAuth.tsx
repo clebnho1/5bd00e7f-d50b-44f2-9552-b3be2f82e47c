@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: () => boolean;
   userRole: UserRole | null;
+  refreshUserRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -135,6 +135,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('💥 [ROLE_CRASH] Erro ao buscar role:', error);
       // Em caso de erro, assume 'user' como padrão
       setUserRole('user');
+    }
+  };
+
+  const refreshUserRole = async () => {
+    if (user) {
+      console.log('🔄 [REFRESH_ROLE] Atualizando role do usuário');
+      await fetchUserRole(user.id);
     }
   };
 
@@ -344,6 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     isAdmin,
     userRole,
+    refreshUserRole,
   };
 
   console.log('🎯 [CONTEXT] Estado atual:', {
