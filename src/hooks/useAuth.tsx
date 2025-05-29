@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import React, { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -27,17 +27,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
+  const initialized = useRef(false);
+  const subscription = useRef<any>(null);
 
   console.log('🚀 [AUTH_PROVIDER] Inicializado');
 
   useEffect(() => {
-    let mounted = true;
+    if (initialized.current) {
+      console.log('⚠️ [AUTH_PROVIDER] Já inicializado, ignorando');
+      return;
+    }
+
+    initialized.current = true;
+    console.log('🔄 [INIT] Iniciando inicialização da autenticação');
 
     const initializeAuth = async () => {
       try {
-        console.log('🔄 [INIT] Iniciando inicialização da autenticação');
-        
-        // Get initial session first
+        // Setup auth state listener first
+        const { data: authData } = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            console.log('🔄 [AUTH_CHANGE] Evento recebido:', {
+              event,
+              hasSession: !!currentSession,
+              hasUser: !!currentSession?.user,
+            });
+            
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            
+            if (currentSession?.user && event === 'SIGNED_IN') {
+              console.log('👤 [LOGIN] Buscando role do usuário após login');
+              // Use setTimeout to avoid blocking the auth state change
+              setTimeout(() => {
+                fetchUserRole(currentSession.user.id);
+              }, 0);
+            } else if (!currentSession?.user) {
+              console.log('👤 [LOGOUT] Limpando role');
+              setUserRole(null);
+            }
+          }
+        );
+
+        subscription.current = authData.subscription;
+
+        // Get initial session
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         console.log('📨 [SESSION] Sessão inicial obtida:', {
@@ -50,67 +83,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('❌ [ERROR] Erro ao obter sessão:', error);
         }
 
-        if (mounted) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          
-          // Fetch user role if user exists
-          if (initialSession?.user) {
-            console.log('👤 [INIT] Buscando role do usuário na inicialização');
-            await fetchUserRole(initialSession.user.id);
-          }
-          
-          setLoading(false);
-          console.log('✅ [INIT] Inicialização concluída');
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        
+        // Fetch user role if user exists
+        if (initialSession?.user) {
+          console.log('👤 [INIT] Buscando role do usuário na inicialização');
+          await fetchUserRole(initialSession.user.id);
         }
-
-        // Setup auth state listener after initial load
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, currentSession) => {
-            console.log('🔄 [AUTH_CHANGE] Evento recebido:', {
-              event,
-              hasSession: !!currentSession,
-              hasUser: !!currentSession?.user,
-              mounted
-            });
-            
-            if (mounted) {
-              setSession(currentSession);
-              setUser(currentSession?.user ?? null);
-              
-              if (currentSession?.user && event === 'SIGNED_IN') {
-                console.log('👤 [LOGIN] Buscando role do usuário após login');
-                setTimeout(() => {
-                  fetchUserRole(currentSession.user.id);
-                }, 0);
-              } else if (!currentSession?.user) {
-                console.log('👤 [LOGOUT] Limpando role');
-                setUserRole(null);
-              }
-            }
-          }
-        );
-
-        return () => {
-          console.log('🧹 [CLEANUP] Limpando subscription');
-          subscription.unsubscribe();
-        };
+        
+        setLoading(false);
+        console.log('✅ [INIT] Inicialização concluída');
       } catch (error) {
         console.error('💥 [CRASH] Erro durante inicialização:', error);
-        if (mounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
-    const cleanup = initializeAuth();
+    initializeAuth();
 
     return () => {
-      console.log('🧹 [CLEANUP] Limpando AuthProvider');
-      mounted = false;
-      cleanup?.then(fn => fn?.());
+      console.log('🧹 [CLEANUP] Limpando subscription');
+      if (subscription.current) {
+        subscription.current.unsubscribe();
+        subscription.current = null;
+      }
+      initialized.current = false;
     };
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -124,7 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('❌ [ROLE_ERROR] Erro ao buscar role:', error);
-        // Se não encontrar na tabela users, assume 'user' como padrão
         setUserRole('user');
         return;
       }
@@ -133,7 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(data.role);
     } catch (error) {
       console.error('💥 [ROLE_CRASH] Erro ao buscar role:', error);
-      // Em caso de erro, assume 'user' como padrão
       setUserRole('user');
     }
   };
@@ -292,7 +290,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      // Clear local state
       setUserRole(null);
       
       toast({
