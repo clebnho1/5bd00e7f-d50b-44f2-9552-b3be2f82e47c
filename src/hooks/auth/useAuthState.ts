@@ -11,12 +11,9 @@ export function useAuthState() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [initialized, setInitialized] = useState(false);
 
   const fetchUserRole = async (userId: string) => {
     try {
-      console.log('🔍 [ROLE] Buscando role para:', userId);
-      
       const { data, error } = await supabase
         .from('users')
         .select('role')
@@ -29,7 +26,6 @@ export function useAuthState() {
         return;
       }
 
-      console.log('✅ [ROLE_SUCCESS] Role encontrada:', data.role);
       setUserRole(data.role);
     } catch (error) {
       console.error('💥 [ROLE_CRASH]', error);
@@ -48,64 +44,45 @@ export function useAuthState() {
   };
 
   useEffect(() => {
-    if (initialized) return;
-
-    console.log('🔄 [AUTH_INIT] Inicializando sistema de autenticação');
-    
     let mounted = true;
     let authSubscription: any;
 
     const initAuth = async () => {
       try {
-        // Configura o listener primeiro
+        // Pega a sessão atual primeiro
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (mounted && currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          await fetchUserRole(currentSession.user.id);
+        }
+
+        // Configura o listener de mudanças
         authSubscription = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!mounted) return;
-            
-            console.log('🔄 [AUTH_CHANGE]', { event, hasSession: !!newSession });
             
             if (event === 'SIGNED_OUT' || !newSession) {
               setUser(null);
               setSession(null);
               setUserRole(null);
-            } else {
+            } else if (newSession.user) {
               setSession(newSession);
               setUser(newSession.user);
-              
-              if (newSession.user && !userRole) {
-                await fetchUserRole(newSession.user.id);
-              }
-            }
-            
-            if (!initialized && mounted) {
-              setLoading(false);
-              setInitialized(true);
+              await fetchUserRole(newSession.user.id);
             }
           }
         );
 
-        // Depois pega a sessão atual
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
         if (mounted) {
-          if (currentSession?.user) {
-            console.log('📨 [SESSION_FOUND] Sessão encontrada para:', currentSession.user.email);
-            setSession(currentSession);
-            setUser(currentSession.user);
-            await fetchUserRole(currentSession.user.id);
-          } else {
-            console.log('❌ [NO_SESSION] Nenhuma sessão encontrada');
-          }
-          
           setLoading(false);
-          setInitialized(true);
         }
 
       } catch (error) {
         console.error('💥 [AUTH_INIT_ERROR]', error);
         if (mounted) {
           setLoading(false);
-          setInitialized(true);
         }
       }
     };
@@ -118,7 +95,7 @@ export function useAuthState() {
         authSubscription.data.subscription.unsubscribe();
       }
     };
-  }, []); // Dependência vazia - só executa uma vez
+  }, []);
 
   return {
     user,

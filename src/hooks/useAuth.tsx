@@ -26,14 +26,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, session, loading, userRole, isAdmin, refreshUserRole } = useAuthState();
   const { signIn, signUp, signOut, resetPassword } = useAuthActions();
 
-  console.log('🔧 [AUTH_PROVIDER] Estado:', { 
-    hasUser: !!user, 
-    hasSession: !!session, 
-    loading, 
-    userRole 
-  });
-
-  // Only provide context after initial loading is complete
   const contextValue: AuthContextType = {
     user,
     session,

@@ -15,16 +15,13 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  // Redirect if already logged in - but only after auth is loaded
   useEffect(() => {
     if (!authLoading && user) {
-      console.log('User already logged in, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
   const validateForm = (email: string, senha: string): boolean => {
-    console.log('🔍 Validating form...');
     const newErrors: {[key: string]: string} = {};
 
     if (!email.trim()) {
@@ -38,39 +35,21 @@ const Login = () => {
     }
 
     setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
-    console.log('✅ Form validation result:', isValid);
-    return isValid;
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleFormSubmit = async (email: string, senha: string) => {
-    console.log('=== LOGIN ATTEMPT START ===');
-    console.log('Login form submitted with:', { email, senha: '***' });
-    
     setErrors({});
     
-    if (isLoading) {
-      console.log('Already submitting, ignoring duplicate submission');
-      return;
-    }
+    if (isLoading) return;
     
-    if (!validateForm(email, senha)) {
-      console.log('Form validation failed, staying on login page');
-      return;
-    }
+    if (!validateForm(email, senha)) return;
     
     setIsLoading(true);
-    console.log('Loading state set, attempting sign in...');
     
     try {
-      console.log('About to call signIn function...');
       await signIn(email.trim(), senha);
-      console.log('SignIn function completed successfully');
-      console.log('=== LOGIN ATTEMPT SUCCESS ===');
     } catch (error: any) {
-      console.error('=== LOGIN ATTEMPT FAILED ===');
-      console.error('Login error:', error);
-      
       const errorMessage = error?.message || 'Erro no login';
       
       if (errorMessage.includes('Email') || errorMessage.includes('incorretos') || errorMessage.includes('Invalid login credentials')) {
@@ -88,30 +67,23 @@ const Login = () => {
         });
       }
     } finally {
-      console.log('Setting loading to false');
       setIsLoading(false);
-      console.log('=== LOGIN ATTEMPT END ===');
     }
   };
 
   const handleForgotPasswordClick = () => {
-    console.log('=== FORGOT PASSWORD BUTTON CLICKED ===');
     navigate('/esqueci-senha');
   };
 
   const handleBackClick = () => {
-    console.log('=== BACK BUTTON CLICKED ===');
     navigate('/cadastro');
   };
 
   const handleCreateAccountClick = () => {
-    console.log('=== CREATE ACCOUNT BUTTON CLICKED ===');
     navigate('/cadastro');
   };
 
-  // Show loading if auth is still initializing
   if (authLoading) {
-    console.log('Showing loading state - authLoading:', authLoading);
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -122,12 +94,9 @@ const Login = () => {
     );
   }
 
-  // Don't render if user is logged in (will redirect)
   if (user) {
     return null;
   }
-
-  console.log('🎨 Rendering login page');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
