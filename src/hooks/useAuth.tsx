@@ -35,6 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole 
   });
 
+  const clearAuthState = () => {
+    setUser(null);
+    setSession(null);
+    setUserRole(null);
+  };
+
   const fetchUserRole = async (userId: string) => {
     try {
       console.log('🔍 [ROLE] Buscando role para usuário:', userId);
@@ -66,27 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        // PRIMEIRO: Obter sessão atual
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        console.log('📨 [SESSION] Sessão obtida:', {
-          hasSession: !!currentSession,
-          hasUser: !!currentSession?.user
-        });
-
-        if (isMounted) {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          
-          if (currentSession?.user) {
-            await fetchUserRole(currentSession.user.id);
-          }
-          
-          setLoading(false);
-          console.log('✅ [INIT] Inicialização concluída');
-        }
-
-        // SEGUNDO: Configurar listener para mudanças futuras
+        // PRIMEIRO: Configurar listener para mudanças de estado
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!isMounted) return;
@@ -97,22 +83,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               hasUser: !!newSession?.user
             });
             
-            setSession(newSession);
-            setUser(newSession?.user ?? null);
-            
-            if (newSession?.user) {
-              await fetchUserRole(newSession.user.id);
+            if (event === 'SIGNED_OUT' || !newSession) {
+              clearAuthState();
             } else {
-              setUserRole(null);
+              setSession(newSession);
+              setUser(newSession?.user ?? null);
+              
+              if (newSession?.user) {
+                await fetchUserRole(newSession.user.id);
+              }
             }
           }
         );
+
+        // SEGUNDO: Obter sessão atual
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        console.log('📨 [SESSION] Sessão obtida:', {
+          hasSession: !!currentSession,
+          hasUser: !!currentSession?.user
+        });
+
+        if (isMounted) {
+          if (currentSession) {
+            setSession(currentSession);
+            setUser(currentSession.user);
+            await fetchUserRole(currentSession.user.id);
+          } else {
+            clearAuthState();
+          }
+          
+          setLoading(false);
+          console.log('✅ [INIT] Inicialização concluída');
+        }
 
         return subscription;
 
       } catch (error) {
         console.error('💥 [INIT_ERROR]', error);
         if (isMounted) {
+          clearAuthState();
           setLoading(false);
         }
       }
@@ -129,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       console.log('🧹 [CLEANUP] Limpando AuthProvider');
     };
-  }, []); // Dependências vazias são corretas aqui
+  }, []);
 
   const refreshUserRole = async () => {
     if (user) {
@@ -273,27 +283,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      console.log('🚪 [SIGNOUT] Iniciando logout');
       
-      if (error) {
-        console.error('Sign out error:', error);
-        toast({
-          title: "Erro ao sair",
-          description: error.message || "Erro desconhecido",
-          variant: "destructive",
-        });
-        throw error;
+      // Limpar estado local primeiro para evitar tentativas de uso de sessão inválida
+      clearAuthState();
+      
+      // Tentar fazer logout no Supabase, mas não falhar se der erro
+      try {
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          // Se for erro de sessão não encontrada, não é um problema crítico
+          if (error.message?.includes('session') || error.message?.includes('Session')) {
+            console.log('ℹ️ [SIGNOUT] Sessão já estava inválida, logout local realizado');
+          } else {
+            console.error('⚠️ [SIGNOUT_WARNING] Erro no logout remoto:', error);
+          }
+        } else {
+          console.log('✅ [SIGNOUT] Logout remoto bem-sucedido');
+        }
+      } catch (remoteError) {
+        console.error('⚠️ [SIGNOUT_REMOTE_ERROR] Erro no logout remoto:', remoteError);
+        // Continuar mesmo com erro remoto - o estado local já foi limpo
       }
-
-      setUserRole(null);
       
       toast({
         title: "Logout realizado",
         description: "Até logo!",
       });
+      
     } catch (error) {
-      console.error('Error during sign out:', error);
-      throw error;
+      console.error('💥 [SIGNOUT_CRITICAL] Erro crítico durante logout:', error);
+      // Mesmo com erro crítico, garantir que o estado local seja limpo
+      clearAuthState();
+      
+      toast({
+        title: "Logout realizado",
+        description: "Sessão encerrada localmente.",
+      });
     }
   };
 
