@@ -34,13 +34,23 @@ export function blockAllThirdPartyServices() {
   // Bloqueia XMLHttpRequest
   const OriginalXHR = window.XMLHttpRequest;
   window.XMLHttpRequest = class extends OriginalXHR {
-    open(method: string, url: string | URL, ...args: any[]) {
+    open(method: string, url: string | URL, async?: boolean, user?: string | null, password?: string | null) {
       const urlStr = url.toString();
       if (blockedDomains.some(domain => urlStr.includes(domain))) {
         console.log('🚫 Blocked third-party XHR to:', urlStr);
         throw new Error('Third-party XHR blocked');
       }
-      return super.open(method, url, ...args);
+      // Corrigido: usar argumentos específicos em vez de spread
+      if (async !== undefined) {
+        if (user !== undefined) {
+          if (password !== undefined) {
+            return super.open(method, url, async, user, password);
+          }
+          return super.open(method, url, async, user);
+        }
+        return super.open(method, url, async);
+      }
+      return super.open(method, url);
     }
   } as any;
 
@@ -133,9 +143,9 @@ export function blockAllThirdPartyServices() {
   // Bloqueia tentativas de injeção via appendChild
   const originalAppendChild = Element.prototype.appendChild;
   Element.prototype.appendChild = function<T extends Node>(node: T): T {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const element = node as Element;
-      const src = element.getAttribute('src');
+    // Corrigido: verificar se é Element antes da conversão
+    if (node.nodeType === Node.ELEMENT_NODE && node instanceof Element) {
+      const src = node.getAttribute('src');
       
       if (src && blockedDomains.some(domain => src.includes(domain))) {
         console.log('🚫 Blocked third-party element injection:', src);
