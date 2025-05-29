@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { QrCode, Settings, ArrowLeft, User } from 'lucide-react';
+import { QrCode, Settings, ArrowLeft, User, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import QrCodeDisplay from '@/components/QrCodeDisplay';
 import { WhatsAppConnectionForm } from './WhatsApp/WhatsAppConnectionForm';
@@ -29,6 +28,7 @@ export function WhatsAppWidget() {
     statusMessage,
     qrCode,
     error,
+    isAPIHealthy,
     checkConnectionStatus,
     createInstance,
     connectWhatsApp,
@@ -54,22 +54,22 @@ export function WhatsAppWidget() {
     }
   }, [user?.id]);
 
-  // Auto-verificação quando o nome da instância muda
+  // Auto-verificação otimizada quando o nome da instância muda
   useEffect(() => {
-    if (nomeCliente.trim().length > 2) {
+    if (nomeCliente.trim().length > 2 && isAPIHealthy) {
       const timer = setTimeout(() => {
         handleCheckStatus();
-      }, 1000);
+      }, 2000); // Aumentado para 2 segundos
       
       return () => clearTimeout(timer);
     }
-  }, [nomeCliente]);
+  }, [nomeCliente, isAPIHealthy]);
 
   // Verificar status da conexão periodicamente quando tiver instância
   useEffect(() => {
     const targetInstance = instanceId || nomeCliente.trim();
     
-    if (targetInstance && user?.id) {
+    if (targetInstance && user?.id && isAPIHealthy) {
       console.log(`🎯 Iniciando monitoramento para usuário ${user.email}: ${targetInstance}`);
       startPeriodicCheck(targetInstance);
     } else {
@@ -77,7 +77,7 @@ export function WhatsAppWidget() {
     }
     
     return () => stopPeriodicCheck();
-  }, [instanceId, nomeCliente, user?.id]);
+  }, [instanceId, nomeCliente, user?.id, isAPIHealthy]);
 
   const handleCheckStatus = async () => {
     const targetInstance = instanceId || nomeCliente.trim();
@@ -177,6 +177,21 @@ export function WhatsAppWidget() {
           {user.email}
         </div>
       </div>
+
+      {/* Status da API */}
+      {!isAPIHealthy && (
+        <Card className="bg-orange-50 border-orange-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-orange-800">
+              <AlertTriangle className="h-5 w-5" />
+              <p className="font-medium">Servidor temporariamente com problemas</p>
+            </div>
+            <p className="text-orange-700 text-sm mt-1">
+              O servidor do WhatsApp está com instabilidade. As verificações foram reduzidas automaticamente.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Card Principal */}
       <Card className="bg-white shadow-lg">

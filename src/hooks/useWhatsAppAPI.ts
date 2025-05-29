@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,18 +16,19 @@ export function useWhatsAppAPI() {
   const [qrCode, setQrCode] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isAPIHealthy, setIsAPIHealthy] = useState(true);
 
   // Gerar nome único da instância baseado no usuário
   const generateInstanceName = (baseClientName: string) => {
     if (!user?.id) return baseClientName;
     
     // Verificar se o nome já tem o prefixo para evitar duplicação
-    if (baseClientName.startsWith(user.id.substring(0, 8))) {
+    const userPrefix = user.id.substring(0, 8);
+    if (baseClientName.startsWith(userPrefix)) {
       return baseClientName;
     }
     
-    // Usar os primeiros 8 caracteres do ID do usuário + nome do cliente
-    const userPrefix = user.id.substring(0, 8);
     return `${userPrefix}_${baseClientName.trim()}`;
   };
 
@@ -44,7 +46,6 @@ export function useWhatsAppAPI() {
   const checkConnectionStatus = async (instanceName: string) => {
     if (!instanceName || !user?.id) return;
 
-    // Não gerar nome novamente se já foi gerado
     const finalInstanceName = instanceName.includes('_') ? instanceName : generateInstanceName(instanceName);
 
     try {
@@ -55,7 +56,9 @@ export function useWhatsAppAPI() {
         headers: {
           'Content-Type': 'application/json',
           'apikey': API_KEY
-        }
+        },
+        // Adicionar timeout para evitar travamentos
+        signal: AbortSignal.timeout(10000)
       });
 
       if (response.ok) {
@@ -65,7 +68,10 @@ export function useWhatsAppAPI() {
         
         console.log(`📊 Status atual para ${user.email}: ${apiStatus} -> ${normalizedStatus}`);
         
-        // Só atualiza se o status mudou
+        // Resetar contador de retry e marcar API como saudável
+        setRetryCount(0);
+        setIsAPIHealthy(true);
+        
         if (statusConexao !== normalizedStatus) {
           setStatusConexao(normalizedStatus);
           
@@ -96,15 +102,34 @@ export function useWhatsAppAPI() {
           setError(undefined);
           setQrCode('');
         }
+      } else if (response.status >= 500) {
+        // Erro de servidor - marcar API como não saudável
+        setIsAPIHealthy(false);
+        setRetryCount(prev => prev + 1);
+        
+        if (retryCount < 3) {
+          console.log(`⚠️ Erro 500 da API (tentativa ${retryCount + 1}/3), tentando novamente...`);
+          setStatusMessage('Servidor temporariamente indisponível, tentando reconectar...');
+        } else {
+          throw new Error(`API com problemas no servidor (${response.status})`);
+        }
       } else {
         throw new Error(`API respondeu com status ${response.status}`);
       }
     } catch (err) {
       console.error('❌ Erro ao verificar status:', err);
-      if (statusConexao !== 'error') {
+      setRetryCount(prev => prev + 1);
+      
+      if (err instanceof Error && err.name === 'TimeoutError') {
+        setStatusMessage('Timeout na verificação, tentando novamente...');
+        setIsAPIHealthy(false);
+      } else if (retryCount >= 3) {
         setStatusConexao('error');
-        setStatusMessage('Erro ao verificar conexão');
+        setStatusMessage('Erro persistente na comunicação com API');
         setError(err instanceof Error ? err.message : 'Erro desconhecido');
+        setIsAPIHealthy(false);
+      } else {
+        setStatusMessage('Erro temporário, tentando novamente...');
       }
     }
   };
@@ -155,7 +180,8 @@ export function useWhatsAppAPI() {
           'Content-Type': 'application/json',
           'apikey': API_KEY
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(30000)
       });
 
       if (!response.ok) {
@@ -163,6 +189,17 @@ export function useWhatsAppAPI() {
         
         try {
           const errorData = JSON.parse(errorText);
+          
+          // Verificar se é erro de database em recovery mode
+          if (errorData.response?.message?.[0]?.includes('database system is in recovery mode')) {
+            toast({
+              title: "Servidor em manutenção",
+              description: "O servidor está em manutenção. Tente novamente em alguns minutos.",
+              variant: "destructive",
+            });
+            throw new Error("Servidor em manutenção, tente novamente mais tarde");
+          }
+          
           if (errorData.message?.includes('already in use') || errorData.message?.includes('já existe')) {
             toast({
               title: "Instância já existe",
@@ -172,7 +209,10 @@ export function useWhatsAppAPI() {
           }
           
           throw new Error(errorData.message || `Erro na API: ${response.status}`);
-        } catch {
+        } catch (parseError) {
+          if (response.status >= 500) {
+            throw new Error(`Servidor temporariamente indisponível (${response.status})`);
+          }
           throw new Error(`Erro na API: ${response.status} - ${errorText}`);
         }
       }
@@ -374,8 +414,13 @@ export function useWhatsAppAPI() {
     // Verifica imediatamente
     checkConnectionStatus(instanceName);
     
-    // Configura verificação a cada 5 segundos quando conectando, 15 segundos quando conectado
-    const getInterval = () => statusConexao === 'connecting' ? 5000 : 15000;
+    // Intervalo adaptativo baseado no estado da API e status de conexão
+    const getInterval = () => {
+      if (!isAPIHealthy) return 30000; // 30 segundos se API não estiver saudável
+      if (statusConexao === 'connecting') return 8000; // 8 segundos quando conectando
+      if (statusConexao === 'open') return 30000; // 30 segundos quando conectado
+      return 15000; // 15 segundos para outros estados
+    };
     
     intervalRef.current = setInterval(() => {
       checkConnectionStatus(instanceName);
@@ -403,6 +448,7 @@ export function useWhatsAppAPI() {
     statusMessage,
     qrCode,
     error,
+    isAPIHealthy,
     checkConnectionStatus,
     createInstance,
     connectWhatsApp,
