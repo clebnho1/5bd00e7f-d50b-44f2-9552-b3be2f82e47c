@@ -361,9 +361,27 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_admin_user: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_own_user: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      is_own_user_record: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      log_activity: {
+        Args: {
+          p_user_id: string
+          p_widget: string
+          p_action: string
+          p_description?: string
+          p_metadata?: Json
+        }
+        Returns: undefined
       }
       save_user_webhook_url: {
         Args: { user_id_param: string; webhook_url_param: string }

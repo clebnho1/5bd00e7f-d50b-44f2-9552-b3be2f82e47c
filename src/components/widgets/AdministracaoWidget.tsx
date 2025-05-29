@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,12 +55,18 @@ export function AdministracaoWidget() {
 
   const fetchUsuarios = async () => {
     try {
+      console.log('Fetching usuarios...');
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar usuários:', error);
+        throw error;
+      }
+      
+      console.log('Usuarios loaded:', data?.length || 0);
       setUsuarios(data || []);
     } catch (error: any) {
       console.error('Erro ao carregar usuários:', error);
@@ -75,13 +80,19 @@ export function AdministracaoWidget() {
 
   const fetchLogs = async () => {
     try {
+      console.log('Fetching logs...');
       const { data, error } = await supabase
         .from('activity_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar logs:', error);
+        throw error;
+      }
+      
+      console.log('Logs loaded:', data?.length || 0);
       setLogs(data || []);
     } catch (error: any) {
       console.error('Erro ao carregar logs:', error);

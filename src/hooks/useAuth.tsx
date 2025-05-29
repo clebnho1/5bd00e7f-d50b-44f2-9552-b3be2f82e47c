@@ -1,8 +1,10 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Database } from '@/integrations/supabase/types';
+
+type UserRole = Database['public']['Enums']['user_role'];
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   initialized: boolean;
   isAdmin: () => boolean;
+  userRole: UserRole | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,6 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
+          
+          if (initialSession?.user) {
+            await fetchUserRole(initialSession.user.id);
+          }
+          
           setInitialized(true);
           setLoading(false);
           console.log('Auth initialized with user:', !!initialSession?.user);
@@ -58,11 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+      async (event, currentSession) => {
         console.log('Auth state change:', event, !!currentSession);
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
+          
+          if (currentSession?.user) {
+            await fetchUserRole(currentSession.user.id);
+          } else {
+            setUserRole(null);
+          }
           
           if (!initialized) {
             setInitialized(true);
@@ -81,8 +96,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user role:', error);
+        return;
+      }
+
+      setUserRole(data.role);
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
+
   const isAdmin = () => {
-    return user?.email === 'admin@admin.com' || user?.user_metadata?.role === 'admin';
+    return userRole === 'admin' || user?.email === 'admin@admin.com';
   };
 
   const signIn = async (email: string, password: string) => {
@@ -314,6 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       initialized,
       isAdmin,
+      userRole,
     }}>
       {children}
     </AuthContext.Provider>
