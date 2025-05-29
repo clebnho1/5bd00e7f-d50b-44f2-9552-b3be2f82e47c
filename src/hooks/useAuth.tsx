@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,28 +33,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        console.log('Initializing auth...');
+        console.log('🚀 Inicializando autenticação...');
         
-        // Get initial session
+        // Get initial session synchronously first
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error getting initial session:', error);
+          console.error('❌ Erro ao obter sessão inicial:', error);
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
         }
 
         if (mounted) {
+          console.log('✅ Sessão inicial obtida:', !!initialSession?.user);
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
           
+          // Fetch user role immediately if user exists
           if (initialSession?.user) {
+            console.log('👤 Buscando role do usuário...');
             await fetchUserRole(initialSession.user.id);
           }
           
           setLoading(false);
-          console.log('Auth initialized with user:', !!initialSession?.user);
+          console.log('🎉 Autenticação inicializada com sucesso');
         }
       } catch (error) {
-        console.error('Error during session initialization:', error);
+        console.error('💥 Erro durante inicialização:', error);
         if (mounted) {
           setLoading(false);
         }
@@ -63,34 +71,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log('Auth state change:', event, !!currentSession);
+        console.log('🔄 Mudança de estado auth:', event, !!currentSession?.user);
+        
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           
-          if (currentSession?.user && !userRole) {
-            // Only fetch role if we don't have it yet
+          if (currentSession?.user && event === 'SIGNED_IN') {
+            // Only fetch role on sign in to avoid unnecessary calls
             await fetchUserRole(currentSession.user.id);
           } else if (!currentSession?.user) {
             setUserRole(null);
           }
           
-          setLoading(false);
+          // Don't set loading to false here to avoid double loading states
+          if (event === 'INITIAL_SESSION') {
+            setLoading(false);
+          }
         }
       }
     );
 
-    // Initialize auth
+    // Initialize auth immediately
     initializeAuth();
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Remove userRole dependency to avoid re-initialization
+  }, []);
 
   const fetchUserRole = async (userId: string) => {
     try {
+      console.log('🔍 Buscando role para usuário:', userId);
       const { data, error } = await supabase
         .from('users')
         .select('role')
@@ -98,13 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
-        console.error('Error fetching user role:', error);
+        console.error('❌ Erro ao buscar role:', error);
         return;
       }
 
+      console.log('✅ Role encontrado:', data.role);
       setUserRole(data.role);
     } catch (error) {
-      console.error('Error fetching user role:', error);
+      console.error('💥 Erro ao buscar role do usuário:', error);
     }
   };
 
@@ -127,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
-      console.log('Attempting sign in with email:', email);
+      console.log('🔐 Tentando login com email:', email);
       
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -135,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error('Supabase sign in error:', error);
+        console.error('❌ Erro de login Supabase:', error);
         let errorMessage = "Erro no login";
         
         if (error.message.includes('Invalid login credentials')) {
@@ -154,14 +168,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      console.log('Sign in successful');
+      console.log('✅ Login realizado com sucesso');
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
       });
       
     } catch (error) {
-      console.error('Error during sign in:', error);
+      console.error('💥 Erro durante sign in:', error);
       throw error;
     } finally {
       setLoading(false);
