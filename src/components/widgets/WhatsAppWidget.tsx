@@ -39,7 +39,7 @@ export function WhatsAppWidget() {
     }
   }, []);
 
-  // Verificar status da conexão periodicamente
+  // Verificar status da conexão periodicamente (a cada 5s)
   useEffect(() => {
     if (instanceId) {
       checkConnectionStatus();
@@ -270,34 +270,38 @@ export function WhatsAppWidget() {
         <h1 className="text-2xl font-bold text-gray-800">Gerenciar WhatsApp do Cliente</h1>
       </div>
 
-      {/* Card de Configuração */}
-      <Card className="bg-green-500 text-white border-0">
+      {/* Card Principal */}
+      <Card className="bg-white shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
+          <CardTitle className="flex items-center gap-2 text-gray-800">
             <Settings className="h-5 w-5" />
-            Configuração da Instância
+            Configuração da Instância WhatsApp
           </CardTitle>
-          <CardDescription className="text-green-100">
-            Configure a instância WhatsApp para o cliente
+          <CardDescription className="text-gray-600">
+            Configure e gerencie a instância WhatsApp para o cliente
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Campo Nome do Cliente */}
           <div className="space-y-2">
-            <Label htmlFor="nomeCliente" className="text-white">Nome do Cliente</Label>
-            <div className="flex gap-2">
+            <Label htmlFor="nomeCliente" className="text-gray-700 font-medium">
+              Nome do Cliente
+            </Label>
+            <div className="flex gap-3">
               <Input
                 id="nomeCliente"
                 value={nomeCliente}
                 onChange={(e) => setNomeCliente(e.target.value)}
                 placeholder="Digite o nome do cliente"
-                className="bg-white text-gray-900 border-0 flex-1"
+                className="flex-1"
                 disabled={!!instanceId}
               />
+              {/* Botão Criar Instância */}
               {!instanceId && (
                 <Button
                   onClick={criarInstancia}
                   disabled={isCreatingInstance || !nomeCliente.trim()}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-8"
+                  className="min-w-[150px]"
                 >
                   {isCreatingInstance ? "Criando..." : "Criar Instância"}
                 </Button>
@@ -307,50 +311,59 @@ export function WhatsAppWidget() {
 
           {instanceId && (
             <>
+              {/* Campo ID da Instância (somente leitura) */}
               <div className="space-y-2">
-                <Label htmlFor="instanceId" className="text-white">ID da Instância</Label>
+                <Label htmlFor="instanceId" className="text-gray-700 font-medium">
+                  ID da Instância
+                </Label>
                 <Input
                   id="instanceId"
                   value={instanceId}
                   readOnly
-                  className="bg-gray-100 text-gray-700 border-0"
+                  className="bg-gray-50 text-gray-600"
                 />
               </div>
 
+              {/* Indicador Status da Conexão */}
               <div className="space-y-2">
-                <Label className="text-white">Status da Conexão</Label>
-                <div className={`font-semibold ${getStatusColor()}`}>
+                <Label className="text-gray-700 font-medium">Status da Conexão</Label>
+                <div className={`font-semibold text-lg ${getStatusColor()}`}>
                   {statusConexao}
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4">
+              {/* Botões de Ação */}
+              <div className="flex gap-3 pt-4">
+                {/* Botão Conectar WhatsApp */}
                 <Button
                   onClick={conectarWhatsApp}
                   disabled={isConnecting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
+                  className="flex-1 bg-green-600 hover:bg-green-700"
                 >
+                  <MessageCircle className="h-4 w-4 mr-2" />
                   {isConnecting ? "Conectando..." : "Conectar WhatsApp"}
                 </Button>
                 
+                {/* Botão Desconectar */}
                 <Button
                   onClick={desconectar}
                   disabled={isDisconnecting}
                   variant="outline"
-                  className="bg-white text-gray-800 hover:bg-gray-100 flex-1"
+                  className="flex-1"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   {isDisconnecting ? "Desconectando..." : "Desconectar"}
                 </Button>
                 
+                {/* Botão Excluir Instância */}
                 <Button
                   onClick={excluirInstancia}
                   disabled={isDeleting}
                   variant="destructive"
-                  className="bg-red-600 hover:bg-red-700 text-white"
+                  className="flex-1"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  {isDeleting ? "Excluindo..." : ""}
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isDeleting ? "Excluindo..." : "Excluir Instância"}
                 </Button>
               </div>
             </>
@@ -358,31 +371,41 @@ export function WhatsAppWidget() {
         </CardContent>
       </Card>
 
-      {/* Card do QR Code */}
+      {/* Card QR Code */}
       {instanceId && (
-        <Card className="bg-green-500 text-white border-0">
+        <Card className="bg-white shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
+            <CardTitle className="flex items-center gap-2 text-gray-800">
               <QrCode className="h-5 w-5" />
-              QR Code
+              QR Code para Conexão
             </CardTitle>
+            <CardDescription className="text-gray-600">
+              Escaneie o código QR com seu WhatsApp para conectar
+            </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Área de Imagem QR Code */}
             {qrCode ? (
-              <div className="bg-white rounded-lg p-6 text-center">
+              <div className="bg-gray-50 rounded-lg p-6 text-center border">
                 <img
                   src={qrCode}
                   alt="QR Code WhatsApp"
-                  className="w-64 h-64 mx-auto border border-gray-200 rounded-lg"
+                  className="w-64 h-64 mx-auto border border-gray-200 rounded-lg shadow-sm"
                 />
                 <p className="text-gray-600 mt-4 text-sm">
                   Escaneie este código com seu WhatsApp para conectar
                 </p>
+                <p className="text-orange-600 text-xs mt-2">
+                  ⚠️ O QR Code tem tempo limitado. Se expirar, clique em "Conectar WhatsApp" novamente.
+                </p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg p-12 text-center">
+              <div className="bg-gray-50 rounded-lg p-12 text-center border border-dashed border-gray-300">
                 <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-lg mb-2">
+                  Nenhum QR Code gerado
+                </p>
+                <p className="text-gray-500 text-sm">
                   Clique em "Conectar WhatsApp" para gerar o QR Code
                 </p>
               </div>
