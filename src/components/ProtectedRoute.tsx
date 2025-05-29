@@ -13,26 +13,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only redirect if we're not loading and there's no user
     if (!loading && !user) {
       console.log('❌ Usuário não autenticado, redirecionando para login');
       navigate('/login', { replace: true });
     }
   }, [user, loading, navigate]);
 
-  // Show minimal loading while checking auth
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-whatsapp" />
-          <p className="text-sm text-gray-600">Carregando...</p>
+          <p className="text-sm text-gray-600">Verificando autenticação...</p>
         </div>
       </div>
     );
   }
 
-  // Don't render anything if no user (will redirect)
   if (!user) {
     return null;
   }

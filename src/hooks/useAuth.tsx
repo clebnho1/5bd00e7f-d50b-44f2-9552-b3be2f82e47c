@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,7 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('🚀 Inicializando autenticação...');
         
-        // Get initial session synchronously first
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -51,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
           
-          // Fetch user role immediately if user exists
           if (initialSession?.user) {
             console.log('👤 Buscando role do usuário...');
             await fetchUserRole(initialSession.user.id);
@@ -68,7 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log('🔄 Mudança de estado auth:', event, !!currentSession?.user);
@@ -78,21 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(currentSession?.user ?? null);
           
           if (currentSession?.user && event === 'SIGNED_IN') {
-            // Only fetch role on sign in to avoid unnecessary calls
             await fetchUserRole(currentSession.user.id);
           } else if (!currentSession?.user) {
             setUserRole(null);
-          }
-          
-          // Don't set loading to false here to avoid double loading states
-          if (event === 'INITIAL_SESSION') {
-            setLoading(false);
           }
         }
       }
     );
 
-    // Initialize auth immediately
     initializeAuth();
 
     return () => {
@@ -140,7 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      setLoading(true);
       console.log('🔐 Tentando login com email:', email);
       
       const { error } = await supabase.auth.signInWithPassword({
@@ -177,8 +165,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('💥 Erro durante sign in:', error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
