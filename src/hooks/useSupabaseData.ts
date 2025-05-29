@@ -238,13 +238,13 @@ export function useWhatsAppInstance() {
   const { toast } = useToast();
   const [instance, setInstance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const initRef = useRef(false);
+  const hasInitialized = useRef(false);
 
-  console.log('🔧 [useWhatsAppInstance] Hook inicializado', { user: !!user, initialized: initRef.current });
+  console.log('🔧 [useWhatsAppInstance] Hook inicializado', { user: !!user, initialized: hasInitialized.current });
 
   useEffect(() => {
-    // Prevenir múltiplas inicializações
-    if (initRef.current) {
+    // Evitar múltiplas inicializações
+    if (hasInitialized.current) {
       console.log('⚠️ [useWhatsAppInstance] Já inicializado, ignorando');
       return;
     }
@@ -252,7 +252,7 @@ export function useWhatsAppInstance() {
     console.log('🔧 [useWhatsAppInstance] useEffect executado', { user: !!user });
     
     if (user) {
-      initRef.current = true;
+      hasInitialized.current = true;
       fetchInstance();
     } else {
       console.log('🔧 [useWhatsAppInstance] Sem usuário, definindo loading=false');
@@ -262,7 +262,6 @@ export function useWhatsAppInstance() {
     // Cleanup function
     return () => {
       console.log('🧹 [useWhatsAppInstance] Cleanup');
-      initRef.current = false;
     };
   }, [user?.id]);
 
@@ -385,7 +384,7 @@ export function useWhatsAppInstance() {
   console.log('🔧 [useWhatsAppInstance] Estado atual:', { 
     hasInstance: !!instance, 
     loading,
-    initialized: initRef.current
+    initialized: hasInitialized.current
   });
 
   return {

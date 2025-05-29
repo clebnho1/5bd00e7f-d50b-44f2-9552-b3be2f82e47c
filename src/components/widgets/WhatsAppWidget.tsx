@@ -189,7 +189,7 @@ export function WhatsAppWidget() {
                     className="bg-gray-50"
                   />
                   <p className="text-sm text-gray-600">
-                    Instância configurada
+                    Instância configurada: {instance.nome_empresa}
                   </p>
                 </div>
 
