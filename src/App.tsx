@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import CriarAdmin from "./pages/CriarAdmin";
 import AgenteAI from "./pages/AgenteAI";
+import Administracao from "./pages/Administracao";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -47,6 +48,11 @@ const App = () => (
             <Route path="/agenteai" element={
               <ProtectedRoute>
                 <AgenteAI />
+              </ProtectedRoute>
+            } />
+            <Route path="/administracao" element={
+              <ProtectedRoute>
+                <Administracao />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
