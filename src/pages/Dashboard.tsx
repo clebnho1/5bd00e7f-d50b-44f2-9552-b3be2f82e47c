@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { AppSidebar } from '@/components/AppSidebar';
+import { CustomSidebar } from '@/components/CustomSidebar';
 import { DashboardContent } from '@/components/DashboardContent';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
@@ -16,7 +16,7 @@ const Dashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar 
+        <CustomSidebar 
           activeWidget={activeWidget} 
           setActiveWidget={setActiveWidget} 
         />
