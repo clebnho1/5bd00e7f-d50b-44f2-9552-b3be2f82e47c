@@ -44,55 +44,74 @@ export function useAuthState() {
   };
 
   useEffect(() => {
-    let mounted = true;
-    let authSubscription: any;
+    let isMounted = true;
 
-    const initAuth = async () => {
+    const initializeAuth = async () => {
       try {
-        // Pega a sessão atual primeiro
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (mounted && currentSession?.user) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          await fetchUserRole(currentSession.user.id);
-        }
-
-        // Configura o listener de mudanças
-        authSubscription = supabase.auth.onAuthStateChange(
+        // Primeiro, configura o listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
-            if (!mounted) return;
+            if (!isMounted) return;
+            
+            console.log('🔄 Auth state change:', event, newSession?.user?.email);
             
             if (event === 'SIGNED_OUT' || !newSession) {
               setUser(null);
               setSession(null);
               setUserRole(null);
-            } else if (newSession.user) {
+            } else if (newSession?.user) {
               setSession(newSession);
               setUser(newSession.user);
-              await fetchUserRole(newSession.user.id);
+              
+              // Busca o role sem aguardar para evitar deadlock
+              setTimeout(() => {
+                if (isMounted) {
+                  fetchUserRole(newSession.user.id);
+                }
+              }, 0);
             }
           }
         );
 
-        if (mounted) {
+        // Depois, verifica se já existe uma sessão
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (isMounted && currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Busca o role sem aguardar
+          setTimeout(() => {
+            if (isMounted) {
+              fetchUserRole(currentSession.user.id);
+            }
+          }, 0);
+        }
+
+        if (isMounted) {
           setLoading(false);
         }
 
+        return () => {
+          if (subscription) {
+            subscription.unsubscribe();
+          }
+        };
+
       } catch (error) {
         console.error('💥 [AUTH_INIT_ERROR]', error);
-        if (mounted) {
+        if (isMounted) {
           setLoading(false);
         }
       }
     };
 
-    initAuth();
+    const cleanup = initializeAuth();
 
     return () => {
-      mounted = false;
-      if (authSubscription?.data?.subscription) {
-        authSubscription.data.subscription.unsubscribe();
+      isMounted = false;
+      if (cleanup) {
+        cleanup.then(cleanupFn => cleanupFn && cleanupFn());
       }
     };
   }, []);

@@ -19,22 +19,25 @@ export const LoginForm = ({ onSubmit, isLoading, errors }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
-    console.log(`📝 Input changed - ${field}:`, value);
+    console.log(`📝 [LOGIN_FORM] Input changed - ${field}:`, value);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    console.log('🚀 === HANDLE SUBMIT FUNCTION CALLED ===');
+    console.log('🚀 [LOGIN_FORM] handleSubmit chamado');
     e.preventDefault();
     e.stopPropagation();
-    console.log('🚀 preventDefault() and stopPropagation() called');
     
-    if (isLoading) return;
+    if (isLoading) {
+      console.log('⏳ [LOGIN_FORM] Já está carregando, ignorando submit');
+      return;
+    }
     
+    console.log('📤 [LOGIN_FORM] Chamando onSubmit com:', { email: formData.email });
     onSubmit(formData.email, formData.senha);
   };
 
-  console.log('🎨 Rendering LoginForm with handleSubmit function');
+  console.log('🎨 [LOGIN_FORM] Renderizando formulário');
 
   return (
     <form 
@@ -82,7 +85,7 @@ export const LoginForm = ({ onSubmit, isLoading, errors }: LoginFormProps) => {
             size="sm"
             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             onClick={() => {
-              console.log('👁️ PASSWORD VISIBILITY TOGGLE CLICKED');
+              console.log('👁️ [LOGIN_FORM] Alternando visibilidade da senha');
               setShowPassword(!showPassword);
             }}
             disabled={isLoading}

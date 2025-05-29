@@ -13,12 +13,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('🛡️ [PROTECTED_ROUTE] Estado:', { user: user?.email, loading });
+    
     if (!loading && !user) {
+      console.log('🚫 [PROTECTED_ROUTE] Redirecionando para login');
       navigate('/login', { replace: true });
     }
   }, [user, loading, navigate]);
 
   if (loading) {
+    console.log('⏳ [PROTECTED_ROUTE] Mostrando loader');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-lg shadow-lg">
@@ -33,8 +37,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
+    console.log('❌ [PROTECTED_ROUTE] Usuário não autenticado');
     return null;
   }
 
+  console.log('✅ [PROTECTED_ROUTE] Usuário autenticado, renderizando children');
   return <>{children}</>;
 }

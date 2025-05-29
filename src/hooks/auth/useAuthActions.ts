@@ -6,7 +6,7 @@ export function useAuthActions() {
   const { toast } = useToast();
 
   const signIn = async (email: string, password: string) => {
-    if (!email.trim() || !password.trim()) {
+    if (!email?.trim() || !password?.trim()) {
       const errorMsg = "Email e senha são obrigatórios";
       toast({
         title: "Campos obrigatórios",
@@ -17,18 +17,23 @@ export function useAuthActions() {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('🚀 [SIGNIN] Tentando login para:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
       if (error) {
+        console.error('❌ [SIGNIN_ERROR]', error);
         let errorMessage = "Erro no login";
         
         if (error.message.includes('Invalid login credentials')) {
           errorMessage = "Email ou senha incorretos";
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = "Email não confirmado. Verifique sua caixa de entrada";
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = "Muitas tentativas. Aguarde alguns minutos";
         }
 
         toast({
@@ -36,22 +41,24 @@ export function useAuthActions() {
           description: errorMessage,
           variant: "destructive",
         });
-        throw error;
+        throw new Error(errorMessage);
       }
 
+      console.log('✅ [SIGNIN_SUCCESS] Login realizado:', data.user?.email);
+      
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
       });
       
-    } catch (error) {
-      console.error('💥 Erro durante sign in:', error);
+    } catch (error: any) {
+      console.error('💥 [SIGNIN_CRASH]', error);
       throw error;
     }
   };
 
   const signUp = async (email: string, password: string, name: string, plano: string) => {
-    if (!email.trim() || !password.trim() || !name.trim()) {
+    if (!email?.trim() || !password?.trim() || !name?.trim()) {
       const errorMsg = "Todos os campos são obrigatórios";
       toast({
         title: "Campos obrigatórios",
@@ -72,6 +79,8 @@ export function useAuthActions() {
     }
 
     try {
+      console.log('🚀 [SIGNUP] Tentando cadastro para:', email);
+      
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -84,6 +93,7 @@ export function useAuthActions() {
       });
 
       if (error) {
+        console.error('❌ [SIGNUP_ERROR]', error);
         let errorMessage = "Erro no cadastro";
         
         if (error.message.includes('User already registered') || 
@@ -104,8 +114,10 @@ export function useAuthActions() {
           description: errorMessage,
           variant: "destructive",
         });
-        throw error;
+        throw new Error(errorMessage);
       }
+
+      console.log('✅ [SIGNUP_SUCCESS] Cadastro realizado:', data.user?.email);
 
       if (data.user && !data.session) {
         toast({
@@ -118,14 +130,15 @@ export function useAuthActions() {
           description: "Bem-vindo ao sistema!",
         });
       }
-    } catch (error) {
-      console.error('Error during sign up:', error);
+    } catch (error: any) {
+      console.error('💥 [SIGNUP_CRASH]', error);
       throw error;
     }
   };
 
   const signOut = async () => {
     try {
+      console.log('🚪 [SIGNOUT] Fazendo logout');
       await supabase.auth.signOut();
       
       toast({
@@ -133,12 +146,12 @@ export function useAuthActions() {
         description: "Até logo!",
       });
     } catch (error) {
-      console.error('Erro durante logout:', error);
+      console.error('❌ [SIGNOUT_ERROR]', error);
     }
   };
 
   const resetPassword = async (email: string) => {
-    if (!email.trim()) {
+    if (!email?.trim()) {
       const errorMsg = "Email é obrigatório";
       toast({
         title: "Campo obrigatório",
@@ -149,12 +162,14 @@ export function useAuthActions() {
     }
 
     try {
+      console.log('🔑 [RESET_PASSWORD] Enviando email para:', email);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
-        console.error('Password reset error:', error);
+        console.error('❌ [RESET_PASSWORD_ERROR]', error);
         toast({
           title: "Erro ao enviar email",
           description: error.message || "Erro desconhecido",
@@ -163,12 +178,14 @@ export function useAuthActions() {
         throw error;
       }
 
+      console.log('✅ [RESET_PASSWORD_SUCCESS] Email enviado');
+      
       toast({
         title: "Email enviado!",
         description: "Verifique sua caixa de entrada para redefinir sua senha.",
       });
-    } catch (error) {
-      console.error('Error during password reset:', error);
+    } catch (error: any) {
+      console.error('💥 [RESET_PASSWORD_CRASH]', error);
       throw error;
     }
   };

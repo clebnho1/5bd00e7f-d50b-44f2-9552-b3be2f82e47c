@@ -22,73 +22,80 @@ import Colaboradores from "./pages/Colaboradores";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
+console.log('🎯 [APP] Inicializando componente App');
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutos
     },
   },
 });
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/home" element={<Navigate to="/cadastro" replace />} />
-              <Route path="/auth" element={<Navigate to="/login" replace />} />
-              <Route path="/cadastro" element={<Cadastro />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-              <Route path="/criar-admin" element={<CriarAdmin />} />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/agenteai" element={
-                <ProtectedRoute>
-                  <AgenteAI />
-                </ProtectedRoute>
-              } />
-              <Route path="/whatsapp" element={
-                <ProtectedRoute>
-                  <WhatsApp />
-                </ProtectedRoute>
-              } />
-              <Route path="/colaboradores" element={
-                <ProtectedRoute>
-                  <Colaboradores />
-                </ProtectedRoute>
-              } />
-              <Route path="/configuracoes" element={
-                <ProtectedRoute>
-                  <Configuracoes />
-                </ProtectedRoute>
-              } />
-              <Route path="/administracao" element={
-                <ProtectedRoute>
-                  <Administracao />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin" element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+const App = () => {
+  console.log('🎯 [APP] Renderizando App');
+  
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/home" element={<Navigate to="/cadastro" replace />} />
+                <Route path="/auth" element={<Navigate to="/login" replace />} />
+                <Route path="/cadastro" element={<Cadastro />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+                <Route path="/criar-admin" element={<CriarAdmin />} />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/agenteai" element={
+                  <ProtectedRoute>
+                    <AgenteAI />
+                  </ProtectedRoute>
+                } />
+                <Route path="/whatsapp" element={
+                  <ProtectedRoute>
+                    <WhatsApp />
+                  </ProtectedRoute>
+                } />
+                <Route path="/colaboradores" element={
+                  <ProtectedRoute>
+                    <Colaboradores />
+                  </ProtectedRoute>
+                } />
+                <Route path="/configuracoes" element={
+                  <ProtectedRoute>
+                    <Configuracoes />
+                  </ProtectedRoute>
+                } />
+                <Route path="/administracao" element={
+                  <ProtectedRoute>
+                    <Administracao />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;

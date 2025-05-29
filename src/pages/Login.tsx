@@ -16,7 +16,10 @@ const Login = () => {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
+    console.log('🔐 [LOGIN_PAGE] Estado da auth:', { user: user?.email, authLoading });
+    
     if (!authLoading && user) {
+      console.log('✅ [LOGIN_PAGE] Usuário logado, redirecionando para dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [user, authLoading, navigate]);
@@ -24,7 +27,7 @@ const Login = () => {
   const validateForm = (email: string, senha: string): boolean => {
     const newErrors: {[key: string]: string} = {};
 
-    if (!email.trim()) {
+    if (!email?.trim()) {
       newErrors.email = 'Email é obrigatório';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       newErrors.email = 'Email inválido';
@@ -39,17 +42,26 @@ const Login = () => {
   };
 
   const handleFormSubmit = async (email: string, senha: string) => {
+    console.log('📝 [LOGIN_FORM] Submetendo formulário');
     setErrors({});
     
-    if (isLoading) return;
+    if (isLoading) {
+      console.log('⏳ [LOGIN_FORM] Já está carregando, ignorando');
+      return;
+    }
     
-    if (!validateForm(email, senha)) return;
+    if (!validateForm(email, senha)) {
+      console.log('❌ [LOGIN_FORM] Validação falhou');
+      return;
+    }
     
     setIsLoading(true);
     
     try {
       await signIn(email.trim(), senha);
+      console.log('✅ [LOGIN_FORM] Login bem-sucedido');
     } catch (error: any) {
+      console.error('❌ [LOGIN_FORM] Erro no login:', error);
       const errorMessage = error?.message || 'Erro no login';
       
       if (errorMessage.includes('Email') || errorMessage.includes('incorretos') || errorMessage.includes('Invalid login credentials')) {
@@ -84,6 +96,7 @@ const Login = () => {
   };
 
   if (authLoading) {
+    console.log('⏳ [LOGIN_PAGE] Auth carregando');
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -95,8 +108,11 @@ const Login = () => {
   }
 
   if (user) {
+    console.log('✅ [LOGIN_PAGE] Usuário já logado');
     return null;
   }
+
+  console.log('🔐 [LOGIN_PAGE] Renderizando página de login');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">

@@ -23,21 +23,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user, session, loading, userRole, isAdmin, refreshUserRole } = useAuthState();
-  const { signIn, signUp, signOut, resetPassword } = useAuthActions();
+  console.log('🎯 [AUTH_PROVIDER] Renderizando AuthProvider');
+  
+  const authState = useAuthState();
+  const authActions = useAuthActions();
 
   const contextValue: AuthContextType = {
-    user,
-    session,
-    signIn,
-    signUp,
-    signOut,
-    resetPassword,
-    loading,
-    isAdmin,
-    userRole,
-    refreshUserRole,
+    ...authState,
+    ...authActions,
   };
+
+  console.log('🎯 [AUTH_PROVIDER] Context value:', {
+    user: contextValue.user?.email,
+    loading: contextValue.loading,
+    userRole: contextValue.userRole
+  });
 
   return (
     <AuthContext.Provider value={contextValue}>
