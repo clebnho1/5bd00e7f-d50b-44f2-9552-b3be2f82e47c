@@ -15,7 +15,7 @@ const WhatsApp = () => {
     <LayoutWithSidebar>
       <div className="bg-gray-50 min-h-screen">
         <div className="container mx-auto py-8 px-4">
-          <WhatsAppWidget />
+          <WhatsAppWidget key="whatsapp-widget" />
         </div>
       </div>
     </LayoutWithSidebar>

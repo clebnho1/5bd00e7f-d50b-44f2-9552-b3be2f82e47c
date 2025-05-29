@@ -238,41 +238,46 @@ export function useWhatsAppInstance() {
   const { toast } = useToast();
   const [instance, setInstance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const hasInitialized = useRef(false);
+  const initializationRef = useRef(false);
 
-  console.log('🔧 [useWhatsAppInstance] Hook inicializado', { user: !!user, initialized: hasInitialized.current });
+  console.log('🔧 [useWhatsAppInstance] Hook renderizado', { 
+    userId: user?.id,
+    hasInstance: !!instance,
+    loading,
+    initialized: initializationRef.current
+  });
 
   useEffect(() => {
-    // Evitar múltiplas inicializações
-    if (hasInitialized.current) {
-      console.log('⚠️ [useWhatsAppInstance] Já inicializado, ignorando');
+    // Prevent multiple initializations for the same user
+    const userId = user?.id;
+    if (!userId || initializationRef.current) {
+      if (!userId) {
+        setLoading(false);
+      }
       return;
     }
 
-    console.log('🔧 [useWhatsAppInstance] useEffect executado', { user: !!user });
+    initializationRef.current = true;
+    console.log('🔧 [useWhatsAppInstance] Iniciando busca única para usuário:', userId);
     
-    if (user) {
-      hasInitialized.current = true;
-      fetchInstance();
-    } else {
-      console.log('🔧 [useWhatsAppInstance] Sem usuário, definindo loading=false');
-      setLoading(false);
-    }
+    fetchInstance();
 
-    // Cleanup function
+    // Cleanup on user change
     return () => {
-      console.log('🧹 [useWhatsAppInstance] Cleanup');
+      if (user?.id !== userId) {
+        initializationRef.current = false;
+        console.log('🧹 [useWhatsAppInstance] Reset para novo usuário');
+      }
     };
   }, [user?.id]);
 
   const fetchInstance = async () => {
     if (!user) {
-      console.log('🔧 [fetchInstance] Sem usuário, saindo');
       setLoading(false);
       return;
     }
 
-    console.log('🔧 [fetchInstance] Iniciando busca da instância');
+    console.log('🔧 [fetchInstance] Buscando instância para:', user.id);
 
     try {
       const { data, error } = await supabase
@@ -285,12 +290,11 @@ export function useWhatsAppInstance() {
         throw error;
       }
 
-      console.log('🔧 [fetchInstance] Instância encontrada:', !!data);
+      console.log('🔧 [fetchInstance] Resultado:', { found: !!data, status: data?.status });
       setInstance(data);
     } catch (error) {
       console.error('🔧 [fetchInstance] Erro:', error);
     } finally {
-      console.log('🔧 [fetchInstance] Definindo loading=false');
       setLoading(false);
     }
   };
@@ -302,8 +306,8 @@ export function useWhatsAppInstance() {
       console.log('Disconnecting instance:', instance.nome_empresa);
 
       // Tentar desconectar via API da Evolution
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/disconnect/${instance.nome_empresa}`, {
-        method: 'POST',
+      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/logout/${instance.nome_empresa}`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           'apikey': '0417bf43b0a8669bd6635bcb49d783df'
@@ -380,12 +384,6 @@ export function useWhatsAppInstance() {
       setLoading(false);
     }
   };
-
-  console.log('🔧 [useWhatsAppInstance] Estado atual:', { 
-    hasInstance: !!instance, 
-    loading,
-    initialized: hasInitialized.current
-  });
 
   return {
     instance,
