@@ -215,6 +215,7 @@ export function WhatsAppWidget() {
   }
 
   const statusInfo = getStatusInfo();
+  const StatusIcon = statusInfo.icon;
 
   return (
     <div className="space-y-6">
@@ -280,7 +281,7 @@ export function WhatsAppWidget() {
                   <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${statusInfo.color}`} />
                     <Badge variant="outline" className="flex items-center gap-2">
-                      <statusInfo.icon className="h-3 w-3" />
+                      <StatusIcon className="h-3 w-3" />
                       {statusInfo.text}
                     </Badge>
                   </div>
@@ -423,8 +424,8 @@ export function WhatsAppWidget() {
                 <li>• API: Evolution WhatsApp</li>
                 <li>• Endpoint: apiwhats.lifecombr.com.br</li>
                 <li>• Criação: POST /instance/create</li>
-                <li>• QR Code: GET /instance/connect/{name}</li>
-                <li>• Desconectar: DELETE /instance/logout/{name}</li>
+                <li>• QR Code: GET /instance/connect/{`{name}`}</li>
+                <li>• Desconectar: DELETE /instance/logout/{`{name}`}</li>
               </ul>
             </div>
           </div>
