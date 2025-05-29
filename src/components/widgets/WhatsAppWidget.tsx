@@ -1,130 +1,28 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap, Power, Plus, Trash2 } from 'lucide-react';
+import { MessageCircle, QrCode, Settings, ArrowLeft } from 'lucide-react';
 import { useWhatsAppInstance } from '@/hooks/useSupabaseData';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 export function WhatsAppWidget() {
-  const { instance, loading, saveInstance, disconnectInstance } = useWhatsAppInstance();
+  const { instance, loading, saveInstance } = useWhatsAppInstance();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [isCreating, setIsCreating] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [isCleaningAll, setIsCleaningAll] = useState(false);
   const [instanceName, setInstanceName] = useState('');
 
-  const clearLocalData = () => {
-    try {
-      // Limpa localStorage
-      const whatsAppKeys = Object.keys(localStorage).filter(key => 
-        key.toLowerCase().includes('whatsapp') || 
-        key.toLowerCase().includes('instance') ||
-        key.toLowerCase().includes('qr')
-      );
-      
-      whatsAppKeys.forEach(key => {
-        localStorage.removeItem(key);
-      });
-
-      // Limpa sessionStorage
-      const sessionKeys = Object.keys(sessionStorage).filter(key => 
-        key.toLowerCase().includes('whatsapp') || 
-        key.toLowerCase().includes('instance') ||
-        key.toLowerCase().includes('qr')
-      );
-      
-      sessionKeys.forEach(key => {
-        sessionStorage.removeItem(key);
-      });
-
-      // Limpa cookies relacionados ao WhatsApp
-      document.cookie.split(";").forEach(cookie => {
-        const eqPos = cookie.indexOf("=");
-        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-        if (name.toLowerCase().includes('whatsapp') || 
-            name.toLowerCase().includes('instance') ||
-            name.toLowerCase().includes('qr')) {
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        }
-      });
-
-      console.log('🧹 Dados locais do WhatsApp limpos com sucesso');
-      return true;
-    } catch (error) {
-      console.error('❌ Erro ao limpar dados locais:', error);
-      return false;
+  useEffect(() => {
+    if (instance) {
+      setInstanceName(instance.nome_empresa);
     }
-  };
-
-  const disconnectAndCleanAll = async () => {
-    if (!instance) return;
-
-    setIsCleaningAll(true);
-    
-    try {
-      console.log('🔄 Iniciando desconexão completa para:', instance.nome_empresa);
-
-      // 1. Tentar desconectar via API da Evolution
-      try {
-        const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/logout/${instance.nome_empresa}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': '0417bf43b0a8669bd6635bcb49d783df'
-          }
-        });
-
-        if (response.ok) {
-          console.log('✅ Instância desconectada da API com sucesso');
-        } else {
-          console.warn('⚠️ Falha na API, mas continuando com limpeza local');
-        }
-      } catch (apiError) {
-        console.warn('⚠️ Erro na API, mas continuando com limpeza:', apiError);
-      }
-
-      // 2. Atualizar status no banco de dados
-      await saveInstance({
-        nome_empresa: instance.nome_empresa,
-        status: 'desconectado',
-        qr_code: null,
-        ultima_verificacao: new Date().toISOString()
-      });
-
-      // 3. Limpar dados locais
-      const localCleanSuccess = clearLocalData();
-
-      // 4. Mostrar resultado
-      if (localCleanSuccess) {
-        toast({
-          title: "Desconexão completa realizada",
-          description: "Instância desconectada e dados locais limpos com sucesso.",
-        });
-      } else {
-        toast({
-          title: "Desconexão parcial",
-          description: "Instância desconectada, mas houve problemas ao limpar dados locais.",
-          variant: "destructive",
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ Erro na desconexão completa:', error);
-      toast({
-        title: "Erro na desconexão",
-        description: "Não foi possível realizar a desconexão completa.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCleaningAll(false);
-    }
-  };
+  }, [instance]);
 
   const criarInstancia = async () => {
     if (!instanceName.trim()) {
@@ -134,7 +32,6 @@ export function WhatsAppWidget() {
     setIsCreating(true);
     
     try {
-      // Primeiro criar a instância na Evolution API
       const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/create`, {
         method: 'POST',
         headers: {
@@ -158,15 +55,23 @@ export function WhatsAppWidget() {
         throw new Error(`Erro na API: ${response.status}`);
       }
 
-      // Salvar no Supabase
       await saveInstance({
         nome_empresa: instanceName.trim(),
         status: 'criado',
         qr_code: null
       });
-      setInstanceName('');
+
+      toast({
+        title: "Instância criada",
+        description: "Instância WhatsApp criada com sucesso.",
+      });
     } catch (error) {
       console.error('Erro ao criar instância:', error);
+      toast({
+        title: "Erro ao criar instância",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
     } finally {
       setIsCreating(false);
     }
@@ -178,7 +83,6 @@ export function WhatsAppWidget() {
     setIsGeneratingQR(true);
     
     try {
-      // Usar GET para buscar o QR Code
       const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connect/${instance.nome_empresa}`, {
         method: 'GET',
         headers: {
@@ -193,361 +97,130 @@ export function WhatsAppWidget() {
 
       const apiData = await response.json();
       
-      // Atualizar a instância com o QR Code
       await saveInstance({
         nome_empresa: instance.nome_empresa,
         status: 'aguardando_conexao',
         qr_code: apiData.qrCode || apiData.qr_code || apiData.base64 || null,
         ultima_verificacao: new Date().toISOString()
       });
+
+      toast({
+        title: "QR Code gerado",
+        description: "QR Code gerado com sucesso. Escaneie com seu WhatsApp.",
+      });
     } catch (error) {
       console.error('Erro ao gerar QR Code:', error);
+      toast({
+        title: "Erro ao gerar QR Code",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
     } finally {
       setIsGeneratingQR(false);
-    }
-  };
-
-  const verificarStatus = async () => {
-    setIsChecking(true);
-    
-    try {
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connectionState/${instance?.nome_empresa}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status}`);
-      }
-
-      const statusData = await response.json();
-      
-      let newStatus = 'desconectado';
-      if (statusData.instance?.state === 'open') {
-        newStatus = 'conectado';
-      } else if (statusData.instance?.state === 'connecting') {
-        newStatus = 'aguardando_conexao';
-      }
-      
-      await saveInstance({
-        nome_empresa: instance?.nome_empresa,
-        status: newStatus,
-        qr_code: newStatus === 'conectado' ? null : instance?.qr_code,
-        ultima_verificacao: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Erro ao verificar status:', error);
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!instance) return;
-
-    setIsDisconnecting(true);
-    try {
-      // Tentar desconectar via API da Evolution
-      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/logout/${instance.nome_empresa}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
-        }
-      });
-
-      // Atualizar o status local independentemente da resposta da API
-      await saveInstance({
-        nome_empresa: instance.nome_empresa,
-        status: 'desconectado',
-        qr_code: null,
-        ultima_verificacao: new Date().toISOString()
-      });
-
-    } catch (error) {
-      console.error('Erro ao desconectar instância:', error);
-      // Mesmo com erro, atualizar status local
-      await saveInstance({
-        nome_empresa: instance.nome_empresa,
-        status: 'desconectado',
-        qr_code: null,
-        ultima_verificacao: new Date().toISOString()
-      });
-    } finally {
-      setIsDisconnecting(false);
-    }
-  };
-
-  const getStatusInfo = () => {
-    const status = instance?.status || 'desconectado';
-    switch (status) {
-      case 'conectado':
-        return {
-          color: 'bg-green-500',
-          icon: CheckCircle,
-          text: 'Conectado',
-          description: 'WhatsApp ativo e funcionando'
-        };
-      case 'aguardando_conexao':
-        return {
-          color: 'bg-yellow-500',
-          icon: QrCode,
-          text: 'Aguardando Conexão',
-          description: 'Escaneie o QR Code para conectar'
-        };
-      case 'criado':
-        return {
-          color: 'bg-blue-500',
-          icon: Zap,
-          text: 'Instância Criada',
-          description: 'Gere o QR Code para conectar'
-        };
-      default:
-        return {
-          color: 'bg-red-500',
-          icon: XCircle,
-          text: 'Desconectado',
-          description: 'WhatsApp não está conectado'
-        };
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
       </div>
     );
   }
 
-  const statusInfo = getStatusInfo();
-  const StatusIcon = statusInfo.icon;
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <MessageCircle className="h-6 w-6 text-whatsapp" />
-        <h2 className="text-2xl font-bold">Configuração WhatsApp</h2>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar ao Dashboard
+        </Button>
+        <h1 className="text-2xl font-bold text-gray-800">WhatsApp</h1>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Configuração da Instância */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5" />
-              Integração Evolution API
-            </CardTitle>
-            <CardDescription>
-              Configure sua instância WhatsApp
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!instance ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="instanceName">Nome da Instância</Label>
-                  <Input
-                    id="instanceName"
-                    value={instanceName}
-                    onChange={(e) => setInstanceName(e.target.value)}
-                    placeholder="Digite o nome da sua instância WhatsApp"
-                    className="w-full"
-                  />
-                  <p className="text-sm text-gray-600">
-                    Escolha um nome único para identificar sua instância WhatsApp
-                  </p>
-                </div>
+      <p className="text-gray-600 mb-8">Gerencie sua conexão com WhatsApp</p>
 
+      {/* Card de Configuração */}
+      <Card className="bg-green-500 text-white border-0">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <Settings className="h-5 w-5" />
+            Configuração
+          </CardTitle>
+          <CardDescription className="text-green-100">
+            Configure sua instância do WhatsApp
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="instanceName" className="text-white">Nome da Instância</Label>
+            <div className="flex gap-2">
+              <Input
+                id="instanceName"
+                value={instanceName}
+                onChange={(e) => setInstanceName(e.target.value)}
+                placeholder="Digite o nome da sua instância"
+                className="bg-white text-gray-900 border-0 flex-1"
+                disabled={!!instance}
+              />
+              {!instance ? (
                 <Button
                   onClick={criarInstancia}
                   disabled={isCreating || !instanceName.trim()}
-                  className="w-full"
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-8"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {isCreating ? "Criando instância..." : "Criar Instância"}
+                  {isCreating ? "Criando..." : "Salvar"}
                 </Button>
-              </>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label>Nome da Instância</Label>
-                  <Input
-                    value={instance.nome_empresa}
-                    disabled
-                    className="bg-gray-50"
-                  />
-                  <p className="text-sm text-gray-600">
-                    Instância configurada: {instance.nome_empresa}
-                  </p>
-                </div>
+              ) : (
+                <Button
+                  onClick={gerarQRCode}
+                  disabled={isGeneratingQR}
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-8"
+                >
+                  {isGeneratingQR ? "Gerando..." : "Gerar QR Code"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-                <div className="space-y-2">
-                  <Label>Status da Conexão</Label>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${statusInfo.color}`} />
-                    <Badge variant="outline" className="flex items-center gap-2">
-                      <StatusIcon className="h-3 w-3" />
-                      {statusInfo.text}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600">{statusInfo.description}</p>
-                  {instance?.ultima_verificacao && (
-                    <p className="text-sm font-medium">
-                      Última verificação: {new Date(instance.ultima_verificacao).toLocaleString('pt-BR')}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {(instance.status === 'desconectado' || instance.status === 'criado') && (
-                    <Button
-                      onClick={gerarQRCode}
-                      disabled={isGeneratingQR}
-                      className="w-full whatsapp-gradient text-white"
-                    >
-                      <QrCode className="h-4 w-4 mr-2" />
-                      {isGeneratingQR ? "Gerando QR Code..." : "Gerar QR Code"}
-                    </Button>
-                  )}
-
-                  {(instance.status === 'aguardando_conexao' || instance.status === 'conectado') && (
-                    <div className="space-y-2">
-                      <Button
-                        onClick={verificarStatus}
-                        disabled={isChecking}
-                        className="w-full"
-                        variant="outline"
-                      >
-                        <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
-                        Verificar Status
-                      </Button>
-                      
-                      <Button
-                        onClick={handleDisconnect}
-                        disabled={isDisconnecting}
-                        className="w-full"
-                        variant="destructive"
-                      >
-                        <Power className={`h-4 w-4 mr-2 ${isDisconnecting ? 'animate-spin' : ''}`} />
-                        {isDisconnecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
-                      </Button>
-
-                      <Button
-                        onClick={disconnectAndCleanAll}
-                        disabled={isCleaningAll}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        <Trash2 className={`h-4 w-4 mr-2 ${isCleaningAll ? 'animate-spin' : ''}`} />
-                        {isCleaningAll ? 'Limpando Tudo...' : 'Desconectar e Limpar Dados'}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">🔗 Integração Evolution API</h4>
-              <p className="text-sm text-blue-700 mb-1">
-                <strong>Endpoint:</strong> https://apiwhats.lifecombr.com.br
+      {/* Card do QR Code */}
+      <Card className="bg-green-500 text-white border-0">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <QrCode className="h-5 w-5" />
+            QR Code
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {instance?.qr_code ? (
+            <div className="bg-white rounded-lg p-6 text-center">
+              <img
+                src={instance.qr_code}
+                alt="QR Code WhatsApp"
+                className="w-64 h-64 mx-auto border border-gray-200 rounded-lg"
+              />
+              <p className="text-gray-600 mt-4 text-sm">
+                Escaneie este código com seu WhatsApp para conectar
               </p>
-              <p className="text-sm text-blue-700 mb-1">
-                <strong>API Key:</strong> 0417bf43b0a8669bd6635bcb49d783df
-              </p>
-              <p className="text-sm text-blue-600">
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg p-12 text-center">
+              <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">
                 {!instance 
-                  ? "Digite um nome e crie sua instância primeiro."
-                  : "Use o botão 'Gerar QR Code' para conectar."
+                  ? 'Crie uma instância primeiro para gerar o QR Code'
+                  : 'Clique em "Gerar QR Code" para conectar sua instância'
                 }
               </p>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* QR Code */}
-        <Card>
-          <CardHeader>
-            <CardTitle>QR Code de Conexão</CardTitle>
-            <CardDescription>
-              Escaneie este código com seu WhatsApp para conectar
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {instance?.qr_code ? (
-              <div className="text-center space-y-4">
-                <div className="flex justify-center">
-                  <img
-                    src={instance.qr_code}
-                    alt="QR Code WhatsApp"
-                    className="w-48 h-48 border border-gray-200 rounded-lg"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Como conectar:</p>
-                  <ol className="text-sm text-gray-600 space-y-1">
-                    <li>1. Abra o WhatsApp no seu celular</li>
-                    <li>2. Vá em Menu ⋮ → Dispositivos conectados</li>
-                    <li>3. Toque em "Conectar um dispositivo"</li>
-                    <li>4. Escaneie este QR Code</li>
-                  </ol>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {instance?.status === 'conectado' 
-                    ? 'WhatsApp Conectado!' 
-                    : 'QR Code não disponível'
-                  }
-                </h3>
-                <p className="text-gray-600">
-                  {instance?.status === 'conectado'
-                    ? 'Sua instância está ativa e funcionando perfeitamente.'
-                    : !instance 
-                      ? 'Crie uma instância primeiro para poder gerar o QR Code.'
-                      : 'Clique em "Gerar QR Code" para conectar sua instância.'
-                  }
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Informações da Integração */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações da Integração Evolution</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-medium mb-2">✅ Recursos Ativos</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Criação de instância na Evolution API</li>
-                <li>• Nome personalizado pelo usuário</li>
-                <li>• Geração de QR Code via GET</li>
-                <li>• Verificação de status em tempo real</li>
-                <li>• Desconexão de instância</li>
-                <li>• Limpeza completa de dados locais</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">🔧 Configurações Técnicas</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• API: Evolution WhatsApp</li>
-                <li>• Endpoint: apiwhats.lifecombr.com.br</li>
-                <li>• Criação: POST /instance/create</li>
-                <li>• QR Code: GET /instance/connect/{`{name}`}</li>
-                <li>• Desconectar: DELETE /instance/logout/{`{name}`}</li>
-              </ul>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
