@@ -268,7 +268,7 @@ export function WhatsAppWidget() {
               <ul className="space-y-1 text-gray-600">
                 <li>• API: Evolution WhatsApp</li>
                 <li>• Endpoint: apiwhats.lifecombr.com.br</li>
-                <li>• Método: POST /instance/connect/{'{'}{nome}</li>
+                <li>• Método: POST /instance/connect/{instance?.nome_empresa}</li>
                 <li>• Autenticação: API Key</li>
                 <li>• Webhook: Configurado automaticamente</li>
               </ul>
