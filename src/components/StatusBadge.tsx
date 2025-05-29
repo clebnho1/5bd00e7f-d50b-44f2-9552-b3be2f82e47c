@@ -10,14 +10,12 @@ const StatusBadge = ({ status, message }: StatusBadgeProps) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'open':
-      case 'connected':
         return {
           variant: 'default' as const,
           className: 'bg-green-100 text-green-800 border-green-200',
           text: 'Conectado'
         };
       case 'connecting':
-      case 'qr':
         return {
           variant: 'secondary' as const,
           className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
