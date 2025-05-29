@@ -113,15 +113,15 @@ export function ColaboradoresWidget() {
       setEditingColaborador(colaborador);
       setFormData({
         nome: colaborador.nome || '',
-        email: colaborador.email || '',
-        telefone: colaborador.telefone || '',
-        cargo: colaborador.cargo || '',
-        unidade: colaborador.unidade || '',
+        email: (colaborador as any).email || '',
+        telefone: (colaborador as any).telefone || '',
+        cargo: (colaborador as any).cargo || '',
+        unidade: (colaborador as any).unidade || '',
         ativo: colaborador.ativo ?? true,
         imagem_url: colaborador.imagem_url || ''
       });
-      setProdutos(colaborador.produtos_detalhados || []);
-      setHorarios(colaborador.horarios_detalhados || []);
+      setProdutos((colaborador as any).produtos_detalhados || []);
+      setHorarios((colaborador as any).horarios_detalhados || []);
     } else {
       setEditingColaborador(null);
       setFormData({
@@ -497,9 +497,9 @@ export function ColaboradoresWidget() {
                     </div>
                     
                     <div className="space-y-1 text-sm text-gray-600">
-                      {colaborador.email && <p>Email: {colaborador.email}</p>}
-                      {colaborador.cargo && <p>Cargo: {colaborador.cargo}</p>}
-                      {colaborador.unidade && <p>Unidade: {colaborador.unidade}</p>}
+                      {(colaborador as any).email && <p>Email: {(colaborador as any).email}</p>}
+                      {(colaborador as any).cargo && <p>Cargo: {(colaborador as any).cargo}</p>}
+                      {(colaborador as any).unidade && <p>Unidade: {(colaborador as any).unidade}</p>}
                       
                       {colaborador.produtos && colaborador.produtos.length > 0 && (
                         <div>

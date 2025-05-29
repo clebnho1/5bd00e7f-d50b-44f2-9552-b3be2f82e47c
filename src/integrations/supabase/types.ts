@@ -136,37 +136,49 @@ export type Database = {
       colaboradores: {
         Row: {
           ativo: boolean
+          cargo: string | null
           created_at: string
+          email: string | null
           horarios: string | null
           id: string
           imagem_url: string | null
           nome: string
           produtos: string[] | null
           produtos_precos: Json | null
+          telefone: string | null
+          unidade: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           ativo?: boolean
+          cargo?: string | null
           created_at?: string
+          email?: string | null
           horarios?: string | null
           id?: string
           imagem_url?: string | null
           nome: string
           produtos?: string[] | null
           produtos_precos?: Json | null
+          telefone?: string | null
+          unidade?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           ativo?: boolean
+          cargo?: string | null
           created_at?: string
+          email?: string | null
           horarios?: string | null
           id?: string
           imagem_url?: string | null
           nome?: string
           produtos?: string[] | null
           produtos_precos?: Json | null
+          telefone?: string | null
+          unidade?: string | null
           updated_at?: string
           user_id?: string
         }
