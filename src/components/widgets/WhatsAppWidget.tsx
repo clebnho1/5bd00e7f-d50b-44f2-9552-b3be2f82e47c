@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap } from 'lucide-react';
+import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw, Zap, Power } from 'lucide-react';
 import { useWhatsAppInstance } from '@/hooks/useSupabaseData';
 
 export function WhatsAppWidget() {
-  const { instance, loading, saveInstance, agenteData } = useWhatsAppInstance();
+  const { instance, loading, saveInstance, disconnectInstance, agenteData } = useWhatsAppInstance();
   
   const [isCreating, setIsCreating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   const criarInstancia = async () => {
     if (!agenteData?.nome_empresa) {
@@ -48,12 +49,13 @@ export function WhatsAppWidget() {
     }
   };
 
-  const desconectar = async () => {
-    await saveInstance({
-      nome_empresa: instance?.nome_empresa || agenteData?.nome_empresa,
-      status: 'desconectado',
-      qr_code: null
-    });
+  const handleDisconnect = async () => {
+    setIsDisconnecting(true);
+    try {
+      await disconnectInstance();
+    } finally {
+      setIsDisconnecting(false);
+    }
   };
 
   const getStatusInfo = () => {
@@ -166,19 +168,7 @@ export function WhatsAppWidget() {
                 </Button>
               )}
 
-              {instance && instance.status === 'conectando' && (
-                <Button
-                  onClick={verificarStatus}
-                  disabled={isChecking}
-                  className="w-full"
-                  variant="outline"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
-                  Verificar Status
-                </Button>
-              )}
-
-              {instance && instance.status === 'conectado' && (
+              {instance && (instance.status === 'conectando' || instance.status === 'conectado') && (
                 <div className="space-y-2">
                   <Button
                     onClick={verificarStatus}
@@ -189,12 +179,15 @@ export function WhatsAppWidget() {
                     <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
                     Verificar Status
                   </Button>
+                  
                   <Button
-                    onClick={desconectar}
+                    onClick={handleDisconnect}
+                    disabled={isDisconnecting}
                     className="w-full"
                     variant="destructive"
                   >
-                    Desconectar WhatsApp
+                    <Power className={`h-4 w-4 mr-2 ${isDisconnecting ? 'animate-spin' : ''}`} />
+                    {isDisconnecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
                   </Button>
                 </div>
               )}
@@ -265,9 +258,9 @@ export function WhatsAppWidget() {
               <ul className="space-y-1 text-gray-600">
                 <li>• Criação automática de instância</li>
                 <li>• Nome sincronizado com Agente AI</li>
-                <li>• QR Code gerado pela API</li>
+                <li>• QR Code gerado pela API real</li>
                 <li>• Verificação de status em tempo real</li>
-                <li>• Integração com sistema Evolution</li>
+                <li>• Desconexão de instância</li>
               </ul>
             </div>
             <div>
@@ -275,7 +268,7 @@ export function WhatsAppWidget() {
               <ul className="space-y-1 text-gray-600">
                 <li>• API: Evolution WhatsApp</li>
                 <li>• Endpoint: apiwhats.lifecombr.com.br</li>
-                <li>• Método: POST /instance/connect</li>
+                <li>• Método: POST /instance/connect/{'{'}{nome}</li>
                 <li>• Autenticação: API Key</li>
                 <li>• Webhook: Configurado automaticamente</li>
               </ul>

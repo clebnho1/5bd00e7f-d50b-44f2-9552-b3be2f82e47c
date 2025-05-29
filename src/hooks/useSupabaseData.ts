@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -351,61 +352,87 @@ export function useWhatsAppInstance() {
 
   const createWhatsAppInstance = async (instanceName: string) => {
     try {
-      // Criar instância na API do Evolution
+      console.log('Creating WhatsApp instance with name:', instanceName);
+      
+      // Usar o endpoint correto da Evolution API
       const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/connect/${instanceName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': '0417bf43b0a8669bd6635bcb49d783df'
-        },
-        body: JSON.stringify({
-          instanceName: instanceName
-        })
+        }
       });
 
+      console.log('API Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status}`);
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
       }
 
       const apiData = await response.json();
-      console.log('API Response:', apiData);
+      console.log('API Response data:', apiData);
 
-      // Simular QR Code se não retornado pela API
-      const qrCode = apiData.qrCode || `data:image/svg+xml;base64,${btoa(`
-        <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-          <rect width="200" height="200" fill="white"/>
-          <rect x="20" y="20" width="160" height="160" fill="black"/>
-          <rect x="40" y="40" width="120" height="120" fill="white"/>
-          <rect x="60" y="60" width="80" height="80" fill="black"/>
-          <text x="100" y="105" text-anchor="middle" fill="white" font-size="12">QR CODE</text>
-        </svg>
-      `)}`;
-
+      // Retornar os dados da API real
       return {
-        qr_code: qrCode,
-        status: 'conectando'
+        qr_code: apiData.qrCode || apiData.qr_code || null,
+        status: 'conectando',
+        api_response: apiData
       };
     } catch (error) {
       console.error('Error creating WhatsApp instance:', error);
+      
       toast({
         title: "Erro ao criar instância",
-        description: "Usando modo simulado para demonstração.",
+        description: `Falha na conexão com a Evolution API: ${error.message}`,
         variant: "destructive",
       });
 
-      // Retornar dados simulados em caso de erro
-      return {
-        qr_code: `data:image/svg+xml;base64,${btoa(`
-          <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="200" height="200" fill="white"/>
-            <rect x="20" y="20" width="160" height="160" fill="black"/>
-            <rect x="40" y="40" width="120" height="120" fill="white"/>
-            <rect x="60" y="60" width="80" height="80" fill="black"/>
-            <text x="100" y="105" text-anchor="middle" fill="white" font-size="12">QR CODE</text>
-          </svg>
-        `)}`,
-        status: 'conectando'
-      };
+      throw error; // Re-throw para que o chamador possa tratar
+    }
+  };
+
+  const disconnectInstance = async () => {
+    if (!instance || !user) return;
+
+    try {
+      console.log('Disconnecting instance:', instance.nome_empresa);
+
+      // Tentar desconectar via API da Evolution
+      const response = await fetch(`https://apiwhats.lifecombr.com.br/instance/disconnect/${instance.nome_empresa}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': '0417bf43b0a8669bd6635bcb49d783df'
+        }
+      });
+
+      // Mesmo se a API falhar, atualizar o status local
+      const { error } = await supabase
+        .from('whatsapp_instances')
+        .update({
+          status: 'desconectado',
+          qr_code: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "WhatsApp desconectado",
+        description: "A instância foi desconectada com sucesso.",
+      });
+
+      fetchInstance(); // Recarregar dados
+    } catch (error) {
+      console.error('Error disconnecting instance:', error);
+      toast({
+        title: "Erro ao desconectar",
+        description: "Não foi possível desconectar a instância.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -419,9 +446,14 @@ export function useWhatsAppInstance() {
       if (!instance && agenteData?.nome_empresa) {
         instanceData.nome_empresa = agenteData.nome_empresa;
         
-        // Criar instância na API externa
-        const apiResult = await createWhatsAppInstance(agenteData.nome_empresa);
-        instanceData = { ...instanceData, ...apiResult };
+        try {
+          // Criar instância na API externa
+          const apiResult = await createWhatsAppInstance(agenteData.nome_empresa);
+          instanceData = { ...instanceData, ...apiResult };
+        } catch (apiError) {
+          // Se a API falhar, não salvar no banco
+          return;
+        }
       }
 
       const { data, error } = await supabase
@@ -439,8 +471,8 @@ export function useWhatsAppInstance() {
       setInstance(data);
       
       toast({
-        title: "Instância WhatsApp atualizada",
-        description: "As configurações foram salvas com sucesso.",
+        title: "Instância WhatsApp criada",
+        description: "A integração foi configurada com sucesso.",
       });
     } catch (error) {
       console.error('Error saving instance:', error);
@@ -458,6 +490,7 @@ export function useWhatsAppInstance() {
     instance,
     loading,
     saveInstance,
+    disconnectInstance,
     agenteData
   };
 }
