@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Bot, Users, MessageCircle, Settings, Users as AdminIcon, LogOut } from 'lucide-react';
 import {
   Sidebar,
@@ -22,7 +23,7 @@ interface CustomSidebarProps {
   setActiveWidget: (widget: string) => void;
 }
 
-export function CustomSidebar({ activeWidget, setActiveWidget }: CustomSidebarProps) {
+export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setActiveWidget }) => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   
@@ -144,4 +145,4 @@ export function CustomSidebar({ activeWidget, setActiveWidget }: CustomSidebarPr
       </SidebarFooter>
     </Sidebar>
   );
-}
+};
