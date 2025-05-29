@@ -16,6 +16,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import CriarAdmin from "./pages/CriarAdmin";
 import AgenteAI from "./pages/AgenteAI";
 import Administracao from "./pages/Administracao";
+import WhatsApp from "./pages/WhatsApp";
+import Colaboradores from "./pages/Colaboradores";
+import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -50,6 +53,21 @@ const App = () => (
             <Route path="/agenteai" element={
               <ProtectedRoute>
                 <AgenteAI />
+              </ProtectedRoute>
+            } />
+            <Route path="/whatsapp" element={
+              <ProtectedRoute>
+                <WhatsApp />
+              </ProtectedRoute>
+            } />
+            <Route path="/colaboradores" element={
+              <ProtectedRoute>
+                <Colaboradores />
+              </ProtectedRoute>
+            } />
+            <Route path="/configuracoes" element={
+              <ProtectedRoute>
+                <Configuracoes />
               </ProtectedRoute>
             } />
             <Route path="/administracao" element={

@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
 interface CustomSidebarProps {
@@ -25,6 +25,7 @@ interface CustomSidebarProps {
 
 export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setActiveWidget }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signOut, user, isAdmin } = useAuth();
 
   const userItems = [
@@ -32,19 +33,22 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
       id: 'agente-ai',
       title: 'Agente AI',
       icon: Bot,
-      description: 'Configure seus agentes inteligentes'
+      description: 'Configure seus agentes inteligentes',
+      route: '/agenteai'
     },
     {
       id: 'colaboradores',
       title: 'Colaboradores',
       icon: Users,
-      description: 'Gerencie sua equipe'
+      description: 'Gerencie sua equipe',
+      route: '/colaboradores'
     },
     {
       id: 'whatsapp',
       title: 'WhatsApp',
       icon: MessageCircle,
-      description: 'Configurações de instância'
+      description: 'Configurações de instância',
+      route: '/whatsapp'
     },
   ];
 
@@ -53,15 +57,25 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
       id: 'configuracoes',
       title: 'Configurações',
       icon: Settings,
-      description: 'Webhooks e integrações'
+      description: 'Webhooks e integrações',
+      route: '/configuracoes'
     },
     {
       id: 'administracao',
       title: 'Administração',
       icon: AdminIcon,
-      description: 'Gerenciar usuários e logs'
+      description: 'Gerenciar usuários e logs',
+      route: '/administracao'
     },
   ];
+
+  const handleItemClick = (item: any) => {
+    navigate(item.route);
+  };
+
+  const isActiveRoute = (route: string) => {
+    return location.pathname === route;
+  };
 
   const handleLogout = async () => {
     try {
@@ -93,8 +107,8 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
               {userItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    isActive={activeWidget === item.id}
-                    onClick={() => setActiveWidget(item.id)}
+                    isActive={isActiveRoute(item.route)}
+                    onClick={() => handleItemClick(item)}
                     className="w-full justify-start"
                   >
                     <item.icon className="h-4 w-4" />
@@ -114,8 +128,8 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
                 {adminItems.map((item) => (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
-                      isActive={activeWidget === item.id}
-                      onClick={() => setActiveWidget(item.id)}
+                      isActive={isActiveRoute(item.route)}
+                      onClick={() => handleItemClick(item)}
                       className="w-full justify-start"
                     >
                       <item.icon className="h-4 w-4" />
