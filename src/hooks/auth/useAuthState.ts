@@ -46,9 +46,12 @@ export function useAuthState() {
 
   useEffect(() => {
     let isMounted = true;
+    let authSubscription: any = null;
 
     const initializeAuth = async () => {
       try {
+        console.log('🔄 [AUTH_INIT] Inicializando autenticação...');
+        
         // Primeiro, configura o listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
@@ -74,6 +77,7 @@ export function useAuthState() {
               setUser(null);
               setSession(null);
               setUserRole(null);
+              setLoading(false);
             } else if (newSession?.user) {
               setSession(newSession);
               setUser(newSession.user);
@@ -83,15 +87,26 @@ export function useAuthState() {
                 if (isMounted) {
                   fetchUserRole(newSession.user.id);
                 }
-              }, 0);
+              }, 100);
+              
+              setLoading(false);
             }
           }
         );
+        
+        authSubscription = subscription;
 
         // Depois, verifica se já existe uma sessão
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ [AUTH_SESSION_ERROR]', error);
+          setLoading(false);
+          return;
+        }
         
         if (isMounted && currentSession?.user) {
+          console.log('✅ [AUTH_INIT] Sessão existente encontrada:', currentSession.user.email);
           setSession(currentSession);
           setUser(currentSession.user);
           
@@ -111,18 +126,12 @@ export function useAuthState() {
             if (isMounted) {
               fetchUserRole(currentSession.user.id);
             }
-          }, 0);
+          }, 100);
         }
 
         if (isMounted) {
           setLoading(false);
         }
-
-        return () => {
-          if (subscription) {
-            subscription.unsubscribe();
-          }
-        };
 
       } catch (error) {
         console.error('💥 [AUTH_INIT_ERROR]', error);
@@ -132,12 +141,12 @@ export function useAuthState() {
       }
     };
 
-    const cleanup = initializeAuth();
+    initializeAuth();
 
     return () => {
       isMounted = false;
-      if (cleanup) {
-        cleanup.then(cleanupFn => cleanupFn && cleanupFn());
+      if (authSubscription) {
+        authSubscription.unsubscribe();
       }
     };
   }, []);
