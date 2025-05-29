@@ -47,58 +47,6 @@ export function useAgenteAI() {
     }
   };
 
-  const createWhatsAppInstanceForCompany = async (nomeEmpresa: string) => {
-    try {
-      // Verificar se já existe uma instância para este usuário
-      const { data: existingInstance } = await supabase
-        .from('whatsapp_instances')
-        .select('*')
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      if (existingInstance) {
-        // Se existe, atualizar o nome da empresa
-        const { error } = await supabase
-          .from('whatsapp_instances')
-          .update({
-            nome_empresa: nomeEmpresa,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user!.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Instância WhatsApp atualizada",
-          description: `Nome da empresa atualizado para: ${nomeEmpresa}`,
-        });
-      } else {
-        // Criar nova instância
-        const { error } = await supabase
-          .from('whatsapp_instances')
-          .insert({
-            user_id: user!.id,
-            nome_empresa: nomeEmpresa,
-            status: 'desconectado'
-          });
-
-        if (error) throw error;
-
-        toast({
-          title: "Instância WhatsApp criada",
-          description: `Instância criada automaticamente para: ${nomeEmpresa}`,
-        });
-      }
-    } catch (error: any) {
-      console.error('Erro ao criar/atualizar instância WhatsApp:', error);
-      toast({
-        title: "Erro na instância WhatsApp",
-        description: "Não foi possível criar/atualizar a instância automaticamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const saveAgenteAI = async (data: Partial<Tables['agentes_ai']['Insert']>) => {
     if (!user) {
       toast({
@@ -143,11 +91,6 @@ export function useAgenteAI() {
         title: "Agente AI salvo",
         description: "Configurações atualizadas com sucesso.",
       });
-
-      // Criar/atualizar instância WhatsApp automaticamente
-      if (data.nome_empresa) {
-        await createWhatsAppInstanceForCompany(data.nome_empresa);
-      }
 
       fetchAgenteAI();
     } catch (error: any) {
@@ -321,7 +264,7 @@ export function useWhatsAppInstance() {
       console.log('🧹 [useWhatsAppInstance] Cleanup');
       initRef.current = false;
     };
-  }, [user?.id]); // Usar user.id em vez de user completo
+  }, [user?.id]);
 
   const fetchInstance = async () => {
     if (!user) {

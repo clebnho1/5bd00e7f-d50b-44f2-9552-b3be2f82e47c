@@ -150,7 +150,7 @@ export function WhatsAppWidget() {
               Integração Evolution API
             </CardTitle>
             <CardDescription>
-              Configure sua instância WhatsApp manualmente
+              Configure sua instância WhatsApp
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
