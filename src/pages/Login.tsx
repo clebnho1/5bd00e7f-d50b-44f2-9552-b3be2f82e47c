@@ -10,18 +10,18 @@ import { LoginActions } from '@/components/auth/LoginActions';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, user, loading: authLoading, initialized } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  // Redirect if already logged in - but only after auth is initialized
+  // Redirect if already logged in
   useEffect(() => {
-    if (initialized && !authLoading && user) {
+    if (!authLoading && user) {
       console.log('User already logged in, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
-  }, [user, authLoading, initialized, navigate]);
+  }, [user, authLoading, navigate]);
 
   const validateForm = (email: string, senha: string) => {
     console.log('🔍 Validating form...');
@@ -110,8 +110,8 @@ const Login = () => {
   };
 
   // Show loading if auth is still initializing
-  if (!initialized || authLoading) {
-    console.log('Showing loading state - initialized:', initialized, 'authLoading:', authLoading);
+  if (authLoading) {
+    console.log('Showing loading state - authLoading:', authLoading);
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="flex items-center gap-2">

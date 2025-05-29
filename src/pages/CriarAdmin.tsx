@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,7 +8,7 @@ import { Loader2, UserPlus } from 'lucide-react';
 
 const CriarAdmin = () => {
   const navigate = useNavigate();
-  const { signUp, user, loading: authLoading, initialized } = useAuth();
+  const { signUp, user, loading: authLoading } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -17,10 +16,10 @@ const CriarAdmin = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (initialized && !authLoading && user) {
+    if (!authLoading && user) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, authLoading, initialized, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleCreateAdmin = async () => {
     setIsLoading(true);
@@ -32,7 +31,7 @@ const CriarAdmin = () => {
       console.log('📧 Email:', 'clebermosmann@gmail.com');
       console.log('👤 Nome:', 'Cleber Mosmann');
       console.log('📋 Plano:', 'profissional');
-      console.log('🔄 Estado atual do Supabase auth:', { user, initialized, authLoading });
+      console.log('🔄 Estado atual do Supabase auth:', { user, authLoading });
       
       // Verificar se o hook useAuth está funcionando
       if (!signUp) {
@@ -96,7 +95,7 @@ const CriarAdmin = () => {
     }
   };
 
-  if (!initialized || authLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
