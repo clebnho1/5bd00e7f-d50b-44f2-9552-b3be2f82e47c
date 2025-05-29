@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Crown, Bot, Users, MessageCircle, Settings, BarChart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { AgenteAIWidget } from './widgets/AgenteAIWidget';
+import { useNavigate } from 'react-router-dom';
 import { ColaboradoresWidget } from './widgets/ColaboradoresWidget';
 import { WhatsAppWidget } from './widgets/WhatsAppWidget';
 import { ConfiguracoesWidget } from './widgets/ConfiguracoesWidget';
@@ -16,6 +16,7 @@ interface DashboardContentProps {
 
 export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget }) => {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
 
   const userWidgets = [
@@ -24,6 +25,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
       title: 'Agente AI',
       description: 'Configure seu assistente virtual',
       icon: Bot,
+      hasOwnPage: true, // Indica que tem página própria
     },
     {
       id: 'colaboradores',
@@ -56,8 +58,27 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
 
   const availableWidgets = isAdmin() ? [...userWidgets, ...adminWidgets] : userWidgets;
 
+  const handleWidgetClick = (widgetId: string) => {
+    const widget = availableWidgets.find(w => w.id === widgetId);
+    
+    if (widget?.hasOwnPage) {
+      // Redireciona para página específica
+      if (widgetId === 'agente-ai') {
+        navigate('/agenteai');
+      }
+    } else {
+      // Abre como widget interno
+      setSelectedWidget(widgetId);
+    }
+  };
+
   const renderWidget = () => {
     const widgetToRender = selectedWidget || activeWidget;
+    
+    // Se for agente-ai e tem página própria, não renderiza aqui
+    if (widgetToRender === 'agente-ai') {
+      return null;
+    }
     
     // Verificar se o usuário tem permissão para acessar este widget
     if (!isAdmin() && ['configuracoes', 'administracao'].includes(widgetToRender)) {
@@ -70,8 +91,6 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
     }
     
     switch (widgetToRender) {
-      case 'agente-ai':
-        return <AgenteAIWidget />;
       case 'colaboradores':
         return <ColaboradoresWidget />;
       case 'whatsapp':
@@ -126,7 +145,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
             <CardContent>
               <Button 
                 className="w-full" 
-                onClick={() => setSelectedWidget(widget.id)}
+                onClick={() => handleWidgetClick(widget.id)}
               >
                 Acessar
               </Button>
@@ -135,8 +154,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
         ))}
       </div>
 
-      {/* Widget Ativo */}
-      {displayWidget && (
+      {/* Widget Ativo (apenas para widgets sem página própria) */}
+      {displayWidget && displayWidget !== 'agente-ai' && (
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">

@@ -14,6 +14,7 @@ import EsqueciSenha from "./pages/EsqueciSenha";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import CriarAdmin from "./pages/CriarAdmin";
+import AgenteAI from "./pages/AgenteAI";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -41,6 +42,11 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/agenteai" element={
+              <ProtectedRoute>
+                <AgenteAI />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
