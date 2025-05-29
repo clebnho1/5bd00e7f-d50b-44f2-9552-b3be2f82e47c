@@ -109,14 +109,40 @@ export type Database = {
           },
         ]
       }
+      areas_atuacao: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       colaboradores: {
         Row: {
           ativo: boolean
           created_at: string
           horarios: string | null
           id: string
+          imagem_url: string | null
           nome: string
           produtos: string[] | null
+          produtos_precos: Json | null
           updated_at: string
           user_id: string
         }
@@ -125,8 +151,10 @@ export type Database = {
           created_at?: string
           horarios?: string | null
           id?: string
+          imagem_url?: string | null
           nome: string
           produtos?: string[] | null
+          produtos_precos?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -135,8 +163,10 @@ export type Database = {
           created_at?: string
           horarios?: string | null
           id?: string
+          imagem_url?: string | null
           nome?: string
           produtos?: string[] | null
+          produtos_precos?: Json | null
           updated_at?: string
           user_id?: string
         }
@@ -149,6 +179,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      estilos_comportamento: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {

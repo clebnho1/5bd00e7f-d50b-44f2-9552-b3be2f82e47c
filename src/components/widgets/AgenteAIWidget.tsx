@@ -11,7 +11,7 @@ import { Plus, Bot, Trash } from 'lucide-react';
 import { useAgenteAI } from '@/hooks/useSupabaseData';
 
 export function AgenteAIWidget() {
-  const { agentData, loading, saveAgenteAI } = useAgenteAI();
+  const { agentData, areasAtuacao, estilosComportamento, loading, saveAgenteAI } = useAgenteAI();
   
   const [formData, setFormData] = useState({
     nome: 'Sofia',
@@ -72,7 +72,6 @@ export function AgenteAIWidget() {
   };
 
   const salvarConfiguracao = async () => {
-    // Validar campos obrigatórios
     if (!formData.nome.trim()) {
       return;
     }
@@ -143,24 +142,46 @@ export function AgenteAIWidget() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="areaAtuacao">Área de Atuação</Label>
-              <Input
-                id="areaAtuacao"
-                value={formData.area_atuacao}
-                onChange={(e) => handleInputChange('area_atuacao', e.target.value)}
-                placeholder="Ex: Vendas, Suporte, Atendimento..."
-              />
+              <Label htmlFor="areaAtuacao">Área de Atuação *</Label>
+              <Select value={formData.area_atuacao} onValueChange={(value) => handleInputChange('area_atuacao', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma área de atuação" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {areasAtuacao.map((area) => (
+                    <SelectItem key={area.id} value={area.nome}>
+                      {area.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {areasAtuacao.length === 0 && (
+                <p className="text-xs text-gray-500">Carregando áreas de atuação...</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="estiloComportamento">Estilo e Tom de Comportamento</Label>
-              <Textarea
-                id="estiloComportamento"
-                value={formData.estilo_comportamento}
-                onChange={(e) => handleInputChange('estilo_comportamento', e.target.value)}
-                placeholder="Descreva como o agente deve se comportar..."
-                rows={3}
-              />
+              <Label htmlFor="estiloComportamento">Estilo e Tom de Comportamento *</Label>
+              <Select value={formData.estilo_comportamento} onValueChange={(value) => handleInputChange('estilo_comportamento', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um estilo de comportamento" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50 max-h-60 overflow-y-auto">
+                  {estilosComportamento.map((estilo) => (
+                    <SelectItem key={estilo.id} value={estilo.nome}>
+                      <div>
+                        <div className="font-medium">{estilo.nome}</div>
+                        {estilo.descricao && (
+                          <div className="text-xs text-gray-500">{estilo.descricao}</div>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {estilosComportamento.length === 0 && (
+                <p className="text-xs text-gray-500">Carregando estilos de comportamento...</p>
+              )}
             </div>
 
             <div className="flex items-center space-x-2">

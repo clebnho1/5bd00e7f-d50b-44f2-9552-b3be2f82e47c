@@ -10,11 +10,15 @@ export function useAgenteAI() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [agentData, setAgentData] = useState<Tables['agentes_ai']['Row'] | null>(null);
+  const [areasAtuacao, setAreasAtuacao] = useState<Tables['areas_atuacao']['Row'][]>([]);
+  const [estilosComportamento, setEstilosComportamento] = useState<Tables['estilos_comportamento']['Row'][]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchAgenteAI();
+      fetchAreasAtuacao();
+      fetchEstilosComportamento();
     } else {
       setLoading(false);
     }
@@ -47,6 +51,36 @@ export function useAgenteAI() {
     }
   };
 
+  const fetchAreasAtuacao = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('areas_atuacao')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome');
+
+      if (error) throw error;
+      setAreasAtuacao(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar áreas de atuação:', error);
+    }
+  };
+
+  const fetchEstilosComportamento = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('estilos_comportamento')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome');
+
+      if (error) throw error;
+      setEstilosComportamento(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar estilos de comportamento:', error);
+    }
+  };
+
   const saveAgenteAI = async (data: Partial<Tables['agentes_ai']['Insert']>) => {
     if (!user) {
       toast({
@@ -57,7 +91,6 @@ export function useAgenteAI() {
       return;
     }
 
-    // Validação de campos obrigatórios
     if (!data.nome || !data.sexo || !data.area_atuacao || !data.estilo_comportamento || !data.nome_empresa) {
       toast({
         title: "Campos obrigatórios",
@@ -103,7 +136,14 @@ export function useAgenteAI() {
     }
   };
 
-  return { agentData, loading, saveAgenteAI, refetch: fetchAgenteAI };
+  return { 
+    agentData, 
+    areasAtuacao, 
+    estilosComportamento, 
+    loading, 
+    saveAgenteAI, 
+    refetch: fetchAgenteAI 
+  };
 }
 
 export function useColaboradores() {
@@ -147,7 +187,14 @@ export function useColaboradores() {
     }
   };
 
-  const saveColaborador = async (data: { nome: string; produtos?: string[]; horarios?: string; ativo?: boolean }) => {
+  const saveColaborador = async (data: { 
+    nome: string; 
+    produtos?: string[]; 
+    produtos_precos?: Record<string, number>;
+    horarios?: string; 
+    ativo?: boolean;
+    imagem_url?: string;
+  }) => {
     if (!user) {
       toast({
         title: "Erro de autenticação",
@@ -173,8 +220,10 @@ export function useColaboradores() {
           user_id: user.id,
           nome: data.nome.trim(),
           produtos: data.produtos || [],
+          produtos_precos: data.produtos_precos || {},
           horarios: data.horarios || '09:00 - 18:00',
           ativo: data.ativo ?? true,
+          imagem_url: data.imagem_url || null,
         });
 
       if (error) throw error;
@@ -210,7 +259,7 @@ export function useColaboradores() {
         .from('colaboradores')
         .update(data)
         .eq('id', id)
-        .eq('user_id', user.id); // Segurança adicional
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -231,6 +280,114 @@ export function useColaboradores() {
   };
 
   return { colaboradores, loading, saveColaborador, updateColaborador, refetch: fetchColaboradores };
+}
+
+export function useAdministracao() {
+  const { user, isAdmin } = useAuth();
+  const { toast } = useToast();
+  const [users, setUsers] = useState<Tables['users']['Row'][]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user && isAdmin()) {
+      fetchUsers();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchUsers = async () => {
+    if (!user || !isAdmin()) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar usuários:', error);
+      toast({
+        title: "Erro ao carregar usuários",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateUser = async (userId: string, data: { name?: string; email?: string }) => {
+    if (!user || !isAdmin()) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem editar usuários",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update(data)
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuário atualizado",
+        description: "Informações do usuário atualizadas com sucesso.",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Erro ao atualizar usuário:', error);
+      toast({
+        title: "Erro ao atualizar usuário",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const resetUserPassword = async (email: string) => {
+    if (!user || !isAdmin()) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem resetar senhas",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Reset de senha enviado",
+        description: "Email de reset de senha foi enviado para o usuário.",
+      });
+    } catch (error: any) {
+      console.error('Erro ao resetar senha:', error);
+      toast({
+        title: "Erro ao resetar senha",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return { users, loading, updateUser, resetUserPassword, refetch: fetchUsers };
 }
 
 export function useWhatsAppInstance() {
@@ -331,7 +488,7 @@ export function useWhatsAppInstance() {
         description: "A instância foi desconectada com sucesso.",
       });
 
-      fetchInstance(); // Recarregar dados
+      fetchInstance();
     } catch (error) {
       console.error('Error disconnecting instance:', error);
       toast({
