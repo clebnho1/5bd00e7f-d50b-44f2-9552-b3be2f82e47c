@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,14 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        console.log('Initializing auth...');
         // Get initial session
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting initial session:', error);
-        } else {
-          console.log('Initial session:', initialSession?.user?.email || 'no session');
         }
 
         if (mounted) {
@@ -57,8 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
-        console.log('Auth state changed:', event, currentSession?.user?.email || 'no user');
-        
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
@@ -78,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Empty dependency array - this should only run once
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     if (!email.trim() || !password.trim()) {
