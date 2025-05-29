@@ -72,6 +72,44 @@ export function useAgenteAI() {
     }
 
     try {
+      console.log('🔍 Verificando usuário na tabela users...', { userId: user.id, email: user.email });
+      
+      // Primeiro, verificar se o usuário existe na tabela users
+      const { data: userExists, error: userCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (userCheckError) {
+        console.error('❌ Erro ao verificar usuário:', userCheckError);
+        throw new Error('Erro ao verificar dados do usuário');
+      }
+
+      if (!userExists) {
+        console.log('❌ Usuário não encontrado na tabela users, criando...', { userId: user.id, email: user.email });
+        
+        // Criar o usuário na tabela users se não existir
+        const { error: createUserError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+            email: user.email || '',
+            role: 'user',
+            plano: 'gratuito'
+          });
+
+        if (createUserError) {
+          console.error('❌ Erro ao criar usuário:', createUserError);
+          throw new Error('Erro ao criar perfil do usuário');
+        }
+
+        console.log('✅ Usuário criado com sucesso na tabela users');
+      } else {
+        console.log('✅ Usuário já existe na tabela users');
+      }
+
       // Verificar se é criação ou atualização
       const isUpdate = !!agentData;
       
@@ -85,6 +123,7 @@ export function useAgenteAI() {
       let result;
       
       if (existingAgent) {
+        console.log('🔄 Atualizando agente existente...');
         // Se existe, faz UPDATE
         result = await supabase
           .from('agentes_ai')
@@ -104,6 +143,7 @@ export function useAgenteAI() {
           })
           .eq('user_id', user.id);
       } else {
+        console.log('🆕 Criando novo agente...');
         // Se não existe, faz INSERT
         result = await supabase
           .from('agentes_ai')
@@ -123,7 +163,12 @@ export function useAgenteAI() {
           });
       }
 
-      if (result.error) throw result.error;
+      if (result.error) {
+        console.error('❌ Erro na operação do agente:', result.error);
+        throw result.error;
+      }
+
+      console.log('✅ Agente AI salvo com sucesso');
 
       toast({
         title: "Agente AI salvo",
@@ -150,7 +195,7 @@ export function useAgenteAI() {
 
       fetchAgenteAI();
     } catch (error: any) {
-      console.error('Erro ao salvar agente AI:', error);
+      console.error('❌ Erro ao salvar agente AI:', error);
       toast({
         title: "Erro ao salvar agente AI",
         description: error.message || "Erro desconhecido",

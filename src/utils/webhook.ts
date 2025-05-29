@@ -16,6 +16,20 @@ export const sendWebhookData = async (
   metadata?: any
 ): Promise<boolean> => {
   try {
+    console.log('🔍 Verificando webhook para usuário:', userId);
+    
+    // Verificar se o usuário existe antes de buscar webhook
+    const { data: userExists } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!userExists) {
+      console.log('⚠️ Usuário não encontrado para webhook, ignorando:', userId);
+      return false;
+    }
+
     // Buscar URL do webhook do usuário
     const { data: settings, error } = await supabase
       .from('user_settings')

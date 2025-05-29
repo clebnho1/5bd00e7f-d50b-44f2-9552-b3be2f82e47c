@@ -512,7 +512,7 @@ export type Database = {
       }
     }
     Enums: {
-      plano_tipo: "gratuito" | "basico" | "premium"
+      plano_tipo: "gratuito" | "basico" | "premium" | "profissional"
       user_role: "admin" | "user"
       whatsapp_status: "desconectado" | "conectando" | "conectado" | "erro"
     }
@@ -630,7 +630,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      plano_tipo: ["gratuito", "basico", "premium"],
+      plano_tipo: ["gratuito", "basico", "premium", "profissional"],
       user_role: ["admin", "user"],
       whatsapp_status: ["desconectado", "conectando", "conectado", "erro"],
     },
