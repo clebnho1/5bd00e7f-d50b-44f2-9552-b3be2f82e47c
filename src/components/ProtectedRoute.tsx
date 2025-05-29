@@ -20,7 +20,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!loading && !user) {
-      console.log('🔄 [REDIRECT] Redirecionando para login');
+      console.log('🔄 [REDIRECT] Usuário não autenticado, redirecionando para login');
       navigate('/login', { replace: true });
     }
   }, [user, loading, navigate]);
@@ -38,7 +38,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    console.log('🚫 [NO_USER] Usuário não autenticado');
+    console.log('🚫 [NO_USER] Usuário não autenticado, não renderizando conteúdo');
     return null;
   }
 

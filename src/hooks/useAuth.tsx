@@ -26,49 +26,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
 
   console.log('🚀 [AUTH_PROVIDER] Inicializado');
 
   useEffect(() => {
     let mounted = true;
-    let authSubscription: any = null;
 
     const initializeAuth = async () => {
       try {
         console.log('🔄 [INIT] Iniciando inicialização da autenticação');
         
-        // Setup auth state listener first
-        authSubscription = supabase.auth.onAuthStateChange(
-          async (event, currentSession) => {
-            console.log('🔄 [AUTH_CHANGE] Evento recebido:', {
-              event,
-              hasSession: !!currentSession,
-              hasUser: !!currentSession?.user,
-              mounted
-            });
-            
-            if (mounted) {
-              setSession(currentSession);
-              setUser(currentSession?.user ?? null);
-              
-              if (currentSession?.user && event === 'SIGNED_IN') {
-                console.log('👤 [LOGIN] Buscando role do usuário');
-                await fetchUserRole(currentSession.user.id);
-              } else if (!currentSession?.user) {
-                console.log('👤 [LOGOUT] Limpando role');
-                setUserRole(null);
-              }
-              
-              if (!loading) {
-                console.log('✅ [STATE_SYNCED] Estado sincronizado');
-              }
-            }
-          }
-        );
-
-        // Get initial session
+        // Get initial session first
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         console.log('📨 [SESSION] Sessão inicial obtida:', {
@@ -85,55 +54,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
           
+          // Fetch user role if user exists
           if (initialSession?.user) {
+            console.log('👤 [INIT] Buscando role do usuário na inicialização');
             await fetchUserRole(initialSession.user.id);
           }
           
-          setInitialized(true);
           setLoading(false);
-          console.log('✅ [COMPLETE] Inicialização concluída');
+          console.log('✅ [INIT] Inicialização concluída');
         }
+
+        // Setup auth state listener after initial load
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            console.log('🔄 [AUTH_CHANGE] Evento recebido:', {
+              event,
+              hasSession: !!currentSession,
+              hasUser: !!currentSession?.user,
+              mounted
+            });
+            
+            if (mounted) {
+              setSession(currentSession);
+              setUser(currentSession?.user ?? null);
+              
+              if (currentSession?.user && event === 'SIGNED_IN') {
+                console.log('👤 [LOGIN] Buscando role do usuário após login');
+                setTimeout(() => {
+                  fetchUserRole(currentSession.user.id);
+                }, 0);
+              } else if (!currentSession?.user) {
+                console.log('👤 [LOGOUT] Limpando role');
+                setUserRole(null);
+              }
+            }
+          }
+        );
+
+        return () => {
+          console.log('🧹 [CLEANUP] Limpando subscription');
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error('💥 [CRASH] Erro durante inicialização:', error);
         if (mounted) {
-          setInitialized(true);
           setLoading(false);
         }
       }
     };
 
-    initializeAuth();
+    const cleanup = initializeAuth();
 
     return () => {
       console.log('🧹 [CLEANUP] Limpando AuthProvider');
       mounted = false;
-      if (authSubscription?.data?.subscription) {
-        authSubscription.data.subscription.unsubscribe();
-      }
+      cleanup?.then(fn => fn?.());
     };
   }, []);
 
-  // Safety timeout
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (loading && !initialized) {
-      timeoutId = setTimeout(() => {
-        console.log('⚠️ [TIMEOUT] Forçando fim do loading por timeout');
-        setLoading(false);
-        setInitialized(true);
-      }, 5000);
-    }
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [loading, initialized]);
-
   const fetchUserRole = async (userId: string) => {
     try {
+      console.log('🔍 [ROLE] Buscando role para usuário:', userId);
+      
       const { data, error } = await supabase
         .from('users')
         .select('role')
@@ -142,13 +124,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('❌ [ROLE_ERROR] Erro ao buscar role:', error);
+        // Se não encontrar na tabela users, assume 'user' como padrão
+        setUserRole('user');
         return;
       }
 
+      console.log('✅ [ROLE_SUCCESS] Role encontrado:', data.role);
       setUserRole(data.role);
-      console.log('✅ [ROLE_SUCCESS] Role definido:', data.role);
     } catch (error) {
       console.error('💥 [ROLE_CRASH] Erro ao buscar role:', error);
+      // Em caso de erro, assume 'user' como padrão
+      setUserRole('user');
     }
   };
 
@@ -168,6 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      console.log('🔐 [SIGNIN] Tentativa de login para:', email);
+      
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -192,6 +180,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
+      console.log('✅ [SIGNIN] Login bem-sucedido');
+      
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
@@ -295,6 +285,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
+      // Clear local state
+      setUserRole(null);
+      
       toast({
         title: "Logout realizado",
         description: "Até logo!",
@@ -357,7 +350,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: !!user,
     session: !!session,
     loading,
-    initialized,
     userRole
   });
 
