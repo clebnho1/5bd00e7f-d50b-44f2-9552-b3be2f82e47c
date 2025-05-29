@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +20,11 @@ export function useWhatsAppAPI() {
   const generateInstanceName = (baseClientName: string) => {
     if (!user?.id) return baseClientName;
     
+    // Verificar se o nome já tem o prefixo para evitar duplicação
+    if (baseClientName.startsWith(user.id.substring(0, 8))) {
+      return baseClientName;
+    }
+    
     // Usar os primeiros 8 caracteres do ID do usuário + nome do cliente
     const userPrefix = user.id.substring(0, 8);
     return `${userPrefix}_${baseClientName.trim()}`;
@@ -37,15 +41,16 @@ export function useWhatsAppAPI() {
     return 'unknown';
   };
 
-  const checkConnectionStatus = async (baseInstanceName: string) => {
-    if (!baseInstanceName || !user?.id) return;
+  const checkConnectionStatus = async (instanceName: string) => {
+    if (!instanceName || !user?.id) return;
 
-    const instanceName = generateInstanceName(baseInstanceName);
+    // Não gerar nome novamente se já foi gerado
+    const finalInstanceName = instanceName.includes('_') ? instanceName : generateInstanceName(instanceName);
 
     try {
-      console.log(`🔍 Verificando status da instância do usuário ${user.email}: ${instanceName}`);
+      console.log(`🔍 Verificando status da instância do usuário ${user.email}: ${finalInstanceName}`);
       
-      const response = await fetch(`${API_BASE}/instance/connectionState/${instanceName}`, {
+      const response = await fetch(`${API_BASE}/instance/connectionState/${finalInstanceName}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -193,8 +198,8 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const connectWhatsApp = async (baseInstanceName: string) => {
-    if (!baseInstanceName || !user?.id) {
+  const connectWhatsApp = async (instanceName: string) => {
+    if (!instanceName || !user?.id) {
       toast({
         title: "Erro",
         description: "Usuário não autenticado ou instância inválida.",
@@ -203,14 +208,15 @@ export function useWhatsAppAPI() {
       throw new Error("Usuário não autenticado ou instância inválida");
     }
 
-    const instanceName = generateInstanceName(baseInstanceName);
+    // Não gerar nome novamente se já foi gerado
+    const finalInstanceName = instanceName.includes('_') ? instanceName : generateInstanceName(instanceName);
     setQrCode('');
     setError(undefined);
     
     try {
-      console.log(`🔗 Conectando instância do usuário ${user.email}: ${instanceName}`);
+      console.log(`🔗 Conectando instância do usuário ${user.email}: ${finalInstanceName}`);
       
-      const response = await fetch(`${API_BASE}/instance/connect/${instanceName}`, {
+      const response = await fetch(`${API_BASE}/instance/connect/${finalInstanceName}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -270,15 +276,15 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const disconnect = async (baseInstanceName: string) => {
-    if (!baseInstanceName || !user?.id) return;
+  const disconnect = async (instanceName: string) => {
+    if (!instanceName || !user?.id) return;
     
-    const instanceName = generateInstanceName(baseInstanceName);
+    const finalInstanceName = instanceName.includes('_') ? instanceName : generateInstanceName(instanceName);
     
     try {
-      console.log(`🔌 Desconectando instância do usuário ${user.email}: ${instanceName}`);
+      console.log(`🔌 Desconectando instância do usuário ${user.email}: ${finalInstanceName}`);
       
-      const response = await fetch(`${API_BASE}/instance/logout/${instanceName}`, {
+      const response = await fetch(`${API_BASE}/instance/logout/${finalInstanceName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -310,15 +316,15 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const deleteInstance = async (baseInstanceName: string) => {
-    if (!baseInstanceName || !user?.id) return;
+  const deleteInstance = async (instanceName: string) => {
+    if (!instanceName || !user?.id) return;
     
-    const instanceName = generateInstanceName(baseInstanceName);
+    const finalInstanceName = instanceName.includes('_') ? instanceName : generateInstanceName(instanceName);
     
     try {
-      console.log(`🗑️ Excluindo instância do usuário ${user.email}: ${instanceName}`);
+      console.log(`🗑️ Excluindo instância do usuário ${user.email}: ${finalInstanceName}`);
       
-      const response = await fetch(`${API_BASE}/instance/delete/${instanceName}`, {
+      const response = await fetch(`${API_BASE}/instance/delete/${finalInstanceName}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -355,10 +361,10 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const startPeriodicCheck = (baseInstanceName: string) => {
+  const startPeriodicCheck = (instanceName: string) => {
     if (!user?.id) return;
     
-    console.log(`🔄 Iniciando verificação periódica para usuário ${user.email}: ${baseInstanceName}`);
+    console.log(`🔄 Iniciando verificação periódica para usuário ${user.email}: ${instanceName}`);
     
     // Limpa qualquer intervalo anterior
     if (intervalRef.current) {
@@ -366,13 +372,13 @@ export function useWhatsAppAPI() {
     }
     
     // Verifica imediatamente
-    checkConnectionStatus(baseInstanceName);
+    checkConnectionStatus(instanceName);
     
     // Configura verificação a cada 5 segundos quando conectando, 15 segundos quando conectado
     const getInterval = () => statusConexao === 'connecting' ? 5000 : 15000;
     
     intervalRef.current = setInterval(() => {
-      checkConnectionStatus(baseInstanceName);
+      checkConnectionStatus(instanceName);
     }, getInterval());
   };
 

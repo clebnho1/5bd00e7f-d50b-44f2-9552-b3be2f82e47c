@@ -110,6 +110,7 @@ export function WhatsAppWidget() {
   };
 
   const handleConnect = async () => {
+    // Usar instanceId se disponível, senão usar nomeCliente
     const targetInstance = instanceId || nomeCliente.trim();
     setIsConnecting(true);
     try {
