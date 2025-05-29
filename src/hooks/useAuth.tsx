@@ -29,11 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
+        console.log('Initializing auth...');
         // Get initial session
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting initial session:', error);
+        } else {
+          console.log('Initial session:', !!initialSession);
         }
 
         if (mounted) {
@@ -41,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(initialSession?.user ?? null);
           setInitialized(true);
           setLoading(false);
+          console.log('Auth initialized with user:', !!initialSession?.user);
         }
       } catch (error) {
         console.error('Error during session initialization:', error);
@@ -54,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log('Auth state change:', event, !!currentSession);
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
@@ -78,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     if (!email.trim() || !password.trim()) {
       const errorMsg = "Email e senha são obrigatórios";
+      console.log('Sign in validation failed:', errorMsg);
       toast({
         title: "Campos obrigatórios",
         description: errorMsg,
@@ -88,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
+      console.log('Attempting sign in with email:', email);
       
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -95,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
+        console.error('Supabase sign in error:', error);
         let errorMessage = "Erro no login";
         
         if (error.message.includes('Invalid login credentials')) {
@@ -113,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
+      console.log('Sign in successful');
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",

@@ -23,6 +23,7 @@ const Login = () => {
 
   // Redirect if already logged in - but only after auth is initialized
   useEffect(() => {
+    console.log('Login useEffect - Auth state:', { user: !!user, authLoading, initialized });
     if (initialized && !authLoading && user) {
       console.log('User already logged in, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
@@ -57,14 +58,19 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Login form submitted with:', { email: formData.email, senha: '***' });
+    
     if (!validateForm()) {
+      console.log('Form validation failed');
       return;
     }
     
     setIsLoading(true);
     
     try {
+      console.log('Attempting to sign in...');
       await signIn(formData.email.trim(), formData.senha);
+      console.log('Sign in successful');
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -92,6 +98,7 @@ const Login = () => {
 
   // Show loading if auth is still initializing
   if (!initialized || authLoading) {
+    console.log('Showing loading state - initialized:', initialized, 'authLoading:', authLoading);
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -104,8 +111,11 @@ const Login = () => {
 
   // Don't render if user is logged in (will redirect)
   if (user) {
+    console.log('User is logged in, not rendering login form');
     return null;
   }
+
+  console.log('Rendering login form');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
