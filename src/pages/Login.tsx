@@ -66,6 +66,8 @@ const Login = () => {
       await signIn(email.trim(), senha);
       console.log('SignIn function completed successfully');
       console.log('=== LOGIN ATTEMPT SUCCESS ===');
+      // After successful login, redirect to dashboard (final step in flow)
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
       console.error('=== LOGIN ATTEMPT FAILED ===');
       console.error('Login error:', error);
@@ -101,7 +103,7 @@ const Login = () => {
 
   const handleBackClick = () => {
     console.log('=== BACK BUTTON CLICKED ===');
-    navigate('/');
+    navigate('/cadastro'); // Go back to cadastro in the flow
   };
 
   const handleCreateAccountClick = () => {

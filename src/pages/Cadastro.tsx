@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -113,7 +114,7 @@ const Cadastro = () => {
       );
       
       console.log('Registration successful, redirecting to login');
-      // Small delay to show success message before redirect
+      // Redirect to login following the flow
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 1500);
