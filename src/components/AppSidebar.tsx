@@ -15,14 +15,16 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AppSidebarProps {
   activeWidget: string;
-  onWidgetChange: (widget: string) => void;
+  setActiveWidget: (widget: string) => void;
 }
 
-export function AppSidebar({ activeWidget, onWidgetChange }: AppSidebarProps) {
+export function AppSidebar({ activeWidget, setActiveWidget }: AppSidebarProps) {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   
   // Mock user data - em produção viria do Supabase Auth
   const user = {
@@ -67,10 +69,13 @@ export function AppSidebar({ activeWidget, onWidgetChange }: AppSidebarProps) {
     },
   ];
 
-  const handleLogout = () => {
-    // Aqui seria o logout do Supabase Auth
-    console.log('Fazendo logout...');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
   };
 
   return (
@@ -94,7 +99,7 @@ export function AppSidebar({ activeWidget, onWidgetChange }: AppSidebarProps) {
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={activeWidget === item.id}
-                    onClick={() => onWidgetChange(item.id)}
+                    onClick={() => setActiveWidget(item.id)}
                     className="w-full justify-start"
                   >
                     <item.icon className="h-4 w-4" />
@@ -115,7 +120,7 @@ export function AppSidebar({ activeWidget, onWidgetChange }: AppSidebarProps) {
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       isActive={activeWidget === item.id}
-                      onClick={() => onWidgetChange(item.id)}
+                      onClick={() => setActiveWidget(item.id)}
                       className="w-full justify-start"
                     >
                       <item.icon className="h-4 w-4" />
