@@ -12,6 +12,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   loading: boolean;
   initialized: boolean;
+  isAdmin: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,6 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  const isAdmin = () => {
+    return user?.email === 'admin@admin.com' || user?.user_metadata?.role === 'admin';
+  };
 
   const signIn = async (email: string, password: string) => {
     console.log('=== SIGNIN FUNCTION START ===');
@@ -307,6 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       loading,
       initialized,
+      isAdmin,
     }}>
       {children}
     </AuthContext.Provider>

@@ -25,9 +25,9 @@ interface CustomSidebarProps {
 
 export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setActiveWidget }) => {
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin } = useAuth();
 
-  const commonItems = [
+  const userItems = [
     {
       id: 'agente-ai',
       title: 'Agente AI',
@@ -81,6 +81,7 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
         </div>
         <div className="text-sm text-muted-foreground mt-2">
           Olá, {user?.user_metadata?.name || user?.email}
+          {isAdmin() && <span className="text-blue-600 font-medium"> (Admin)</span>}
         </div>
       </SidebarHeader>
 
@@ -89,7 +90,7 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
           <SidebarGroupLabel>Widgets Principais</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {commonItems.map((item) => (
+              {userItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={activeWidget === item.id}
@@ -105,7 +106,7 @@ export const CustomSidebar: React.FC<CustomSidebarProps> = ({ activeWidget, setA
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {user?.user_metadata?.role === 'admin' && (
+        {isAdmin() && (
           <SidebarGroup>
             <SidebarGroupLabel>Administração</SidebarGroupLabel>
             <SidebarGroupContent>

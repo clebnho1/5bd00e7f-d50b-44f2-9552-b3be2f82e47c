@@ -14,45 +14,60 @@ interface DashboardContentProps {
   activeWidget: string;
 }
 
-const widgets = [
-  {
-    id: 'agente-ai',
-    title: 'Agente AI',
-    description: 'Configure seu assistente virtual',
-    icon: Bot,
-  },
-  {
-    id: 'colaboradores',
-    title: 'Colaboradores',
-    description: 'Gerencie sua equipe',
-    icon: Users,
-  },
-  {
-    id: 'whatsapp',
-    title: 'WhatsApp',
-    description: 'Configure sua instância',
-    icon: MessageCircle,
-  },
-  {
-    id: 'configuracoes',
-    title: 'Configurações',
-    description: 'Ajustes do sistema',
-    icon: Settings,
-  },
-  {
-    id: 'administracao',
-    title: 'Administração',
-    description: 'Relatórios e logs',
-    icon: BarChart,
-  },
-];
-
 export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget }) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
+
+  const userWidgets = [
+    {
+      id: 'agente-ai',
+      title: 'Agente AI',
+      description: 'Configure seu assistente virtual',
+      icon: Bot,
+    },
+    {
+      id: 'colaboradores',
+      title: 'Colaboradores',
+      description: 'Gerencie sua equipe',
+      icon: Users,
+    },
+    {
+      id: 'whatsapp',
+      title: 'WhatsApp',
+      description: 'Configure sua instância',
+      icon: MessageCircle,
+    },
+  ];
+
+  const adminWidgets = [
+    {
+      id: 'configuracoes',
+      title: 'Configurações',
+      description: 'Ajustes do sistema',
+      icon: Settings,
+    },
+    {
+      id: 'administracao',
+      title: 'Administração',
+      description: 'Relatórios e logs',
+      icon: BarChart,
+    },
+  ];
+
+  const availableWidgets = isAdmin() ? [...userWidgets, ...adminWidgets] : userWidgets;
 
   const renderWidget = () => {
     const widgetToRender = selectedWidget || activeWidget;
+    
+    // Verificar se o usuário tem permissão para acessar este widget
+    if (!isAdmin() && ['configuracoes', 'administracao'].includes(widgetToRender)) {
+      return (
+        <div className="text-center py-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Acesso Restrito</h3>
+          <p className="text-gray-600">Você não tem permissão para acessar este widget.</p>
+        </div>
+      );
+    }
     
     switch (widgetToRender) {
       case 'agente-ai':
@@ -79,10 +94,11 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600 mt-2">
           Bem-vindo, {user?.user_metadata?.name || user?.email}!
+          {isAdmin() && <span className="text-blue-600 font-medium"> (Administrador)</span>}
         </p>
         
         {/* Link para Admin Dashboard se for admin */}
-        {user?.user_metadata?.role === 'admin' && (
+        {isAdmin() && (
           <div className="mt-4">
             <Button 
               variant="outline" 
@@ -98,7 +114,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
 
       {/* Cards dos Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {widgets.map((widget) => (
+        {availableWidgets.map((widget) => (
           <Card key={widget.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -124,7 +140,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
-              {widgets.find(w => w.id === displayWidget)?.title}
+              {availableWidgets.find(w => w.id === displayWidget)?.title}
             </h2>
             <Button 
               variant="outline" 
