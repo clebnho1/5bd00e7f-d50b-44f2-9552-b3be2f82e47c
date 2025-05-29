@@ -34,7 +34,10 @@ export function useAgenteAI() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
       setAgentData(data);
     } catch (error: any) {
       console.error('Erro ao carregar agente AI:', error);
@@ -68,24 +71,55 @@ export function useAgenteAI() {
     }
 
     try {
-      const { error } = await supabase
+      // Primeiro verifica se já existe um agente para este usuário
+      const { data: existingAgent } = await supabase
         .from('agentes_ai')
-        .upsert({
-          user_id: user.id,
-          nome: data.nome,
-          sexo: data.sexo,
-          area_atuacao: data.area_atuacao,
-          estilo_comportamento: data.estilo_comportamento,
-          usar_emotion: data.usar_emotion ?? true,
-          nome_empresa: data.nome_empresa,
-          telefone_empresa: data.telefone_empresa || null,
-          email_empresa: data.email_empresa || null,
-          website_empresa: data.website_empresa || null,
-          endereco_empresa: data.endereco_empresa || null,
-          funcoes: data.funcoes || null,
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      let result;
+      
+      if (existingAgent) {
+        // Se existe, faz UPDATE
+        result = await supabase
+          .from('agentes_ai')
+          .update({
+            nome: data.nome,
+            sexo: data.sexo,
+            area_atuacao: data.area_atuacao,
+            estilo_comportamento: data.estilo_comportamento,
+            usar_emotion: data.usar_emotion ?? true,
+            nome_empresa: data.nome_empresa,
+            telefone_empresa: data.telefone_empresa || null,
+            email_empresa: data.email_empresa || null,
+            website_empresa: data.website_empresa || null,
+            endereco_empresa: data.endereco_empresa || null,
+            funcoes: data.funcoes || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Se não existe, faz INSERT
+        result = await supabase
+          .from('agentes_ai')
+          .insert({
+            user_id: user.id,
+            nome: data.nome,
+            sexo: data.sexo,
+            area_atuacao: data.area_atuacao,
+            estilo_comportamento: data.estilo_comportamento,
+            usar_emotion: data.usar_emotion ?? true,
+            nome_empresa: data.nome_empresa,
+            telefone_empresa: data.telefone_empresa || null,
+            email_empresa: data.email_empresa || null,
+            website_empresa: data.website_empresa || null,
+            endereco_empresa: data.endereco_empresa || null,
+            funcoes: data.funcoes || null,
+          });
+      }
+
+      if (result.error) throw result.error;
 
       toast({
         title: "Agente AI salvo",

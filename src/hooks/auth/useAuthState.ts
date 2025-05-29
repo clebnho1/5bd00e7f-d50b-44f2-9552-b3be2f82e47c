@@ -53,27 +53,12 @@ export function useAuthState() {
     console.log('🔄 [AUTH_INIT] Inicializando sistema de autenticação');
     
     let mounted = true;
+    let authSubscription: any;
 
     const initAuth = async () => {
       try {
-        // Primeiro pega a sessão atual
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (mounted) {
-          if (currentSession?.user) {
-            console.log('📨 [SESSION_FOUND] Sessão encontrada para:', currentSession.user.email);
-            setSession(currentSession);
-            setUser(currentSession.user);
-            await fetchUserRole(currentSession.user.id);
-          } else {
-            console.log('❌ [NO_SESSION] Nenhuma sessão encontrada');
-          }
-          setLoading(false);
-          setInitialized(true);
-        }
-
-        // Depois configura o listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        // Configura o listener primeiro
+        authSubscription = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!mounted) return;
             
@@ -87,19 +72,35 @@ export function useAuthState() {
               setSession(newSession);
               setUser(newSession.user);
               
-              if (newSession.user) {
+              if (newSession.user && !userRole) {
                 await fetchUserRole(newSession.user.id);
               }
             }
             
-            if (!initialized) {
+            if (!initialized && mounted) {
               setLoading(false);
               setInitialized(true);
             }
           }
         );
 
-        return subscription;
+        // Depois pega a sessão atual
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (mounted) {
+          if (currentSession?.user) {
+            console.log('📨 [SESSION_FOUND] Sessão encontrada para:', currentSession.user.email);
+            setSession(currentSession);
+            setUser(currentSession.user);
+            await fetchUserRole(currentSession.user.id);
+          } else {
+            console.log('❌ [NO_SESSION] Nenhuma sessão encontrada');
+          }
+          
+          setLoading(false);
+          setInitialized(true);
+        }
+
       } catch (error) {
         console.error('💥 [AUTH_INIT_ERROR]', error);
         if (mounted) {
@@ -109,13 +110,15 @@ export function useAuthState() {
       }
     };
 
-    const subscriptionPromise = initAuth();
+    initAuth();
 
     return () => {
       mounted = false;
-      subscriptionPromise.then(sub => sub?.unsubscribe());
+      if (authSubscription?.data?.subscription) {
+        authSubscription.data.subscription.unsubscribe();
+      }
     };
-  }, [initialized]);
+  }, []); // Dependência vazia - só executa uma vez
 
   return {
     user,
