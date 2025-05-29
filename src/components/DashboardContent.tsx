@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,21 +66,16 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget
   const availableWidgets = isAdmin() ? [...userWidgets, ...adminWidgets] : userWidgets;
 
   const handleWidgetClick = (widgetId: string) => {
-    console.log('Widget clicked:', widgetId);
     const widget = availableWidgets.find(w => w.id === widgetId);
-    console.log('Widget found:', widget);
     
     if (widget?.hasOwnPage) {
-      console.log('Redirecting to page for widget:', widgetId);
       if (widgetId === 'agente-ai') {
-        console.log('Navigating to /agenteai');
         navigate('/agenteai');
         return;
       }
     }
     
     // Para widgets sem página própria, abre como widget interno
-    console.log('Opening as internal widget:', widgetId);
     setSelectedWidget(widgetId);
   };
 
