@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,7 +19,7 @@ export function useWhatsAppAPI() {
     
     if (status === 'open' || status === 'connected') return 'open';
     if (status === 'connecting' || status === 'qr' || status === 'qrcode') return 'connecting';
-    if (status === 'closed' || status === 'disconnected') return 'closed';
+    if (status === 'closed' || status === 'disconnected' || status === 'close') return 'closed';
     if (status === 'error' || status === 'failed') return 'error';
     
     return 'unknown';
@@ -30,6 +29,8 @@ export function useWhatsAppAPI() {
     if (!targetInstance) return;
 
     try {
+      console.log(`🔍 Verificando status da instância: ${targetInstance}`);
+      
       const response = await fetch(`${API_BASE}/instance/connectionState/${targetInstance}`, {
         method: 'GET',
         headers: {
@@ -43,33 +44,49 @@ export function useWhatsAppAPI() {
         const apiStatus = data.instance?.state || data.state || 'unknown';
         const normalizedStatus = normalizeStatus(apiStatus);
         
-        setStatusConexao(normalizedStatus);
+        console.log(`📊 Status atual: ${apiStatus} -> ${normalizedStatus}`);
         
-        if (normalizedStatus === 'open') {
-          setStatusMessage('Conectado e funcionando');
-          setError(undefined);
-          setQrCode('');
-        } else if (normalizedStatus === 'connecting') {
-          setStatusMessage('Aguardando leitura do QR Code');
-        } else if (normalizedStatus === 'closed') {
-          setStatusMessage('Desconectado');
-        } else if (normalizedStatus === 'error') {
-          setStatusMessage('Erro na conexão');
-          setError('Problemas na conexão com WhatsApp');
-        } else {
-          setStatusMessage('Status desconhecido');
+        // Só atualiza se o status mudou
+        if (statusConexao !== normalizedStatus) {
+          setStatusConexao(normalizedStatus);
+          
+          if (normalizedStatus === 'open') {
+            setStatusMessage('WhatsApp conectado e funcionando');
+            setError(undefined);
+            setQrCode('');
+            toast({
+              title: "WhatsApp Conectado! 🎉",
+              description: "Sua instância do WhatsApp está conectada e funcionando.",
+            });
+          } else if (normalizedStatus === 'connecting') {
+            setStatusMessage('Aguardando leitura do QR Code');
+          } else if (normalizedStatus === 'closed') {
+            setStatusMessage('WhatsApp desconectado');
+            setQrCode('');
+          } else if (normalizedStatus === 'error') {
+            setStatusMessage('Erro na conexão com WhatsApp');
+            setError('Problemas na conexão com WhatsApp');
+          } else {
+            setStatusMessage('Status desconhecido');
+          }
         }
       } else if (response.status === 404) {
-        setStatusConexao('closed');
-        setStatusMessage('Instância não encontrada');
-        setError(undefined);
+        if (statusConexao !== 'closed') {
+          setStatusConexao('closed');
+          setStatusMessage('Instância não encontrada');
+          setError(undefined);
+          setQrCode('');
+        }
       } else {
         throw new Error(`API respondeu com status ${response.status}`);
       }
     } catch (err) {
-      setStatusConexao('error');
-      setStatusMessage('Erro ao verificar conexão');
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      console.error('❌ Erro ao verificar status:', err);
+      if (statusConexao !== 'error') {
+        setStatusConexao('error');
+        setStatusMessage('Erro ao verificar conexão');
+        setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      }
     }
   };
 
@@ -165,6 +182,8 @@ export function useWhatsAppAPI() {
     setError(undefined);
     
     try {
+      console.log(`🔗 Conectando instância: ${targetInstance}`);
+      
       const response = await fetch(`${API_BASE}/instance/connect/${targetInstance}`, {
         method: 'GET',
         headers: {
@@ -205,7 +224,7 @@ export function useWhatsAppAPI() {
             description: data.message,
           });
           setStatusConexao('open');
-          setStatusMessage('Conectado');
+          setStatusMessage('WhatsApp já está conectado');
           return null;
         } else {
           throw new Error(`QR Code não foi gerado. Resposta da API: ${JSON.stringify(data)}`);
@@ -303,16 +322,29 @@ export function useWhatsAppAPI() {
   };
 
   const startPeriodicCheck = (instanceId: string) => {
-    if (instanceId && statusConexao === 'open') {
-      intervalRef.current = setInterval(() => checkConnectionStatus(instanceId), 10000);
-    } else if (intervalRef.current) {
+    console.log(`🔄 Iniciando verificação periódica para: ${instanceId}`);
+    
+    // Limpa qualquer intervalo anterior
+    if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
+    
+    // Verifica imediatamente
+    checkConnectionStatus(instanceId);
+    
+    // Configura verificação a cada 5 segundos quando conectando, 15 segundos quando conectado
+    const getInterval = () => statusConexao === 'connecting' ? 5000 : 15000;
+    
+    intervalRef.current = setInterval(() => {
+      checkConnectionStatus(instanceId);
+    }, getInterval());
   };
 
   const stopPeriodicCheck = () => {
+    console.log('⏹️ Parando verificação periódica');
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
   };
 

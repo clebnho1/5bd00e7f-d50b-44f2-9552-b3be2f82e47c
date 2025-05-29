@@ -60,14 +60,19 @@ export function WhatsAppWidget() {
     }
   }, [nomeCliente]);
 
-  // Verificar status da conexão periodicamente
+  // Verificar status da conexão periodicamente quando tiver instância
   useEffect(() => {
-    if (instanceId) {
-      startPeriodicCheck(instanceId);
+    const targetInstance = instanceId || nomeCliente.trim();
+    
+    if (targetInstance) {
+      console.log(`🎯 Iniciando monitoramento para: ${targetInstance}`);
+      startPeriodicCheck(targetInstance);
+    } else {
+      stopPeriodicCheck();
     }
     
     return () => stopPeriodicCheck();
-  }, [instanceId, statusConexao]);
+  }, [instanceId, nomeCliente]);
 
   const handleCheckStatus = async () => {
     const targetInstance = instanceId || nomeCliente.trim();
@@ -206,7 +211,10 @@ export function WhatsAppWidget() {
             QR Code para Conexão
           </CardTitle>
           <CardDescription className="text-gray-600">
-            Escaneie o código QR com seu WhatsApp para conectar
+            {statusConexao === 'open' 
+              ? 'WhatsApp conectado! Não é necessário escanear o QR Code.'
+              : 'Escaneie o código QR com seu WhatsApp para conectar'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -214,7 +222,7 @@ export function WhatsAppWidget() {
             qrCodeData={qrCode} 
             isLoading={isConnecting} 
             error={error}
-            message={statusConexao === 'open' ? 'WhatsApp já está conectado! Não é necessário escanear o QR Code.' : undefined}
+            message={statusConexao === 'open' ? 'WhatsApp conectado com sucesso! ✅' : undefined}
           />
         </CardContent>
       </Card>
