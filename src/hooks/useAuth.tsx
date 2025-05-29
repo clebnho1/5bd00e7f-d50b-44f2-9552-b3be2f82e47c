@@ -33,7 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole 
   });
 
-  const contextValue = {
+  // Only provide context after initial loading is complete
+  const contextValue: AuthContextType = {
     user,
     session,
     signIn,

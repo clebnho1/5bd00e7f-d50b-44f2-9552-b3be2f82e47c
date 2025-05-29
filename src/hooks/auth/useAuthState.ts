@@ -11,7 +11,6 @@ export function useAuthState() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [initialized, setInitialized] = useState(false);
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -48,15 +47,13 @@ export function useAuthState() {
   };
 
   useEffect(() => {
-    if (initialized) return;
-
-    console.log('🔄 [AUTH_INIT] Inicializando uma única vez');
-    setInitialized(true);
+    console.log('🔄 [AUTH_INIT] Inicializando sistema de autenticação');
 
     let mounted = true;
 
     const initAuth = async () => {
       try {
+        // Setup auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!mounted) return;
@@ -67,6 +64,7 @@ export function useAuthState() {
               setUser(null);
               setSession(null);
               setUserRole(null);
+              setLoading(false);
             } else {
               setSession(newSession);
               setUser(newSession.user);
@@ -74,12 +72,12 @@ export function useAuthState() {
               if (newSession.user) {
                 await fetchUserRole(newSession.user.id);
               }
+              setLoading(false);
             }
-            
-            setLoading(false);
           }
         );
 
+        // Check for existing session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (mounted) {
@@ -107,7 +105,7 @@ export function useAuthState() {
       mounted = false;
       subscriptionPromise.then(sub => sub?.unsubscribe());
     };
-  }, [initialized]);
+  }, []); // Removed dependency on initialized
 
   return {
     user,

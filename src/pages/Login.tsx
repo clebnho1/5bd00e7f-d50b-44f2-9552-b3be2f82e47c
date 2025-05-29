@@ -15,7 +15,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  // Redirect if already logged in
+  // Redirect if already logged in - but only after auth is loaded
   useEffect(() => {
     if (!authLoading && user) {
       console.log('User already logged in, redirecting to dashboard');
@@ -47,10 +47,8 @@ const Login = () => {
     console.log('=== LOGIN ATTEMPT START ===');
     console.log('Login form submitted with:', { email, senha: '***' });
     
-    // Clear previous errors
     setErrors({});
     
-    // Prevent multiple submissions
     if (isLoading) {
       console.log('Already submitting, ignoring duplicate submission');
       return;
@@ -69,12 +67,10 @@ const Login = () => {
       await signIn(email.trim(), senha);
       console.log('SignIn function completed successfully');
       console.log('=== LOGIN ATTEMPT SUCCESS ===');
-      // Navigation is handled by useEffect when user state changes
     } catch (error: any) {
       console.error('=== LOGIN ATTEMPT FAILED ===');
       console.error('Login error:', error);
       
-      // Tratamento específico de erros de login
       const errorMessage = error?.message || 'Erro no login';
       
       if (errorMessage.includes('Email') || errorMessage.includes('incorretos') || errorMessage.includes('Invalid login credentials')) {
