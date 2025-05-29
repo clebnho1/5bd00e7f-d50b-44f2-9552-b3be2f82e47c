@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -200,15 +201,17 @@ const Cadastro = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="nomeCompleto">Nome Completo</Label>
+                <Label htmlFor="cadastro-nome">Nome Completo</Label>
                 <Input
-                  id="nomeCompleto"
+                  id="cadastro-nome"
+                  name="fullname"
                   type="text"
                   placeholder="Digite seu nome completo"
                   value={formData.nomeCompleto}
                   onChange={(e) => handleInputChange('nomeCompleto', e.target.value)}
                   className={errors.nomeCompleto ? 'border-red-500' : ''}
                   disabled={isLoading}
+                  autoComplete="name"
                   required
                 />
                 {errors.nomeCompleto && (
@@ -217,15 +220,17 @@ const Cadastro = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="cadastro-email">Email</Label>
                 <Input
-                  id="email"
+                  id="cadastro-email"
+                  name="email"
                   type="email"
                   placeholder="Digite seu email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className={errors.email ? 'border-red-500' : ''}
                   disabled={isLoading}
+                  autoComplete="email"
                   required
                 />
                 {errors.email && (
@@ -234,16 +239,18 @@ const Cadastro = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="senha">Senha</Label>
+                <Label htmlFor="cadastro-senha">Senha</Label>
                 <div className="relative">
                   <Input
-                    id="senha"
+                    id="cadastro-senha"
+                    name="new-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Digite sua senha"
                     value={formData.senha}
                     onChange={(e) => handleInputChange('senha', e.target.value)}
                     className={errors.senha ? 'border-red-500' : ''}
                     disabled={isLoading}
+                    autoComplete="new-password"
                     required
                   />
                   <Button
@@ -253,6 +260,7 @@ const Cadastro = () => {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -267,16 +275,18 @@ const Cadastro = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmarSenha">Confirmar Senha</Label>
+                <Label htmlFor="cadastro-confirmar-senha">Confirmar Senha</Label>
                 <div className="relative">
                   <Input
-                    id="confirmarSenha"
+                    id="cadastro-confirmar-senha"
+                    name="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirme sua senha"
                     value={formData.confirmarSenha}
                     onChange={(e) => handleInputChange('confirmarSenha', e.target.value)}
                     className={errors.confirmarSenha ? 'border-red-500' : ''}
                     disabled={isLoading}
+                    autoComplete="new-password"
                     required
                   />
                   <Button
@@ -286,6 +296,7 @@ const Cadastro = () => {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     disabled={isLoading}
+                    aria-label={showConfirmPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -300,13 +311,17 @@ const Cadastro = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="plano">Plano *</Label>
+                <Label htmlFor="cadastro-plano">Plano *</Label>
                 <Select 
                   value={formData.plano} 
                   onValueChange={(value) => handleInputChange('plano', value)}
                   disabled={isLoading}
+                  name="plan"
                 >
-                  <SelectTrigger className={errors.plano ? 'border-red-500' : ''}>
+                  <SelectTrigger 
+                    id="cadastro-plano"
+                    className={errors.plano ? 'border-red-500' : ''}
+                  >
                     <SelectValue placeholder="Selecione um plano" />
                   </SelectTrigger>
                   <SelectContent className="bg-white z-50">

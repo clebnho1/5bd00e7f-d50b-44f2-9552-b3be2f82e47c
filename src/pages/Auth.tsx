@@ -128,15 +128,17 @@ const Auth = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
+                  <Label htmlFor="auth-name">Nome</Label>
                   <Input
-                    id="name"
+                    id="auth-name"
+                    name="name"
                     type="text"
                     placeholder="Seu nome completo"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     className={errors.name ? 'border-red-500' : ''}
                     disabled={isLoading}
+                    autoComplete="name"
                     required={!isLogin}
                   />
                   {errors.name && (
@@ -146,15 +148,17 @@ const Auth = () => {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="auth-email">Email</Label>
                 <Input
-                  id="email"
+                  id="auth-email"
+                  name="email"
                   type="email"
                   placeholder="Digite seu email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className={errors.email ? 'border-red-500' : ''}
                   disabled={isLoading}
+                  autoComplete="email"
                   required
                 />
                 {errors.email && (
@@ -163,16 +167,18 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="auth-password">Senha</Label>
                 <div className="relative">
                   <Input
-                    id="password"
+                    id="auth-password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Digite sua senha"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     className={errors.password ? 'border-red-500' : ''}
                     disabled={isLoading}
+                    autoComplete={isLogin ? "current-password" : "new-password"}
                     required
                   />
                   <Button
@@ -182,6 +188,7 @@ const Auth = () => {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />

@@ -139,15 +139,17 @@ const Login = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="login-email">Email</Label>
                 <Input
-                  id="email"
+                  id="login-email"
+                  name="email"
                   type="email"
                   placeholder="Digite seu email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className={errors.email ? 'border-red-500' : ''}
                   disabled={isLoading}
+                  autoComplete="email"
                   required
                 />
                 {errors.email && (
@@ -156,16 +158,18 @@ const Login = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="senha">Senha</Label>
+                <Label htmlFor="login-senha">Senha</Label>
                 <div className="relative">
                   <Input
-                    id="senha"
+                    id="login-senha"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Digite sua senha"
                     value={formData.senha}
                     onChange={(e) => handleInputChange('senha', e.target.value)}
                     className={errors.senha ? 'border-red-500' : ''}
                     disabled={isLoading}
+                    autoComplete="current-password"
                     required
                   />
                   <Button
@@ -175,6 +179,7 @@ const Login = () => {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
