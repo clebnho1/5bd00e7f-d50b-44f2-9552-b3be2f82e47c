@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,7 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
-      console.log('Attempting sign in for:', email);
       
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -105,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           errorMessage = "Muitas tentativas. Tente novamente em alguns minutos";
         }
 
-        console.error('Sign in error:', error);
         toast({
           title: "Erro no login",
           description: errorMessage,
@@ -114,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      console.log('Sign in successful');
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo de volta!",
@@ -150,7 +148,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
-      console.log('Attempting sign up for:', email);
       
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -183,7 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           errorMessage = "Email inválido";
         }
 
-        console.error('Sign up error:', error);
         toast({
           title: "Erro no cadastro",
           description: errorMessage,
@@ -203,8 +199,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "Bem-vindo ao sistema!",
         });
       }
-
-      console.log('Sign up successful');
     } catch (error) {
       console.error('Error during sign up:', error);
       throw error;
@@ -216,7 +210,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      console.log('Attempting sign out');
       
       const { error } = await supabase.auth.signOut();
       
@@ -230,7 +223,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      console.log('Sign out successful');
       toast({
         title: "Logout realizado",
         description: "Até logo!",
@@ -256,7 +248,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
-      console.log('Attempting password reset for:', email);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -272,7 +263,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      console.log('Password reset email sent');
       toast({
         title: "Email enviado!",
         description: "Verifique sua caixa de entrada para redefinir sua senha.",
