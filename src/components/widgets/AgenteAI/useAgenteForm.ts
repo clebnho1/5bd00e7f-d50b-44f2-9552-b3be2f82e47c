@@ -40,22 +40,12 @@ export function useAgenteForm(agentData: Tables['agentes_ai']['Row'] | null) {
     observacoes: ''
   });
 
-  // Memoizar a função de mudança para evitar re-criações
+  // Função de mudança otimizada - SEM debounce para inputs simples
   const handleInputChange = useCallback((field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  // Debounce para campos de texto longos
-  const debouncedInputChange = useMemo(
-    () => debounce(handleInputChange, 300),
-    [handleInputChange]
-  );
-
-  // Função específica para campos que precisam de debounce
-  const handleDebouncedChange = useCallback((field: string, value: string) => {
-    debouncedInputChange(field, value);
-  }, [debouncedInputChange]);
-
+  // Inicialização dos dados do agente
   useEffect(() => {
     if (agentData) {
       setFormData({
@@ -91,7 +81,6 @@ export function useAgenteForm(agentData: Tables['agentes_ai']['Row'] | null) {
   return {
     formData,
     handleInputChange,
-    handleDebouncedChange,
     prepareDataForSave
   };
 }

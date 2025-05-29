@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ interface RedesSociaisProps {
   onInputChange: (field: string, value: string) => void;
 }
 
-export function RedesSociais({ formData, onInputChange }: RedesSociaisProps) {
+export const RedesSociais = memo(function RedesSociais({ formData, onInputChange }: RedesSociaisProps) {
   const formatWhatsApp = (value: string) => {
     // Remove tudo que não é número
     const numbers = value.replace(/\D/g, '');
@@ -91,4 +91,4 @@ export function RedesSociais({ formData, onInputChange }: RedesSociaisProps) {
       </CardContent>
     </Card>
   );
-}
+});

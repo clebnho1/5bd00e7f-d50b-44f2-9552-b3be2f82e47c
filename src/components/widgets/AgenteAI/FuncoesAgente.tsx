@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,7 @@ interface FuncoesAgenteProps {
   onInputChange: (field: string, value: string) => void;
 }
 
-export function FuncoesAgente({ formData, onInputChange }: FuncoesAgenteProps) {
+export const FuncoesAgente = memo(function FuncoesAgente({ formData, onInputChange }: FuncoesAgenteProps) {
   const [novaFuncao, setNovaFuncao] = useState('');
   
   // Funções padrão
@@ -122,4 +122,4 @@ export function FuncoesAgente({ formData, onInputChange }: FuncoesAgenteProps) {
       </CardContent>
     </Card>
   );
-}
+});
