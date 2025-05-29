@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MessageCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signIn, user } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -19,6 +19,12 @@ const Login = () => {
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already logged in
+  if (user) {
+    navigate('/dashboard');
+    return null;
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -29,27 +35,10 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Aqui seria a integração com Supabase Auth
-      console.log('Dados do login:', formData);
-      
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Redirecionando para o dashboard...",
-      });
-      
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
-      
+      await signIn(formData.email, formData.senha);
+      navigate('/dashboard');
     } catch (error) {
-      toast({
-        title: "Erro no login",
-        description: "Verifique suas credenciais e tente novamente.",
-        variant: "destructive",
-      });
+      // Error is handled in the hook
     } finally {
       setIsLoading(false);
     }

@@ -1,51 +1,21 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Users, Plus, Edit, UserX, UserCheck } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-
-interface Colaborador {
-  id: string;
-  nome: string;
-  produtos: string[];
-  horarios: string;
-  ativo: boolean;
-  email: string;
-}
+import { useColaboradores } from '@/hooks/useSupabaseData';
 
 export function ColaboradoresWidget() {
-  const { toast } = useToast();
+  const { colaboradores, loading, saveColaborador, updateColaborador } = useColaboradores();
   
-  const [colaboradores, setColaboradores] = useState<Colaborador[]>([
-    {
-      id: '1',
-      nome: 'Ana Silva',
-      produtos: ['Consultoria', 'Treinamentos'],
-      horarios: 'Segunda a Sexta: 09:00 - 18:00',
-      ativo: true,
-      email: 'ana@empresa.com'
-    },
-    {
-      id: '2',
-      nome: 'Carlos Santos',
-      produtos: ['Desenvolvimento', 'Suporte Técnico'],
-      horarios: 'Segunda a Sexta: 08:00 - 17:00',
-      ativo: false,
-      email: 'carlos@empresa.com'
-    }
-  ]);
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingColaborador, setEditingColaborador] = useState<Colaborador | null>(null);
+  const [editingColaborador, setEditingColaborador] = useState<any>(null);
   const [formData, setFormData] = useState({
     nome: '',
-    email: '',
     produtos: '',
     horarios: ''
   });
@@ -54,74 +24,55 @@ export function ColaboradoresWidget() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const openDialog = (colaborador?: Colaborador) => {
+  const openDialog = (colaborador?: any) => {
     if (colaborador) {
       setEditingColaborador(colaborador);
       setFormData({
         nome: colaborador.nome,
-        email: colaborador.email,
-        produtos: colaborador.produtos.join(', '),
-        horarios: colaborador.horarios
+        produtos: colaborador.produtos?.join(', ') || '',
+        horarios: colaborador.horarios || ''
       });
     } else {
       setEditingColaborador(null);
-      setFormData({ nome: '', email: '', produtos: '', horarios: '' });
+      setFormData({ nome: '', produtos: '', horarios: '' });
     }
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = () => {
-    if (!formData.nome || !formData.email) {
-      toast({
-        title: "Erro",
-        description: "Nome e email são obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!formData.nome) return;
 
     const produtosArray = formData.produtos.split(',').map(p => p.trim()).filter(p => p);
     
     if (editingColaborador) {
-      setColaboradores(prev => prev.map(c => 
-        c.id === editingColaborador.id 
-          ? { ...c, nome: formData.nome, email: formData.email, produtos: produtosArray, horarios: formData.horarios }
-          : c
-      ));
-      toast({
-        title: "Colaborador atualizado",
-        description: "As informações foram atualizadas com sucesso.",
+      await updateColaborador(editingColaborador.id, {
+        nome: formData.nome,
+        produtos: produtosArray,
+        horarios: formData.horarios
       });
     } else {
-      const newColaborador: Colaborador = {
-        id: Date.now().toString(),
+      await saveColaborador({
         nome: formData.nome,
-        email: formData.email,
         produtos: produtosArray,
         horarios: formData.horarios,
         ativo: true
-      };
-      setColaboradores(prev => [...prev, newColaborador]);
-      toast({
-        title: "Colaborador adicionado",
-        description: "Novo colaborador foi adicionado com sucesso.",
       });
     }
 
     setIsDialogOpen(false);
   };
 
-  const toggleStatus = (id: string) => {
-    setColaboradores(prev => prev.map(c => 
-      c.id === id ? { ...c, ativo: !c.ativo } : c
-    ));
-    
-    const colaborador = colaboradores.find(c => c.id === id);
-    toast({
-      title: colaborador?.ativo ? "Colaborador desativado" : "Colaborador ativado",
-      description: `${colaborador?.nome} foi ${colaborador?.ativo ? 'desativado' : 'ativado'}.`,
-    });
+  const toggleStatus = async (colaborador: any) => {
+    await updateColaborador(colaborador.id, { ativo: !colaborador.ativo });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -157,16 +108,6 @@ export function ColaboradoresWidget() {
                   value={formData.nome}
                   onChange={(e) => handleInputChange('nome', e.target.value)}
                   placeholder="Digite o nome completo"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="email@exemplo.com"
                 />
               </div>
               <div className="space-y-2">
@@ -212,7 +153,6 @@ export function ColaboradoresWidget() {
                       {colaborador.ativo ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </CardTitle>
-                  <CardDescription>{colaborador.email}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -225,7 +165,7 @@ export function ColaboradoresWidget() {
                   <Button
                     variant={colaborador.ativo ? "destructive" : "default"}
                     size="sm"
-                    onClick={() => toggleStatus(colaborador.id)}
+                    onClick={() => toggleStatus(colaborador)}
                   >
                     {colaborador.ativo ? (
                       <UserX className="h-4 w-4" />
@@ -241,7 +181,7 @@ export function ColaboradoresWidget() {
                 <div>
                   <h4 className="font-medium text-sm text-gray-700 mb-1">Produtos/Serviços:</h4>
                   <div className="flex flex-wrap gap-1">
-                    {colaborador.produtos.map((produto, index) => (
+                    {colaborador.produtos?.map((produto, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {produto}
                       </Badge>

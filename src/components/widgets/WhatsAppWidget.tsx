@@ -1,46 +1,41 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, QrCode, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useWhatsAppInstance } from '@/hooks/useSupabaseData';
 
 export function WhatsAppWidget() {
-  const { toast } = useToast();
+  const { instance, loading, saveInstance } = useWhatsAppInstance();
   
-  const [instancia, setInstancia] = useState({
-    nomeEmpresa: 'Minha Empresa',
-    status: 'disconnected', // 'connected', 'connecting', 'disconnected'
-    qrCode: '',
-    telefone: ''
+  const [formData, setFormData] = useState({
+    nome_empresa: 'Minha Empresa'
   });
   
   const [isCreating, setIsCreating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
+  useEffect(() => {
+    if (instance) {
+      setFormData({
+        nome_empresa: instance.nome_empresa
+      });
+    }
+  }, [instance]);
+
   const handleInputChange = (field: string, value: string) => {
-    setInstancia(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const criarInstancia = async () => {
-    if (!instancia.nomeEmpresa.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome da empresa é obrigatório.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!formData.nome_empresa.trim()) return;
 
     setIsCreating(true);
     
     try {
-      // Simular criação de instância
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       // Simular QR Code gerado
       const fakeQrCode = `data:image/svg+xml;base64,${btoa(`
         <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
@@ -52,21 +47,10 @@ export function WhatsAppWidget() {
         </svg>
       `)}`;
       
-      setInstancia(prev => ({
-        ...prev,
-        status: 'connecting',
-        qrCode: fakeQrCode
-      }));
-      
-      toast({
-        title: "Instância criada",
-        description: "Escaneie o QR Code com seu WhatsApp para conectar.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao criar instância",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive",
+      await saveInstance({
+        nome_empresa: formData.nome_empresa,
+        status: 'conectando',
+        qr_code: fakeQrCode
       });
     } finally {
       setIsCreating(false);
@@ -77,56 +61,36 @@ export function WhatsAppWidget() {
     setIsChecking(true);
     
     try {
-      // Simular verificação de status
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Simular conexão bem-sucedida
-      setInstancia(prev => ({
-        ...prev,
-        status: 'connected',
-        telefone: '+55 11 99999-9999',
-        qrCode: ''
-      }));
-      
-      toast({
-        title: "WhatsApp conectado!",
-        description: "Sua instância está ativa e funcionando.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao verificar status",
-        description: "Tente novamente.",
-        variant: "destructive",
+      await saveInstance({
+        status: 'conectado',
+        qr_code: null,
+        ultima_verificacao: new Date().toISOString()
       });
     } finally {
       setIsChecking(false);
     }
   };
 
-  const desconectar = () => {
-    setInstancia(prev => ({
-      ...prev,
-      status: 'disconnected',
-      qrCode: '',
-      telefone: ''
-    }));
-    
-    toast({
-      title: "WhatsApp desconectado",
-      description: "Instância foi desconectada com sucesso.",
+  const desconectar = async () => {
+    await saveInstance({
+      status: 'desconectado',
+      qr_code: null
     });
   };
 
   const getStatusInfo = () => {
-    switch (instancia.status) {
-      case 'connected':
+    const status = instance?.status || 'desconectado';
+    switch (status) {
+      case 'conectado':
         return {
           color: 'bg-green-500',
           icon: CheckCircle,
           text: 'Conectado',
           description: 'WhatsApp ativo e funcionando'
         };
-      case 'connecting':
+      case 'conectando':
         return {
           color: 'bg-yellow-500',
           icon: QrCode,
@@ -142,6 +106,14 @@ export function WhatsAppWidget() {
         };
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
+      </div>
+    );
+  }
 
   const statusInfo = getStatusInfo();
 
@@ -166,10 +138,10 @@ export function WhatsAppWidget() {
               <Label htmlFor="nomeEmpresa">Nome da Empresa</Label>
               <Input
                 id="nomeEmpresa"
-                value={instancia.nomeEmpresa}
-                onChange={(e) => handleInputChange('nomeEmpresa', e.target.value)}
+                value={formData.nome_empresa}
+                onChange={(e) => handleInputChange('nome_empresa', e.target.value)}
                 placeholder="Digite o nome da sua empresa"
-                disabled={instancia.status === 'connected'}
+                disabled={instance?.status === 'conectado'}
               />
             </div>
 
@@ -183,13 +155,15 @@ export function WhatsAppWidget() {
                 </Badge>
               </div>
               <p className="text-sm text-gray-600">{statusInfo.description}</p>
-              {instancia.telefone && (
-                <p className="text-sm font-medium">Telefone: {instancia.telefone}</p>
+              {instance?.ultima_verificacao && (
+                <p className="text-sm font-medium">
+                  Última verificação: {new Date(instance.ultima_verificacao).toLocaleString('pt-BR')}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              {instancia.status === 'disconnected' && (
+              {(!instance || instance.status === 'desconectado') && (
                 <Button
                   onClick={criarInstancia}
                   disabled={isCreating}
@@ -199,7 +173,7 @@ export function WhatsAppWidget() {
                 </Button>
               )}
 
-              {instancia.status === 'connecting' && (
+              {instance && instance.status === 'conectando' && (
                 <Button
                   onClick={verificarStatus}
                   disabled={isChecking}
@@ -211,7 +185,7 @@ export function WhatsAppWidget() {
                 </Button>
               )}
 
-              {instancia.status === 'connected' && (
+              {instance && instance.status === 'conectado' && (
                 <div className="space-y-2">
                   <Button
                     onClick={verificarStatus}
@@ -244,11 +218,11 @@ export function WhatsAppWidget() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {instancia.qrCode ? (
+            {instance?.qr_code ? (
               <div className="text-center space-y-4">
                 <div className="flex justify-center">
                   <img
-                    src={instancia.qrCode}
+                    src={instance.qr_code}
                     alt="QR Code WhatsApp"
                     className="w-48 h-48 border border-gray-200 rounded-lg"
                   />
@@ -267,13 +241,13 @@ export function WhatsAppWidget() {
               <div className="text-center py-12">
                 <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {instancia.status === 'connected' 
+                  {instance?.status === 'conectado' 
                     ? 'WhatsApp Conectado!' 
                     : 'QR Code não disponível'
                   }
                 </h3>
                 <p className="text-gray-600">
-                  {instancia.status === 'connected'
+                  {instance?.status === 'conectado'
                     ? 'Sua instância está ativa e funcionando perfeitamente.'
                     : 'Crie uma instância para gerar o QR Code de conexão.'
                   }

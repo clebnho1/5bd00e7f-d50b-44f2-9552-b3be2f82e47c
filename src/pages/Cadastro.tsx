@@ -7,12 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MessageCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Cadastro = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
+  const { signUp, user } = useAuth();
   
   const [formData, setFormData] = useState({
     nomeCompleto: '',
@@ -26,15 +26,29 @@ const Cadastro = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redirect if already logged in
+  if (user) {
+    navigate('/dashboard');
+    return null;
+  }
+
   const planos = [
-    { id: 'free', name: 'Gratuito - R$ 0/mês' },
-    { id: 'professional', name: 'Profissional - R$ 399/mês' },
-    { id: 'enterprise', name: 'Empresarial - R$ 699/mês' }
+    { id: 'gratuito', name: 'Gratuito - R$ 0/mês' },
+    { id: 'profissional', name: 'Profissional - R$ 399/mês' },
+    { id: 'empresarial', name: 'Empresarial - R$ 699/mês' }
   ];
 
   useEffect(() => {
-    if (searchParams.get('plan')) {
-      setFormData(prev => ({ ...prev, plano: searchParams.get('plan') || '' }));
+    const planParam = searchParams.get('plan');
+    if (planParam) {
+      const validPlans = ['gratuito', 'profissional', 'empresarial'];
+      const mappedPlan = planParam === 'free' ? 'gratuito' : 
+                        planParam === 'professional' ? 'profissional' :
+                        planParam === 'enterprise' ? 'empresarial' : planParam;
+      
+      if (validPlans.includes(mappedPlan)) {
+        setFormData(prev => ({ ...prev, plano: mappedPlan }));
+      }
     }
   }, [searchParams]);
 
@@ -46,56 +60,24 @@ const Cadastro = () => {
     e.preventDefault();
     
     if (!formData.plano) {
-      toast({
-        title: "Erro",
-        description: "Por favor, selecione um plano.",
-        variant: "destructive",
-      });
       return;
     }
 
     if (formData.senha !== formData.confirmarSenha) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
-      });
       return;
     }
 
     if (formData.senha.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
       return;
     }
 
     setIsLoading(true);
     
     try {
-      // Aqui seria a integração com Supabase Auth
-      console.log('Dados do cadastro:', formData);
-      
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Cadastro realizado com sucesso!",
-        description: "Redirecionando para o login...",
-      });
-      
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500);
-      
+      await signUp(formData.email, formData.senha, formData.nomeCompleto, formData.plano);
+      navigate('/login');
     } catch (error) {
-      toast({
-        title: "Erro no cadastro",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive",
-      });
+      // Error is handled in the hook
     } finally {
       setIsLoading(false);
     }

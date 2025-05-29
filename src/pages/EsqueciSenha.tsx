@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MessageCircle, ArrowLeft, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const EsqueciSenha = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { resetPassword } = useAuth();
   
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,24 +21,10 @@ const EsqueciSenha = () => {
     setIsLoading(true);
     
     try {
-      // Aqui seria a integração com Supabase Auth para redefinição de senha
-      console.log('Solicitação de redefinição para:', email);
-      
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await resetPassword(email);
       setEmailSent(true);
-      toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
-      });
-      
     } catch (error) {
-      toast({
-        title: "Erro ao enviar email",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive",
-      });
+      // Error is handled in the hook
     } finally {
       setIsLoading(false);
     }

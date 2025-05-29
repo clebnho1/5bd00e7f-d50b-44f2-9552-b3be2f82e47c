@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,73 +7,90 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Bot, Trash, Edit } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Plus, Bot, Trash } from 'lucide-react';
+import { useAgenteAI } from '@/hooks/useSupabaseData';
 
 export function AgenteAIWidget() {
-  const { toast } = useToast();
+  const { agentData, loading, saveAgenteAI } = useAgenteAI();
   
-  const [agentData, setAgentData] = useState({
+  const [formData, setFormData] = useState({
     nome: 'Sofia',
     sexo: 'feminino',
-    areaAtuacao: 'Atendimento ao Cliente',
-    estiloComportamento: 'Amigável e profissional',
-    usarEmotion: true,
-    dadosEmpresa: {
-      nomeEmpresa: 'Minha Empresa',
-      telefone: '',
-      email: '',
-      website: '',
-      endereco: ''
-    }
+    area_atuacao: 'Atendimento ao Cliente',
+    estilo_comportamento: 'Amigável e profissional',
+    usar_emotion: true,
+    nome_empresa: 'Minha Empresa',
+    telefone_empresa: '',
+    email_empresa: '',
+    website_empresa: '',
+    endereco_empresa: ''
   });
 
-  const [funcoes, setFuncoes] = useState([
+  const [funcoes, setFuncoes] = useState<string[]>([
     'Responder dúvidas sobre produtos',
     'Agendar atendimentos',
     'Fornecer informações de contato'
   ]);
 
   const [novaFuncao, setNovaFuncao] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleAgentChange = (field: string, value: any) => {
-    setAgentData(prev => ({ ...prev, [field]: value }));
-  };
+  useEffect(() => {
+    if (agentData) {
+      setFormData({
+        nome: agentData.nome,
+        sexo: agentData.sexo,
+        area_atuacao: agentData.area_atuacao,
+        estilo_comportamento: agentData.estilo_comportamento,
+        usar_emotion: agentData.usar_emotion,
+        nome_empresa: agentData.nome_empresa,
+        telefone_empresa: agentData.telefone_empresa || '',
+        email_empresa: agentData.email_empresa || '',
+        website_empresa: agentData.website_empresa || '',
+        endereco_empresa: agentData.endereco_empresa || ''
+      });
+      
+      if (agentData.funcoes) {
+        setFuncoes(agentData.funcoes);
+      }
+    }
+  }, [agentData]);
 
-  const handleEmpresaChange = (field: string, value: string) => {
-    setAgentData(prev => ({
-      ...prev,
-      dadosEmpresa: { ...prev.dadosEmpresa, [field]: value }
-    }));
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const adicionarFuncao = () => {
     if (novaFuncao.trim()) {
       setFuncoes([...funcoes, novaFuncao.trim()]);
       setNovaFuncao('');
-      toast({
-        title: "Função adicionada",
-        description: "Nova função foi adicionada ao agente.",
-      });
     }
   };
 
   const removerFuncao = (index: number) => {
     setFuncoes(funcoes.filter((_, i) => i !== index));
-    toast({
-      title: "Função removida",
-      description: "Função foi removida do agente.",
-    });
   };
 
-  const salvarConfiguracao = () => {
-    console.log('Configuração do agente salva:', { agentData, funcoes });
-    toast({
-      title: "Configuração salva",
-      description: "As configurações do agente AI foram atualizadas.",
-    });
+  const salvarConfiguracao = async () => {
+    setIsSaving(true);
+    
+    try {
+      await saveAgenteAI({
+        ...formData,
+        funcoes
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -96,15 +113,15 @@ export function AgenteAIWidget() {
               <Label htmlFor="nome">Nome do Agente</Label>
               <Input
                 id="nome"
-                value={agentData.nome}
-                onChange={(e) => handleAgentChange('nome', e.target.value)}
+                value={formData.nome}
+                onChange={(e) => handleInputChange('nome', e.target.value)}
                 placeholder="Ex: Sofia, Carlos, Ana..."
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="sexo">Sexo</Label>
-              <Select value={agentData.sexo} onValueChange={(value) => handleAgentChange('sexo', value)}>
+              <Select value={formData.sexo} onValueChange={(value) => handleInputChange('sexo', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -120,8 +137,8 @@ export function AgenteAIWidget() {
               <Label htmlFor="areaAtuacao">Área de Atuação</Label>
               <Input
                 id="areaAtuacao"
-                value={agentData.areaAtuacao}
-                onChange={(e) => handleAgentChange('areaAtuacao', e.target.value)}
+                value={formData.area_atuacao}
+                onChange={(e) => handleInputChange('area_atuacao', e.target.value)}
                 placeholder="Ex: Vendas, Suporte, Atendimento..."
               />
             </div>
@@ -130,8 +147,8 @@ export function AgenteAIWidget() {
               <Label htmlFor="estiloComportamento">Estilo e Tom de Comportamento</Label>
               <Textarea
                 id="estiloComportamento"
-                value={agentData.estiloComportamento}
-                onChange={(e) => handleAgentChange('estiloComportamento', e.target.value)}
+                value={formData.estilo_comportamento}
+                onChange={(e) => handleInputChange('estilo_comportamento', e.target.value)}
                 placeholder="Descreva como o agente deve se comportar..."
                 rows={3}
               />
@@ -140,8 +157,8 @@ export function AgenteAIWidget() {
             <div className="flex items-center space-x-2">
               <Switch
                 id="usarEmotion"
-                checked={agentData.usarEmotion}
-                onCheckedChange={(checked) => handleAgentChange('usarEmotion', checked)}
+                checked={formData.usar_emotion}
+                onCheckedChange={(checked) => handleInputChange('usar_emotion', checked)}
               />
               <Label htmlFor="usarEmotion">Usar Emotion (Respostas mais emotivas)</Label>
             </div>
@@ -206,8 +223,8 @@ export function AgenteAIWidget() {
               <Label htmlFor="nomeEmpresa">Nome da Empresa</Label>
               <Input
                 id="nomeEmpresa"
-                value={agentData.dadosEmpresa.nomeEmpresa}
-                onChange={(e) => handleEmpresaChange('nomeEmpresa', e.target.value)}
+                value={formData.nome_empresa}
+                onChange={(e) => handleInputChange('nome_empresa', e.target.value)}
               />
             </div>
 
@@ -215,8 +232,8 @@ export function AgenteAIWidget() {
               <Label htmlFor="telefone">Telefone</Label>
               <Input
                 id="telefone"
-                value={agentData.dadosEmpresa.telefone}
-                onChange={(e) => handleEmpresaChange('telefone', e.target.value)}
+                value={formData.telefone_empresa}
+                onChange={(e) => handleInputChange('telefone_empresa', e.target.value)}
                 placeholder="(11) 99999-9999"
               />
             </div>
@@ -226,8 +243,8 @@ export function AgenteAIWidget() {
               <Input
                 id="email"
                 type="email"
-                value={agentData.dadosEmpresa.email}
-                onChange={(e) => handleEmpresaChange('email', e.target.value)}
+                value={formData.email_empresa}
+                onChange={(e) => handleInputChange('email_empresa', e.target.value)}
                 placeholder="contato@empresa.com"
               />
             </div>
@@ -236,8 +253,8 @@ export function AgenteAIWidget() {
               <Label htmlFor="website">Website</Label>
               <Input
                 id="website"
-                value={agentData.dadosEmpresa.website}
-                onChange={(e) => handleEmpresaChange('website', e.target.value)}
+                value={formData.website_empresa}
+                onChange={(e) => handleInputChange('website_empresa', e.target.value)}
                 placeholder="https://www.empresa.com"
               />
             </div>
@@ -246,8 +263,8 @@ export function AgenteAIWidget() {
               <Label htmlFor="endereco">Endereço</Label>
               <Textarea
                 id="endereco"
-                value={agentData.dadosEmpresa.endereco}
-                onChange={(e) => handleEmpresaChange('endereco', e.target.value)}
+                value={formData.endereco_empresa}
+                onChange={(e) => handleInputChange('endereco_empresa', e.target.value)}
                 placeholder="Rua, número, bairro, cidade, estado..."
                 rows={2}
               />
@@ -257,8 +274,12 @@ export function AgenteAIWidget() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={salvarConfiguracao} className="whatsapp-gradient text-white">
-          Salvar Configurações
+        <Button 
+          onClick={salvarConfiguracao} 
+          className="whatsapp-gradient text-white"
+          disabled={isSaving}
+        >
+          {isSaving ? 'Salvando...' : 'Salvar Configurações'}
         </Button>
       </div>
     </div>

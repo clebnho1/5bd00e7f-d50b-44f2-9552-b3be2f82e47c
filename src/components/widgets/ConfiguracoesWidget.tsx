@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,51 +7,40 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Settings, Webhook, TestTube, CheckCircle, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useUserSettings } from '@/hooks/useSupabaseData';
 
 export function ConfiguracoesWidget() {
-  const { toast } = useToast();
+  const { settings, loading, saveSettings } = useUserSettings();
   
   const [webhookConfig, setWebhookConfig] = useState({
     url: 'https://n8n.exemplo.com/webhook/chatwhatsapp',
-    ativo: true,
-    ultimoTeste: '2024-01-15 14:30:00',
-    ultimoStatus: 'success' // 'success', 'error', 'pending'
+    ultimoTeste: '',
+    ultimoStatus: 'pending' // 'success', 'error', 'pending'
   });
   
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setWebhookConfig(prev => ({
+        ...prev,
+        url: settings.webhook_url || 'https://n8n.exemplo.com/webhook/chatwhatsapp'
+      }));
+    }
+  }, [settings]);
 
   const handleWebhookChange = (value: string) => {
     setWebhookConfig(prev => ({ ...prev, url: value }));
   };
 
   const testarWebhook = async () => {
-    if (!webhookConfig.url.trim()) {
-      toast({
-        title: "Erro",
-        description: "URL do webhook é obrigatória.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!webhookConfig.url.trim()) return;
 
     setIsTesting(true);
     
     try {
       // Simular teste de webhook
-      const testData = {
-        timestamp: new Date().toISOString(),
-        event: 'webhook_test',
-        data: {
-          message: 'Teste de webhook do ChatWhatsApp',
-          source: 'configuracoes'
-        }
-      };
-
-      console.log('Testando webhook:', webhookConfig.url, testData);
-      
-      // Simular delay de requisição
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Simular sucesso (80% de chance)
@@ -62,25 +51,6 @@ export function ConfiguracoesWidget() {
         ultimoTeste: new Date().toLocaleString('pt-BR'),
         ultimoStatus: success ? 'success' : 'error'
       }));
-      
-      if (success) {
-        toast({
-          title: "Webhook testado com sucesso!",
-          description: "A conexão está funcionando corretamente.",
-        });
-      } else {
-        toast({
-          title: "Erro no teste do webhook",
-          description: "Verifique a URL e tente novamente.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Erro ao testar webhook",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive",
-      });
     } finally {
       setIsTesting(false);
     }
@@ -90,20 +60,8 @@ export function ConfiguracoesWidget() {
     setIsSaving(true);
     
     try {
-      // Simular salvamento
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Configurações salvas:', webhookConfig);
-      
-      toast({
-        title: "Configurações salvas",
-        description: "As configurações foram atualizadas com sucesso.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao salvar",
-        description: "Tente novamente em alguns instantes.",
-        variant: "destructive",
+      await saveSettings({
+        webhook_url: webhookConfig.url
       });
     } finally {
       setIsSaving(false);
@@ -134,6 +92,14 @@ export function ConfiguracoesWidget() {
         );
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

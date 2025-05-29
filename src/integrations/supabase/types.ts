@@ -9,7 +9,250 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json | null
+          user_id: string
+          widget: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+          widget: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+          widget?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agentes_ai: {
+        Row: {
+          area_atuacao: string
+          created_at: string
+          email_empresa: string | null
+          endereco_empresa: string | null
+          estilo_comportamento: string
+          funcoes: string[] | null
+          id: string
+          nome: string
+          nome_empresa: string
+          sexo: string
+          telefone_empresa: string | null
+          updated_at: string
+          usar_emotion: boolean
+          user_id: string
+          website_empresa: string | null
+        }
+        Insert: {
+          area_atuacao?: string
+          created_at?: string
+          email_empresa?: string | null
+          endereco_empresa?: string | null
+          estilo_comportamento?: string
+          funcoes?: string[] | null
+          id?: string
+          nome?: string
+          nome_empresa?: string
+          sexo?: string
+          telefone_empresa?: string | null
+          updated_at?: string
+          usar_emotion?: boolean
+          user_id: string
+          website_empresa?: string | null
+        }
+        Update: {
+          area_atuacao?: string
+          created_at?: string
+          email_empresa?: string | null
+          endereco_empresa?: string | null
+          estilo_comportamento?: string
+          funcoes?: string[] | null
+          id?: string
+          nome?: string
+          nome_empresa?: string
+          sexo?: string
+          telefone_empresa?: string | null
+          updated_at?: string
+          usar_emotion?: boolean
+          user_id?: string
+          website_empresa?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentes_ai_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      colaboradores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          horarios: string | null
+          id: string
+          nome: string
+          produtos: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          horarios?: string | null
+          id?: string
+          nome: string
+          produtos?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          horarios?: string | null
+          id?: string
+          nome?: string
+          produtos?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          webhook_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          webhook_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          plano: Database["public"]["Enums"]["plano_tipo"]
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          name: string
+          plano?: Database["public"]["Enums"]["plano_tipo"]
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          plano?: Database["public"]["Enums"]["plano_tipo"]
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_instances: {
+        Row: {
+          created_at: string
+          id: string
+          nome_empresa: string
+          qr_code: string | null
+          status: Database["public"]["Enums"]["whatsapp_status"]
+          ultima_verificacao: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome_empresa: string
+          qr_code?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_status"]
+          ultima_verificacao?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome_empresa?: string
+          qr_code?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_status"]
+          ultima_verificacao?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_instances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -35,7 +278,9 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      plano_tipo: "gratuito" | "profissional" | "empresarial"
+      user_role: "admin" | "user"
+      whatsapp_status: "desconectado" | "conectando" | "conectado" | "erro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +395,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      plano_tipo: ["gratuito", "profissional", "empresarial"],
+      user_role: ["admin", "user"],
+      whatsapp_status: ["desconectado", "conectando", "conectado", "erro"],
+    },
   },
 } as const
