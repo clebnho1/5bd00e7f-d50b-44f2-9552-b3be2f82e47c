@@ -28,9 +28,35 @@ export default defineConfig(({ mode }) => ({
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]'
+      },
+      external: [
+        // Força exclusão de dependências problemáticas
+        /firebase/,
+        /firestore/,
+      ]
+    },
+    target: 'esnext',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production' ? ['log', 'warn'] : false,
+        drop_debugger: true,
+        pure_funcs: mode === 'production' ? ['console.log', 'console.warn'] : [],
       }
     }
   },
   // Limpa cache do Vite
   cacheDir: '.vite-clean',
+  define: {
+    // Remove referências globais desnecessárias
+    'process.env.NODE_ENV': JSON.stringify(mode),
+  },
+  optimizeDeps: {
+    exclude: [
+      // Exclui dependências Firebase se existirem
+      'firebase',
+      '@firebase/app',
+      '@firebase/firestore',
+    ]
+  }
 }));
