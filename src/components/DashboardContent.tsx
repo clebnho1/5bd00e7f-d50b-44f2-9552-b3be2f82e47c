@@ -10,6 +10,10 @@ import { WhatsAppWidget } from './widgets/WhatsAppWidget';
 import { ConfiguracoesWidget } from './widgets/ConfiguracoesWidget';
 import { AdministracaoWidget } from './widgets/AdministracaoWidget';
 
+interface DashboardContentProps {
+  activeWidget: string;
+}
+
 const widgets = [
   {
     id: 'agente-ai',
@@ -43,12 +47,14 @@ const widgets = [
   },
 ];
 
-export function DashboardContent() {
+export const DashboardContent: React.FC<DashboardContentProps> = ({ activeWidget }) => {
   const { user } = useAuth();
-  const [activeWidget, setActiveWidget] = useState<string | null>(null);
+  const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
 
   const renderWidget = () => {
-    switch (activeWidget) {
+    const widgetToRender = selectedWidget || activeWidget;
+    
+    switch (widgetToRender) {
       case 'agente-ai':
         return <AgenteAIWidget />;
       case 'colaboradores':
@@ -64,8 +70,10 @@ export function DashboardContent() {
     }
   };
 
+  const displayWidget = selectedWidget || activeWidget;
+
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="border-b pb-4">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -102,7 +110,7 @@ export function DashboardContent() {
             <CardContent>
               <Button 
                 className="w-full" 
-                onClick={() => setActiveWidget(widget.id)}
+                onClick={() => setSelectedWidget(widget.id)}
               >
                 Acessar
               </Button>
@@ -112,15 +120,15 @@ export function DashboardContent() {
       </div>
 
       {/* Widget Ativo */}
-      {activeWidget && (
+      {displayWidget && (
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
-              {widgets.find(w => w.id === activeWidget)?.title}
+              {widgets.find(w => w.id === displayWidget)?.title}
             </h2>
             <Button 
               variant="outline" 
-              onClick={() => setActiveWidget(null)}
+              onClick={() => setSelectedWidget(null)}
             >
               Fechar
             </Button>
@@ -130,4 +138,4 @@ export function DashboardContent() {
       )}
     </div>
   );
-}
+};
