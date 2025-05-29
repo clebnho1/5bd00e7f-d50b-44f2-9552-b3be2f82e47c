@@ -27,16 +27,6 @@ const Login = () => {
     console.log('=== LOGIN COMPONENT MOUNTED ===');
     console.log('Current URL:', window.location.href);
     
-    // Override navigate function to log all navigation attempts
-    const originalNavigate = navigate;
-    const loggedNavigate = (to: string, options?: any) => {
-      console.log('=== NAVIGATION INTERCEPTED ===');
-      console.log('Attempting to navigate to:', to);
-      console.log('From URL:', window.location.href);
-      console.log('Stack trace:', new Error().stack);
-      return originalNavigate(to, options);
-    };
-    
     return () => {
       console.log('=== LOGIN COMPONENT UNMOUNTING ===');
     };
@@ -114,6 +104,12 @@ const Login = () => {
     console.log('=== LOGIN ATTEMPT START ===');
     console.log('Login form submitted with:', { email: formData.email, senha: '***' });
     console.log('Current route before validation:', window.location.pathname);
+    
+    // Prevent multiple submissions
+    if (isLoading) {
+      console.log('Already submitting, ignoring duplicate submission');
+      return;
+    }
     
     if (!validateForm()) {
       console.log('Form validation failed, staying on login page');
@@ -210,7 +206,7 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
@@ -319,4 +315,3 @@ const Login = () => {
 };
 
 export default Login;
-
