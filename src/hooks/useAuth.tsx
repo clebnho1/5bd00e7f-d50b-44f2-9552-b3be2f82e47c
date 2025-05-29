@@ -27,72 +27,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { toast } = useToast();
 
-  // ===== DEBUG LOGS DETALHADOS =====
-  const logDetailedState = (location: string, extraData?: any) => {
-    const timestamp = new Date().toISOString();
-    const debugInfo = {
-      location,
-      timestamp,
-      user: user ? { id: user.id, email: user.email } : null,
-      session: session ? { 
-        access_token: session.access_token ? 'EXISTS' : 'NULL',
-        expires_at: session.expires_at,
-        user_id: session.user?.id 
-      } : null,
-      loading,
-      userRole,
-      pathname: window.location.pathname,
-      ...extraData
-    };
-    console.log(`🔍 [DETAILED DEBUG] ${location}:`, JSON.stringify(debugInfo, null, 2));
-  };
-
-  // Log inicial do estado
-  console.log('🚀 [INIT] AuthProvider montado');
-  logDetailedState('AuthProvider_MOUNT');
+  console.log('🚀 [INIT] AuthProvider inicializado');
 
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
-    let initStartTime = Date.now();
 
-    console.log('🔄 [EFFECT] useEffect iniciado');
-    logDetailedState('useEffect_START', { mounted });
+    console.log('🔄 [EFFECT] Iniciando useEffect principal');
 
     const initializeAuth = async () => {
       try {
-        console.log('🔍 [INIT] Iniciando initializeAuth...');
-        logDetailedState('initializeAuth_START');
+        console.log('🔍 [INIT] Obtendo sessão inicial...');
         
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        const getSessionTime = Date.now() - initStartTime;
         
-        console.log('📨 [SESSION] getSession resposta:', {
+        console.log('📨 [SESSION] Resposta getSession:', {
           hasSession: !!initialSession,
           hasUser: !!initialSession?.user,
           error: error?.message,
-          mounted,
-          timeElapsed: getSessionTime + 'ms'
+          mounted
         });
         
         if (error) {
-          console.error('❌ [ERROR] Erro ao obter sessão inicial:', error);
-          logDetailedState('initializeAuth_ERROR', { error: error.message });
+          console.error('❌ [ERROR] Erro ao obter sessão:', error);
           if (mounted) {
-            console.log('🔧 [FIX] Definindo loading como false devido ao erro');
             setLoading(false);
-            logDetailedState('setLoading_FALSE_ERROR');
+            console.log('🔧 [FIX] Loading definido como false devido ao erro');
           }
           return;
         }
 
         if (mounted) {
-          console.log('✅ [UPDATE] Sessão inicial obtida, atualizando estado');
-          logDetailedState('initializeAuth_SUCCESS', { 
-            hasSession: !!initialSession,
-            hasUser: !!initialSession?.user 
-          });
-          
+          console.log('✅ [UPDATE] Atualizando estado inicial');
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
           
@@ -101,119 +67,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await fetchUserRole(initialSession.user.id);
           }
           
-          console.log('🎯 [COMPLETE] Definindo loading como false após inicialização');
           setLoading(false);
-          logDetailedState('setLoading_FALSE_SUCCESS');
-          console.log('🎉 [SUCCESS] Autenticação inicializada com sucesso');
-        } else {
-          console.log('⚠️ [UNMOUNTED] Componente desmontado, ignorando atualização');
+          console.log('🎯 [COMPLETE] Inicialização concluída, loading = false');
         }
       } catch (error) {
         console.error('💥 [CRASH] Erro durante inicialização:', error);
-        logDetailedState('initializeAuth_CRASH', { error });
         if (mounted) {
-          console.log('🔧 [FIX] Definindo loading como false devido ao erro catch');
           setLoading(false);
-          logDetailedState('setLoading_FALSE_CATCH');
+          console.log('🔧 [FIX] Loading definido como false devido ao erro catch');
         }
       }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        const eventTime = Date.now();
-        console.log('🔄 [AUTH_CHANGE] onAuthStateChange disparado:', {
+        console.log('🔄 [AUTH_CHANGE] Evento:', {
           event,
           hasSession: !!currentSession,
           hasUser: !!currentSession?.user,
-          mounted,
-          timestamp: new Date().toISOString(),
-          timeFromInit: eventTime - initStartTime + 'ms'
-        });
-        
-        logDetailedState('onAuthStateChange', { 
-          event, 
-          hasSession: !!currentSession,
-          hasUser: !!currentSession?.user 
+          mounted
         });
         
         if (mounted) {
-          console.log('📝 [UPDATE] Atualizando estado com nova sessão');
+          console.log('📝 [UPDATE] Atualizando estado via onAuthStateChange');
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           
           if (currentSession?.user && event === 'SIGNED_IN') {
-            console.log('🔐 [LOGIN] Usuário logado, buscando role...');
+            console.log('🔐 [LOGIN] Buscando role do usuário...');
             await fetchUserRole(currentSession.user.id);
           } else if (!currentSession?.user) {
-            console.log('👤 [LOGOUT] Usuário deslogado, limpando role');
+            console.log('👤 [LOGOUT] Limpando role');
             setUserRole(null);
           }
           
-          // Garantir que loading seja false após qualquer mudança de auth
-          console.log('🔧 [ENSURE] Garantindo loading = false após mudança de auth');
+          // Garantir que loading seja false após mudança de auth
           setLoading(false);
-          logDetailedState('setLoading_FALSE_AUTH_CHANGE', { event });
-          
-          console.log('📊 [STATE] Estado após onAuthStateChange:', {
-            user: !!currentSession?.user,
-            session: !!currentSession,
-            loading: false,
-            event
-          });
-        } else {
-          console.log('⚠️ [UNMOUNTED] onAuthStateChange: componente desmontado, ignorando');
+          console.log('🔧 [ENSURE] Loading definido como false após auth change');
         }
       }
     );
 
-    // Timeout de segurança mais detalhado
-    timeoutId = setTimeout(() => {
-      const timeoutTime = Date.now();
-      console.log('⏰ [TIMEOUT] Timeout de segurança executado');
-      logDetailedState('TIMEOUT_TRIGGERED', {
-        mounted,
-        currentLoading: loading,
-        timeFromInit: timeoutTime - initStartTime + 'ms'
-      });
-      
-      if (mounted) {
-        console.log('🔧 [TIMEOUT_FIX] Forçando loading = false via timeout');
-        setLoading(false);
-        logDetailedState('setLoading_FALSE_TIMEOUT');
-      } else {
-        console.log('⚠️ [TIMEOUT_UNMOUNTED] Timeout executado mas componente desmontado');
-      }
-    }, 3000);
-
     initializeAuth();
 
     return () => {
-      console.log('🧹 [CLEANUP] Desmontando AuthProvider');
-      logDetailedState('CLEANUP_START');
+      console.log('🧹 [CLEANUP] Limpando AuthProvider');
       mounted = false;
       if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
-      console.log('🧹 [CLEANUP] AuthProvider desmontado');
     };
-  }, []);
+  }, []); // Dependências corretas - array vazio para executar apenas uma vez
 
-  // Log sempre que o estado mudar
+  // Timeout de segurança separado com dependências corretas
   useEffect(() => {
-    logDetailedState('STATE_CHANGE_USER', { userChanged: true });
-  }, [user]);
+    let timeoutId: NodeJS.Timeout;
+    
+    if (loading) {
+      console.log('⏰ [TIMEOUT] Configurando timeout de segurança');
+      timeoutId = setTimeout(() => {
+        console.log('⚠️ [TIMEOUT] Timeout executado - forçando loading = false');
+        setLoading(false);
+      }, 3000);
+    }
 
-  useEffect(() => {
-    logDetailedState('STATE_CHANGE_SESSION', { sessionChanged: true });
-  }, [session]);
-
-  useEffect(() => {
-    logDetailedState('STATE_CHANGE_LOADING', { loadingChanged: true });
-  }, [loading]);
-
-  useEffect(() => {
-    logDetailedState('STATE_CHANGE_ROLE', { roleChanged: true });
-  }, [userRole]);
+    return () => {
+      if (timeoutId) {
+        console.log('🧹 [TIMEOUT] Limpando timeout');
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [loading]); // Dependência correta - loading
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -226,22 +149,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('❌ [ROLE_ERROR] Erro ao buscar role:', error);
-        logDetailedState('fetchUserRole_ERROR', { error: error.message });
         return;
       }
 
       console.log('✅ [ROLE_SUCCESS] Role encontrado:', data.role);
       setUserRole(data.role);
-      logDetailedState('fetchUserRole_SUCCESS', { role: data.role });
     } catch (error) {
-      console.error('💥 [ROLE_CRASH] Erro ao buscar role do usuário:', error);
-      logDetailedState('fetchUserRole_CRASH', { error });
+      console.error('💥 [ROLE_CRASH] Erro ao buscar role:', error);
     }
   };
 
   const isAdmin = () => {
     const result = userRole === 'admin' || user?.email === 'admin@admin.com';
-    console.log('🔐 [ADMIN_CHECK] isAdmin check:', {
+    console.log('🔐 [ADMIN_CHECK] isAdmin:', {
       userRole,
       email: user?.email,
       result
@@ -471,7 +391,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole,
     timestamp: new Date().toISOString()
   });
-  logDetailedState('CONTEXT_PROVIDED');
 
   return (
     <AuthContext.Provider value={contextValue}>
@@ -486,13 +405,12 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   
-  const timestamp = new Date().toISOString();
-  console.log('🔗 [USE_AUTH] useAuth chamado, retornando:', {
+  console.log('🔗 [USE_AUTH] Retornando contexto:', {
     user: !!context.user,
     session: !!context.session,
     loading: context.loading,
     userRole: context.userRole,
-    timestamp,
+    timestamp: new Date().toISOString(),
     location: window.location.pathname
   });
   
