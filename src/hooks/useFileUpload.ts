@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
+import { sendWebhookSafe } from '@/utils/webhook';
 
 export function useFileUpload() {
   const { user } = useAuth();
@@ -67,6 +68,21 @@ export function useFileUpload() {
         description: "Arquivo enviado com sucesso!",
       });
 
+      // Enviar webhook
+      await sendWebhookSafe(user.id, 'file_uploaded', {
+        file_name: file.name,
+        file_size: file.size,
+        file_type: file.type,
+        folder: folder,
+        storage_path: data.path,
+        public_url: publicUrl,
+        file_extension: fileExt
+      }, {
+        action: 'upload',
+        upload_timestamp: new Date().toISOString(),
+        file_size_mb: (file.size / (1024 * 1024)).toFixed(2)
+      });
+
       return {
         path: data.path,
         publicUrl,
@@ -80,6 +96,18 @@ export function useFileUpload() {
         description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
+
+      // Enviar webhook para erro
+      await sendWebhookSafe(user.id, 'file_upload_error', {
+        file_name: file.name,
+        file_size: file.size,
+        file_type: file.type,
+        folder: folder,
+        error: error.message || "Erro desconhecido"
+      }, {
+        action: 'upload_failed'
+      });
+
       return null;
     } finally {
       setUploading(false);
@@ -102,6 +130,15 @@ export function useFileUpload() {
         description: "Arquivo deletado com sucesso!",
       });
 
+      // Enviar webhook
+      await sendWebhookSafe(user.id, 'file_deleted', {
+        file_path: filePath,
+        action: 'delete'
+      }, {
+        action: 'delete',
+        deletion_timestamp: new Date().toISOString()
+      });
+
       return true;
     } catch (error: any) {
       console.error('Erro ao deletar arquivo:', error);
@@ -110,6 +147,15 @@ export function useFileUpload() {
         description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
+
+      // Enviar webhook para erro
+      await sendWebhookSafe(user.id, 'file_delete_error', {
+        file_path: filePath,
+        error: error.message || "Erro desconhecido"
+      }, {
+        action: 'delete_failed'
+      });
+
       return false;
     }
   };

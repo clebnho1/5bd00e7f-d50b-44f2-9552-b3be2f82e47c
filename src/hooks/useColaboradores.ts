@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { sendWebhookSafe } from '@/utils/webhook';
 import type { Database } from '@/integrations/supabase/types';
 
 type Tables = Database['public']['Tables'];
@@ -118,6 +119,25 @@ export function useColaboradores() {
         description: "Novo colaborador foi adicionado com sucesso.",
       });
 
+      // Enviar webhook
+      await sendWebhookSafe(user.id, 'colaborador_created', {
+        nome: colaboradorData.nome,
+        email: colaboradorData.email,
+        telefone: colaboradorData.telefone,
+        cargo: colaboradorData.cargo,
+        unidade: colaboradorData.unidade,
+        produtos: colaboradorData.produtos,
+        produtos_precos: colaboradorData.produtos_precos,
+        produtos_detalhados: colaboradorData.produtos_detalhados,
+        horarios: colaboradorData.horarios,
+        horarios_detalhados: colaboradorData.horarios_detalhados,
+        ativo: colaboradorData.ativo,
+        imagem_url: colaboradorData.imagem_url
+      }, {
+        action: 'create',
+        total_colaboradores: colaboradores.length + 1
+      });
+
       await fetchColaboradores();
       return true;
     } catch (error: any) {
@@ -142,6 +162,9 @@ export function useColaboradores() {
     }
 
     try {
+      // Buscar dados antigos para enviar no webhook
+      const colaboradorAnterior = colaboradores.find(c => c.id === id);
+
       const { error } = await supabase
         .from('colaboradores')
         .update(data)
@@ -153,6 +176,13 @@ export function useColaboradores() {
       toast({
         title: "Colaborador atualizado",
         description: "Informações atualizadas com sucesso.",
+      });
+
+      // Enviar webhook
+      await sendWebhookSafe(user.id, 'colaborador_updated', data, {
+        action: 'update',
+        colaborador_id: id,
+        previous_data: colaboradorAnterior
       });
 
       await fetchColaboradores();

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { sendWebhookSafe } from '@/utils/webhook';
 
 const API_BASE = 'https://apiwhats.lifecombr.com.br';
 const API_KEY = '0417bf43b0a8669bd6635bcb49d783df';
@@ -188,7 +189,6 @@ export function useWhatsAppAPI() {
         try {
           const errorData = JSON.parse(errorText);
           
-          // Verificar se é erro de database em recovery mode
           if (errorData.response?.message?.[0]?.includes('database system is in recovery mode')) {
             toast({
               title: "Servidor em manutenção",
@@ -203,6 +203,16 @@ export function useWhatsAppAPI() {
               title: "Instância já existe",
               description: `Conectando à sua instância existente.`,
             });
+
+            // Enviar webhook para instância existente
+            await sendWebhookSafe(user.id, 'whatsapp_instance_reconnected', {
+              instance_name: instanceName,
+              client_name: nomeClienteTrimmed,
+              status: 'existing'
+            }, {
+              action: 'reconnect_existing'
+            });
+
             return instanceName;
           }
           
@@ -221,6 +231,23 @@ export function useWhatsAppAPI() {
         title: "Instância criada",
         description: `Sua instância foi criada com sucesso.`,
       });
+
+      // Enviar webhook para instância criada
+      await sendWebhookSafe(user.id, 'whatsapp_instance_created', {
+        instance_name: instanceName,
+        client_name: nomeClienteTrimmed,
+        status: 'created',
+        integration: requestBody.integration,
+        settings: {
+          qrcode: requestBody.qrcode,
+          rejectCall: requestBody.rejectCall,
+          groupsIgnore: requestBody.groupsIgnore,
+          alwaysOnline: requestBody.alwaysOnline
+        }
+      }, {
+        action: 'create',
+        api_response: data
+      });
       
       return instanceName;
       
@@ -232,6 +259,15 @@ export function useWhatsAppAPI() {
         description: errorMessage,
         variant: "destructive",
       });
+
+      // Enviar webhook para erro na criação
+      await sendWebhookSafe(user.id, 'whatsapp_instance_error', {
+        instance_name: instanceName,
+        client_name: nomeClienteTrimmed,
+        error: errorMessage,
+        action: 'create_failed'
+      });
+
       throw err;
     }
   };
@@ -286,6 +322,15 @@ export function useWhatsAppAPI() {
             title: "QR Code gerado",
             description: "Escaneie o QR Code com seu WhatsApp para conectar.",
           });
+
+          // Enviar webhook para QR Code gerado
+          await sendWebhookSafe(user.id, 'whatsapp_qr_generated', {
+            instance_name: finalInstanceName,
+            status: 'qr_code_ready',
+            has_qr_code: true
+          }, {
+            action: 'qr_generated'
+          });
           
           return qrCodeData;
         } else if (data.message && (data.message.includes('já está conectada') || data.message.includes('already connected'))) {
@@ -295,6 +340,15 @@ export function useWhatsAppAPI() {
           });
           setStatusConexao('open');
           setStatusMessage('WhatsApp já está conectado');
+
+          // Enviar webhook para já conectado
+          await sendWebhookSafe(user.id, 'whatsapp_already_connected', {
+            instance_name: finalInstanceName,
+            status: 'already_connected'
+          }, {
+            action: 'already_connected'
+          });
+
           return null;
         } else {
           throw new Error(`QR Code não foi gerado. Resposta da API: ${JSON.stringify(data)}`);
@@ -310,6 +364,14 @@ export function useWhatsAppAPI() {
         description: errorMessage,
         variant: "destructive",
       });
+
+      // Enviar webhook para erro na conexão
+      await sendWebhookSafe(user.id, 'whatsapp_connection_error', {
+        instance_name: finalInstanceName,
+        error: errorMessage,
+        action: 'connect_failed'
+      });
+
       throw err;
     }
   };
@@ -339,8 +401,18 @@ export function useWhatsAppAPI() {
           title: "WhatsApp desconectado",
           description: "Sua instância foi desconectada com sucesso.",
         });
+
+        // Enviar webhook para desconexão
+        await sendWebhookSafe(user.id, 'whatsapp_disconnected', {
+          instance_name: finalInstanceName,
+          status: 'disconnected',
+          action: 'manual_disconnect'
+        }, {
+          action: 'disconnect',
+          previous_status: statusConexao
+        });
+
       } else if (response.status === 404) {
-        // Instância já foi removida, considerar como desconectada
         console.log(`ℹ️ Instância ${finalInstanceName} não encontrada - já estava desconectada`);
         setQrCode('');
         setStatusConexao('closed');
@@ -350,6 +422,14 @@ export function useWhatsAppAPI() {
           title: "WhatsApp desconectado",
           description: "A instância já estava desconectada.",
         });
+
+        // Enviar webhook para já desconectado
+        await sendWebhookSafe(user.id, 'whatsapp_already_disconnected', {
+          instance_name: finalInstanceName,
+          status: 'already_disconnected',
+          action: 'disconnect_not_found'
+        });
+
       } else {
         throw new Error(`Erro na API: ${response.status}`);
       }
@@ -362,6 +442,14 @@ export function useWhatsAppAPI() {
         description: errorMessage,
         variant: "destructive",
       });
+
+      // Enviar webhook para erro na desconexão
+      await sendWebhookSafe(user.id, 'whatsapp_disconnect_error', {
+        instance_name: finalInstanceName,
+        error: errorMessage,
+        action: 'disconnect_failed'
+      });
+
       throw err;
     }
   };
@@ -396,8 +484,18 @@ export function useWhatsAppAPI() {
           title: "Instância excluída",
           description: "Sua instância foi excluída com sucesso.",
         });
+
+        // Enviar webhook para exclusão
+        await sendWebhookSafe(user.id, 'whatsapp_instance_deleted', {
+          instance_name: finalInstanceName,
+          status: 'deleted',
+          action: 'manual_delete'
+        }, {
+          action: 'delete',
+          previous_status: statusConexao
+        });
+
       } else if (response.status === 404) {
-        // Instância já foi removida, considerar como sucesso
         console.log(`ℹ️ Instância ${finalInstanceName} não encontrada - já estava excluída`);
         setQrCode('');
         setStatusConexao('unknown');
@@ -412,6 +510,14 @@ export function useWhatsAppAPI() {
           title: "Instância excluída",
           description: "A instância já havia sido excluída anteriormente.",
         });
+
+        // Enviar webhook para já excluída
+        await sendWebhookSafe(user.id, 'whatsapp_instance_already_deleted', {
+          instance_name: finalInstanceName,
+          status: 'already_deleted',
+          action: 'delete_not_found'
+        });
+
       } else {
         throw new Error(`Erro na API: ${response.status}`);
       }
@@ -424,6 +530,14 @@ export function useWhatsAppAPI() {
         description: errorMessage,
         variant: "destructive",
       });
+
+      // Enviar webhook para erro na exclusão
+      await sendWebhookSafe(user.id, 'whatsapp_delete_error', {
+        instance_name: finalInstanceName,
+        error: errorMessage,
+        action: 'delete_failed'
+      });
+
       throw err;
     }
   };

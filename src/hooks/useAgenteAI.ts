@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { sendWebhookSafe } from '@/utils/webhook';
 import type { Database } from '@/integrations/supabase/types';
 
 type Tables = Database['public']['Tables'];
@@ -71,6 +72,9 @@ export function useAgenteAI() {
     }
 
     try {
+      // Verificar se é criação ou atualização
+      const isUpdate = !!agentData;
+      
       // Primeiro verifica se já existe um agente para este usuário
       const { data: existingAgent } = await supabase
         .from('agentes_ai')
@@ -124,6 +128,24 @@ export function useAgenteAI() {
       toast({
         title: "Agente AI salvo",
         description: "Configurações atualizadas com sucesso.",
+      });
+
+      // Enviar webhook
+      await sendWebhookSafe(user.id, isUpdate ? 'agente_ai_updated' : 'agente_ai_created', {
+        nome: data.nome,
+        sexo: data.sexo,
+        area_atuacao: data.area_atuacao,
+        estilo_comportamento: data.estilo_comportamento,
+        nome_empresa: data.nome_empresa,
+        usar_emotion: data.usar_emotion ?? true,
+        telefone_empresa: data.telefone_empresa,
+        email_empresa: data.email_empresa,
+        website_empresa: data.website_empresa,
+        endereco_empresa: data.endereco_empresa,
+        funcoes: data.funcoes
+      }, {
+        action: isUpdate ? 'update' : 'create',
+        previous_data: isUpdate ? agentData : null
       });
 
       fetchAgenteAI();
