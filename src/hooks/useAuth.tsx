@@ -1,5 +1,4 @@
-
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     let mounted = true;
 
-    // Função para atualizar o estado de autenticação de forma centralizada
     const updateAuthState = (currentSession: Session | null) => {
       if (!mounted) return;
       
@@ -43,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Configurar listener de mudanças de estado primeiro
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         console.log('Auth state changed:', event, currentSession?.user?.email || 'no user');
@@ -51,7 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Verificar sessão inicial após configurar o listener
     const initializeAuth = async () => {
       try {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
@@ -59,7 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error('Error getting initial session:', error);
         } else if (mounted && !initialized) {
-          // Só atualizar se ainda não foi inicializado (evita duplicação)
           console.log('Initial session found:', initialSession?.user?.email || 'no session');
           updateAuthState(initialSession);
         }
@@ -72,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Pequeno delay para garantir que o listener seja configurado primeiro
     const timeoutId = setTimeout(initializeAuth, 50);
 
     return () => {
@@ -201,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      // Verificar se o usuário precisa confirmar email
       if (data.user && !data.session) {
         toast({
           title: "Verifique seu email",
