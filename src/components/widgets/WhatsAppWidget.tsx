@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,15 +53,21 @@ export function WhatsAppWidget() {
       }, 1000);
       
       return () => clearTimeout(timer);
+    } else {
+      // Reset status when name is too short
+      setStatusConexao('unknown');
+      setStatusMessage('');
+      setError(undefined);
     }
   }, [nomeCliente]);
 
-  // Verificar status da conexão periodicamente (a cada 5s)
+  // Verificar status da conexão periodicamente (a cada 10s quando conectado)
   useEffect(() => {
-    if (instanceId) {
-      console.log('Iniciando verificação de status para:', instanceId);
-      checkConnectionStatus();
-      intervalRef.current = setInterval(checkConnectionStatus, 5000);
+    if (instanceId && statusConexao === 'open') {
+      console.log('Iniciando verificação periódica de status para:', instanceId);
+      intervalRef.current = setInterval(checkConnectionStatus, 10000);
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
 
     return () => {
@@ -70,7 +75,18 @@ export function WhatsAppWidget() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [instanceId]);
+  }, [instanceId, statusConexao]);
+
+  const normalizeStatus = (apiStatus: string): 'open' | 'closed' | 'error' | 'connecting' | 'unknown' => {
+    const status = apiStatus?.toLowerCase();
+    
+    if (status === 'open' || status === 'connected') return 'open';
+    if (status === 'connecting' || status === 'qr') return 'connecting';
+    if (status === 'closed' || status === 'disconnected') return 'closed';
+    if (status === 'error' || status === 'failed') return 'error';
+    
+    return 'unknown';
+  };
 
   const checkConnectionStatus = async () => {
     const targetInstance = instanceId || nomeCliente.trim();
@@ -89,17 +105,28 @@ export function WhatsAppWidget() {
       if (response.ok) {
         const data = await response.json();
         console.log('Status da conexão:', data);
-        const newStatus = data.state || 'unknown';
-        setStatusConexao(newStatus);
         
-        if (newStatus === 'open' || newStatus === 'connected') {
+        const normalizedStatus = normalizeStatus(data.state || 'unknown');
+        setStatusConexao(normalizedStatus);
+        
+        if (normalizedStatus === 'open') {
           setStatusMessage('Conectado e funcionando');
           setError(undefined);
-        } else if (newStatus === 'connecting' || newStatus === 'qr') {
+          setQrCode(''); // Clear QR code when connected
+        } else if (normalizedStatus === 'connecting') {
           setStatusMessage('Aguardando conexão');
-        } else {
+        } else if (normalizedStatus === 'closed') {
           setStatusMessage('Desconectado');
+        } else if (normalizedStatus === 'error') {
+          setStatusMessage('Erro na conexão');
+          setError('Problemas na conexão com WhatsApp');
+        } else {
+          setStatusMessage('Status desconhecido');
         }
+      } else if (response.status === 404) {
+        setStatusConexao('closed');
+        setStatusMessage('Instância não encontrada');
+        setError('Instância não existe ou foi removida');
       } else {
         throw new Error(`API respondeu com status ${response.status}`);
       }
@@ -151,7 +178,6 @@ export function WhatsAppWidget() {
       
       setInstanceId(newInstanceId);
       
-      // Salvar no localStorage
       localStorage.setItem('whatsapp_instance_id', newInstanceId);
       localStorage.setItem('whatsapp_cliente_nome', nomeCliente.trim());
 
@@ -210,11 +236,13 @@ export function WhatsAppWidget() {
       
       if (qrCodeData) {
         setQrCode(qrCodeData);
+        setStatusConexao('connecting');
+        setStatusMessage('Aguardando leitura do QR Code');
         toast({
           title: "QR Code gerado",
           description: "Escaneie o QR Code com seu WhatsApp para conectar.",
         });
-        // Auto-check status after generating QR
+        
         setTimeout(checkConnectionStatus, 3000);
       } else if (data.message && data.message.includes('já está conectada')) {
         toast({
@@ -295,7 +323,6 @@ export function WhatsAppWidget() {
       });
 
       if (response.ok) {
-        // Limpar todos os dados
         setInstanceId('');
         setNomeCliente('');
         setQrCode('');
@@ -303,11 +330,9 @@ export function WhatsAppWidget() {
         setStatusMessage('');
         setError(undefined);
         
-        // Limpar localStorage
         localStorage.removeItem('whatsapp_instance_id');
         localStorage.removeItem('whatsapp_cliente_nome');
         
-        // Parar verificação de status
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }
@@ -392,7 +417,6 @@ export function WhatsAppWidget() {
                 >
                   <RefreshCw className={`h-4 w-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
                 </Button>
-                {/* Botão Criar Instância */}
                 {!instanceId && (
                   <Button
                     onClick={criarInstancia}
@@ -408,26 +432,25 @@ export function WhatsAppWidget() {
               </p>
             </div>
 
-            {/* Status Badge */}
             {statusConexao !== 'unknown' && (
               <StatusBadge status={statusConexao} message={statusMessage} />
             )}
           </div>
 
-          {/* Campo ID da Instância */}
-          <div className="space-y-2">
-            <Label htmlFor="instanceId" className="text-gray-700 font-medium">
-              ID da Instância
-            </Label>
-            <Input
-              id="instanceId"
-              value={instanceId || 'Nenhuma instância criada'}
-              readOnly
-              className="bg-gray-50 text-gray-600"
-            />
-          </div>
+          {instanceId && (
+            <div className="space-y-2">
+              <Label htmlFor="instanceId" className="text-gray-700 font-medium">
+                ID da Instância
+              </Label>
+              <Input
+                id="instanceId"
+                value={instanceId}
+                readOnly
+                className="bg-gray-50 text-gray-600"
+              />
+            </div>
+          )}
 
-          {/* Botões de Ação */}
           <div className="flex gap-3 pt-4">
             <Button
               onClick={conectarWhatsApp}
@@ -461,7 +484,6 @@ export function WhatsAppWidget() {
         </CardContent>
       </Card>
 
-      {/* Card QR Code com componente melhorado */}
       <Card className="bg-white shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-800">
