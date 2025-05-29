@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageCircle, Bot, Users, Settings, BarChart, CheckCircle } from "lucide-react";
@@ -53,14 +52,20 @@ const Landing = () => {
     },
     {
       name: "Profissional",
-      price: "R$ 29",
+      price: "R$ 399",
       period: "/mês",
       features: [
-        "3 Agentes AI",
-        "3 Instâncias WhatsApp",
-        "Mensagens ilimitadas",
-        "Relatórios avançados",
-        "Suporte prioritário"
+        "Funcionalidades Inteligentes",
+        "Respostas automáticas 24/7",
+        "Atenda seus clientes a qualquer hora, sem depender de humanos.",
+        "Menu interativo personalizado",
+        "Crie um fluxo de conversa guiado com base no seu negócio.",
+        "Detecção de intenção",
+        "A IA entende o que o cliente quer, mesmo com perguntas abertas.",
+        "Aprendizado contínuo",
+        "O chat melhora com o tempo, aprendendo com interações passadas.",
+        "Agendamentos automáticos",
+        "Organize facilmente a agenda de compromissos sem intervenção manual."
       ]
     },
     {
