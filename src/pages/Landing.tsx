@@ -41,10 +41,14 @@ const Landing = () => {
       price: "R$ 0",
       period: "/mês",
       features: [
-        "1 Agente AI",
-        "1 Instância WhatsApp",
-        "Até 100 mensagens/mês",
-        "Suporte básico"
+        "Cancelou? Cliente recebe mensagem automática!",
+        "Novo agendamento ou venda? Notificação direto no seu WhatsApp!",
+        "Após 7 dias, o cliente recebe um lembrete para reagendar ou comprar novamente!",
+        "🔄 Respostas automáticas 24/7",
+        "🧭 Menu interativo personalizado", 
+        "🎯 Detecção de intenção",
+        "📚 Aprendizado contínuo",
+        "📅 Agendamentos automáticos"
       ]
     },
     {
