@@ -50,18 +50,20 @@ export function AdministracaoWidget() {
   };
 
   const openEditDialog = (user: any) => {
+    console.log('Opening edit dialog for user:', user);
     setEditingUser(user);
     setFormData({
-      name: user.name,
-      email: user.email
+      name: user.name || '',
+      email: user.email || ''
     });
     setIsEditDialogOpen(true);
   };
 
   const openPlanDialog = (user: any) => {
+    console.log('Opening plan dialog for user:', user);
     setEditingUser(user);
     setPlanData({
-      plano: user.plano,
+      plano: user.plano || '',
       expirationDate: user.plano_expires_at ? new Date(user.plano_expires_at).toISOString().split('T')[0] : 
                       user.trial_expires_at ? new Date(user.trial_expires_at).toISOString().split('T')[0] : ''
     });
@@ -75,23 +77,54 @@ export function AdministracaoWidget() {
   };
 
   const handleSubmit = async () => {
-    if (!editingUser || !formData.name.trim() || !formData.email.trim()) return;
+    console.log('Submitting user update:', { editingUser, formData });
+    
+    if (!editingUser?.id) {
+      console.error('No user selected for editing');
+      return;
+    }
 
-    await updateUser(editingUser.id, {
-      name: formData.name.trim(),
-      email: formData.email.trim()
-    });
+    if (!formData.name.trim() || !formData.email.trim()) {
+      console.error('Name and email are required');
+      return;
+    }
 
-    setIsEditDialogOpen(false);
+    try {
+      await updateUser(editingUser.id, {
+        name: formData.name.trim(),
+        email: formData.email.trim()
+      });
+      setIsEditDialogOpen(false);
+      setEditingUser(null);
+      setFormData({ name: '', email: '' });
+    } catch (error) {
+      console.error('Error updating user:', error);
+    }
   };
 
   const handlePlanSubmit = async () => {
-    if (!editingUser || !planData.plano) return;
-
-    const expirationDate = planData.expirationDate ? new Date(planData.expirationDate).toISOString() : undefined;
+    console.log('Submitting plan update:', { editingUser, planData });
     
-    await updateUserPlan(editingUser.id, planData.plano, expirationDate);
-    setIsPlanDialogOpen(false);
+    if (!editingUser?.id) {
+      console.error('No user selected for plan update');
+      return;
+    }
+
+    if (!planData.plano) {
+      console.error('Plan is required');
+      return;
+    }
+
+    try {
+      const expirationDate = planData.expirationDate ? new Date(planData.expirationDate).toISOString() : undefined;
+      
+      await updateUserPlan(editingUser.id, planData.plano, expirationDate);
+      setIsPlanDialogOpen(false);
+      setEditingUser(null);
+      setPlanData({ plano: '', expirationDate: '' });
+    } catch (error) {
+      console.error('Error updating plan:', error);
+    }
   };
 
   const handleResetPassword = async (user: any) => {
@@ -338,7 +371,11 @@ export function AdministracaoWidget() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} className="whatsapp-gradient text-white">
+            <Button 
+              onClick={handleSubmit} 
+              className="whatsapp-gradient text-white"
+              disabled={!formData.name.trim() || !formData.email.trim()}
+            >
               Salvar Alterações
             </Button>
           </DialogFooter>
@@ -385,7 +422,11 @@ export function AdministracaoWidget() {
             <Button variant="outline" onClick={() => setIsPlanDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handlePlanSubmit} className="whatsapp-gradient text-white">
+            <Button 
+              onClick={handlePlanSubmit} 
+              className="whatsapp-gradient text-white"
+              disabled={!planData.plano}
+            >
               Atualizar Plano
             </Button>
           </DialogFooter>
