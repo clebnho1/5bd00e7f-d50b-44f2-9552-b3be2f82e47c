@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,13 +11,11 @@ export function useAdministracao() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<Tables['users']['Row'][]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user && isAdmin()) {
       fetchUsers();
-    } else if (!authLoading) {
-      setLoading(false);
     }
   }, [user, authLoading]);
 
@@ -65,7 +62,6 @@ export function useAdministracao() {
     }
 
     try {
-      // Buscar dados antigos para o webhook
       const userToUpdate = users.find(u => u.id === userId);
 
       const { error } = await supabase
@@ -80,8 +76,8 @@ export function useAdministracao() {
         description: "Informações do usuário atualizadas com sucesso.",
       });
 
-      // Enviar webhook
-      await sendWebhookSafe(user.id, 'admin_user_updated', {
+      // Webhook assíncrono
+      sendWebhookSafe(user.id, 'admin_user_updated', {
         target_user_id: userId,
         target_user_email: userToUpdate?.email,
         changes: data,
@@ -94,7 +90,7 @@ export function useAdministracao() {
           email: userToUpdate?.email
         },
         admin_action: true
-      });
+      }).catch(console.error);
 
       fetchUsers();
     } catch (error: any) {
@@ -146,8 +142,8 @@ export function useAdministracao() {
         description: `Plano do usuário alterado para ${plano}`,
       });
 
-      // Enviar webhook
-      await sendWebhookSafe(user.id, 'admin_plan_updated', {
+      // Webhook assíncrono
+      sendWebhookSafe(user.id, 'admin_plan_updated', {
         target_user_id: userId,
         target_user_email: userToUpdate?.email,
         old_plan: userToUpdate?.plano,
@@ -158,7 +154,7 @@ export function useAdministracao() {
       }, {
         action: 'plan_update',
         admin_action: true
-      });
+      }).catch(console.error);
 
       fetchUsers();
     } catch (error: any) {
@@ -193,8 +189,7 @@ export function useAdministracao() {
         description: "Email de reset de senha foi enviado para o usuário.",
       });
 
-      // Enviar webhook
-      await sendWebhookSafe(user.id, 'admin_password_reset', {
+      sendWebhookSafe(user.id, 'admin_password_reset', {
         target_user_email: email,
         admin_user_id: user.id,
         admin_user_email: user.email,
@@ -203,7 +198,7 @@ export function useAdministracao() {
         action: 'password_reset',
         admin_action: true,
         redirect_url: `${window.location.origin}/reset-password`
-      });
+      }).catch(console.error);
 
     } catch (error: any) {
       console.error('Erro ao resetar senha:', error);
@@ -213,8 +208,7 @@ export function useAdministracao() {
         variant: "destructive",
       });
 
-      // Enviar webhook para erro
-      await sendWebhookSafe(user.id, 'admin_password_reset_error', {
+      sendWebhookSafe(user.id, 'admin_password_reset_error', {
         target_user_email: email,
         admin_user_id: user.id,
         admin_user_email: user.email,
@@ -222,7 +216,7 @@ export function useAdministracao() {
       }, {
         action: 'password_reset_failed',
         admin_action: true
-      });
+      }).catch(console.error);
     }
   };
 
@@ -237,10 +231,8 @@ export function useAdministracao() {
     }
 
     try {
-      // Gerar senha temporária
       const tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
       
-      // Atualizar senha do usuário
       const { error } = await supabase.auth.admin.updateUserById(userId, {
         password: tempPassword
       });
@@ -252,8 +244,7 @@ export function useAdministracao() {
         description: "Nova senha temporária foi definida para o usuário.",
       });
 
-      // Enviar webhook
-      await sendWebhookSafe(user.id, 'admin_temp_password_generated', {
+      sendWebhookSafe(user.id, 'admin_temp_password_generated', {
         target_user_id: userId,
         target_user_email: email,
         admin_user_id: user.id,
@@ -262,7 +253,7 @@ export function useAdministracao() {
       }, {
         action: 'temp_password_generated',
         admin_action: true
-      });
+      }).catch(console.error);
 
       return tempPassword;
     } catch (error: any) {
@@ -278,7 +269,7 @@ export function useAdministracao() {
 
   return { 
     users, 
-    loading: loading || authLoading, 
+    loading, 
     updateUser, 
     updateUserPlan,
     resetUserPassword,

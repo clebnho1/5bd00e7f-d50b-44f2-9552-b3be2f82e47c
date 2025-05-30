@@ -21,10 +21,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-lg shadow-lg">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-green-600" />
           <div className="text-center">
-            <p className="text-lg font-medium text-gray-800 mb-2">Inicializando aplicação...</p>
-            <p className="text-sm text-gray-600">Configurando autenticação</p>
+            <p className="text-sm font-medium text-gray-800">Carregando...</p>
           </div>
         </div>
       </div>
@@ -47,10 +46,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-lg shadow-lg">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-green-600" />
           <div className="text-center">
-            <p className="text-lg font-medium text-gray-800 mb-2">Carregando aplicação...</p>
-            <p className="text-sm text-gray-600">Verificando autenticação</p>
+            <p className="text-sm font-medium text-gray-800">Verificando acesso...</p>
           </div>
         </div>
       </div>

@@ -52,51 +52,7 @@ export function useAuthState() {
       try {
         console.log('🔄 [AUTH_INIT] Inicializando autenticação...');
         
-        // Primeiro, configura o listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, newSession) => {
-            if (!isMounted) return;
-            
-            console.log('🔄 Auth state change:', event, newSession?.user?.email);
-            
-            // Webhook para mudanças de estado da autenticação
-            if (newSession?.user?.id) {
-              await sendWebhookSafe(newSession.user.id, 'auth_state_changed', {
-                event,
-                user_id: newSession.user.id,
-                email: newSession.user.email,
-                timestamp: new Date().toISOString(),
-                has_session: !!newSession
-              }, {
-                action: 'auth_state_change',
-                event_type: event
-              });
-            }
-            
-            if (event === 'SIGNED_OUT' || !newSession) {
-              setUser(null);
-              setSession(null);
-              setUserRole(null);
-              setLoading(false);
-            } else if (newSession?.user) {
-              setSession(newSession);
-              setUser(newSession.user);
-              
-              // Busca o role sem aguardar para evitar deadlock
-              setTimeout(() => {
-                if (isMounted) {
-                  fetchUserRole(newSession.user.id);
-                }
-              }, 100);
-              
-              setLoading(false);
-            }
-          }
-        );
-        
-        authSubscription = subscription;
-
-        // Depois, verifica se já existe uma sessão
+        // Primeiro, verifica se já existe uma sessão (mais rápido)
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -110,8 +66,11 @@ export function useAuthState() {
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Webhook para sessão existente encontrada
-          await sendWebhookSafe(currentSession.user.id, 'session_restored', {
+          // Busca o role imediatamente sem aguardar webhook
+          fetchUserRole(currentSession.user.id);
+          
+          // Webhook assíncrono (não bloqueia)
+          sendWebhookSafe(currentSession.user.id, 'session_restored', {
             user_id: currentSession.user.id,
             email: currentSession.user.email,
             timestamp: new Date().toISOString(),
@@ -119,15 +78,43 @@ export function useAuthState() {
           }, {
             action: 'session_restore',
             automatic: true
-          });
-          
-          // Busca o role sem aguardar
-          setTimeout(() => {
-            if (isMounted) {
-              fetchUserRole(currentSession.user.id);
-            }
-          }, 100);
+          }).catch(console.error);
         }
+
+        // Configura o listener depois da verificação inicial
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, newSession) => {
+            if (!isMounted) return;
+            
+            console.log('🔄 Auth state change:', event, newSession?.user?.email);
+            
+            if (event === 'SIGNED_OUT' || !newSession) {
+              setUser(null);
+              setSession(null);
+              setUserRole(null);
+            } else if (newSession?.user) {
+              setSession(newSession);
+              setUser(newSession.user);
+              
+              // Busca role sem aguardar
+              fetchUserRole(newSession.user.id);
+              
+              // Webhook assíncrono
+              sendWebhookSafe(newSession.user.id, 'auth_state_changed', {
+                event,
+                user_id: newSession.user.id,
+                email: newSession.user.email,
+                timestamp: new Date().toISOString(),
+                has_session: !!newSession
+              }, {
+                action: 'auth_state_change',
+                event_type: event
+              }).catch(console.error);
+            }
+          }
+        );
+        
+        authSubscription = subscription;
 
         if (isMounted) {
           setLoading(false);

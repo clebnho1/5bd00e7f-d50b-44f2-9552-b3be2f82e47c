@@ -20,20 +20,18 @@ if (!window[APP_INIT_KEY]) {
   // Ativar sistema de proteção ANTES de qualquer coisa
   initializeMasterBlocker();
 
-  // Aguardar um ciclo para garantir que os sistemas estejam ativos
-  setTimeout(() => {
-    const rootElement = document.getElementById("root");
-    if (rootElement && !rootElement.hasChildNodes()) {
-      console.log('✅ [MAIN] Renderizando React App');
-      createRoot(rootElement).render(
-        <StrictMode>
-          <App />
-        </StrictMode>,
-      );
-    } else {
-      console.log('⚠️ [MAIN] Root element já possui conteúdo, ignorando renderização');
-    }
-  }, 100);
+  // Renderizar imediatamente sem delay
+  const rootElement = document.getElementById("root");
+  if (rootElement && !rootElement.hasChildNodes()) {
+    console.log('✅ [MAIN] Renderizando React App');
+    createRoot(rootElement).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+  } else {
+    console.log('⚠️ [MAIN] Root element já possui conteúdo, ignorando renderização');
+  }
 } else {
   console.log('⚠️ [MAIN] Inicialização duplicada detectada - ignorando');
 }
