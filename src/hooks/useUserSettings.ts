@@ -3,29 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useDebounce } from './useDebounce';
 
 interface UserSettings {
   webhook_url?: string;
-}
-
-// Debounce utility
-function useDebounce<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number
-): T {
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
-
-  return useCallback((...args: Parameters<T>) => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-
-    const newTimer = setTimeout(() => {
-      callback(...args);
-    }, delay);
-
-    setDebounceTimer(newTimer);
-  }, [callback, delay, debounceTimer]) as T;
 }
 
 // Retry utility with exponential backoff
@@ -95,7 +76,7 @@ export function useUserSettings() {
     }
   }, [user?.id, loadSettings]);
 
-  const saveSettingsImpl = async (newSettings: Partial<UserSettings>) => {
+  const saveSettingsImpl = async (newSettings: Partial<UserSettings>): Promise<boolean> => {
     if (!user?.id) {
       toast({
         title: "Erro",

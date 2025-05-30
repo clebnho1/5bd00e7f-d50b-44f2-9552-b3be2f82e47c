@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,14 +10,13 @@ import QrCodeDisplay from '@/components/QrCodeDisplay';
 import { WhatsAppConnectionForm } from './WhatsApp/WhatsAppConnectionForm';
 import { WhatsAppActions } from './WhatsApp/WhatsAppActions';
 import { useWhatsAppAPI } from '@/hooks/useWhatsAppAPI';
+import { useWhatsAppState } from '@/hooks/useWhatsAppState';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function WhatsAppWidget() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const [nomeCliente, setNomeCliente] = useState('');
-  const [instanceId, setInstanceId] = useState('');
   const [isCreatingInstance, setIsCreatingInstance] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
@@ -33,6 +33,16 @@ export function WhatsAppWidget() {
     loading
   } = useWhatsAppAPI();
 
+  const {
+    nomeCliente,
+    setNomeCliente,
+    instanceId,
+    setInstanceId,
+    saveToLocalStorage,
+    clearLocalStorage,
+    debouncedStatusCheck
+  } = useWhatsAppState();
+
   // Mapear os dados da instância para compatibilidade com os componentes
   const statusConexao = instance?.status === 'conectado' ? 'open' : 
                        instance?.status === 'conectando' ? 'connecting' :
@@ -42,44 +52,14 @@ export function WhatsAppWidget() {
   const error = instance?.status === 'erro' ? 'Erro na conexão' : null;
   const isAPIHealthy = true; // Assumindo que a API está funcionando
 
-  // Carregar dados salvos do localStorage específicos do usuário
+  // Auto-verificação com debounce adequado
   useEffect(() => {
-    if (!user?.id) return;
-    
-    const userKey = `whatsapp_${user.id}`;
-    const savedInstanceId = localStorage.getItem(`${userKey}_instance_id`);
-    const savedNomeCliente = localStorage.getItem(`${userKey}_cliente_nome`);
-    
-    if (savedInstanceId) {
-      setInstanceId(savedInstanceId);
-    }
-    if (savedNomeCliente) {
-      setNomeCliente(savedNomeCliente);
-    }
-  }, [user?.id]);
-
-  // Auto-verificação otimizada quando o nome da instância muda
-  useEffect(() => {
-    if (nomeCliente.trim().length > 2 && isAPIHealthy) {
-      const timer = setTimeout(() => {
+    if (nomeCliente.trim().length > 2 && isAPIHealthy && !loading) {
+      debouncedStatusCheck(() => {
         handleCheckStatus();
-      }, 2000);
-      
-      return () => clearTimeout(timer);
+      });
     }
-  }, [nomeCliente, isAPIHealthy]);
-
-  // Verificar status da conexão periodicamente quando tiver instância
-  useEffect(() => {
-    const targetInstance = instanceId || nomeCliente.trim();
-    
-    if (targetInstance && user?.id && isAPIHealthy) {
-      console.log(`🎯 Iniciando monitoramento para usuário ${user.email}: ${targetInstance}`);
-      // startPeriodicCheck(targetInstance);
-    }
-    
-    // return () => stopPeriodicCheck();
-  }, [instanceId, nomeCliente, user?.id, isAPIHealthy]);
+  }, [nomeCliente, isAPIHealthy, loading, debouncedStatusCheck]);
 
   const handleCheckStatus = async () => {
     const targetInstance = instanceId || nomeCliente.trim();
@@ -99,13 +79,7 @@ export function WhatsAppWidget() {
       const newInstance = await createInstance(nomeCliente);
       if (newInstance) {
         setInstanceId(newInstance.id);
-        
-        if (user?.id) {
-          const userKey = `whatsapp_${user.id}`;
-          localStorage.setItem(`${userKey}_instance_id`, newInstance.id);
-          localStorage.setItem(`${userKey}_cliente_nome`, nomeCliente.trim());
-        }
-        
+        saveToLocalStorage(newInstance.id, nomeCliente.trim());
         setTimeout(() => handleCheckStatus(), 2000);
       }
     } finally {
@@ -138,12 +112,7 @@ export function WhatsAppWidget() {
       await deleteInstance();
       setInstanceId('');
       setNomeCliente('');
-      
-      if (user?.id) {
-        const userKey = `whatsapp_${user.id}`;
-        localStorage.removeItem(`${userKey}_instance_id`);
-        localStorage.removeItem(`${userKey}_cliente_nome`);
-      }
+      clearLocalStorage();
     } finally {
       setIsDeleting(false);
     }

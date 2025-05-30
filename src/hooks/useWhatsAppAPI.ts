@@ -57,12 +57,15 @@ export function useWhatsAppAPI() {
     try {
       setConnecting(true);
       
+      // Usar upsert ao invés de insert para evitar constraint violations
       const { data, error } = await supabase
         .from('whatsapp_instances')
-        .insert({
+        .upsert({
           user_id: user.id,
           nome_empresa: nomeEmpresa,
           status: 'desconectado'
+        }, {
+          onConflict: 'user_id'
         })
         .select()
         .single();
