@@ -2,5 +2,10 @@
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none';
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co; object-src 'none';
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), web-share=(), autoplay=(), picture-in-picture=(), encrypted-media=(), fullscreen=(), midi=(), sync-xhr=(), publickey-credentials-get=(), speaker-selection=(), local-fonts=(), document-domain=(), execution-while-out-of-focus=(), execution-while-not-rendered=(), focus-without-user-activation=(), hid=(), idle-detection=(), keyboard-map=(), otp-credentials=(), screen-wake-lock=(), storage-access=(), trust-token-redemption=(), window-management=(), cross-origin-isolated=()

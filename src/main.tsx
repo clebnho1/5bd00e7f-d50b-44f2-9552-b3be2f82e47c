@@ -9,14 +9,22 @@ import { initializeMasterBlocker } from "./utils/masterBlocker";
 
 console.log('🚀 [MAIN] Inicializando aplicação');
 
-// Ativar sistema de proteção ANTES de qualquer coisa
-initializeMasterBlocker();
+// Verificar se já foi inicializado para evitar duplicação
+if (!window.__APP_INITIALIZED__) {
+  window.__APP_INITIALIZED__ = true;
+  
+  // Ativar sistema de proteção ANTES de qualquer coisa
+  initializeMasterBlocker();
 
-// Aguardar um ciclo para garantir que os sistemas estejam ativos
-setTimeout(() => {
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
-}, 0);
+  // Aguardar um ciclo para garantir que os sistemas estejam ativos
+  setTimeout(() => {
+    const rootElement = document.getElementById("root");
+    if (rootElement && !rootElement.hasChildNodes()) {
+      createRoot(rootElement).render(
+        <StrictMode>
+          <App />
+        </StrictMode>,
+      );
+    }
+  }, 0);
+}
