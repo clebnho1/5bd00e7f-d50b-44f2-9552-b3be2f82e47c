@@ -96,12 +96,12 @@ export function useWhatsAppAPI() {
     if (!user?.id) return null;
     if (!nomeCliente.trim()) return null;
 
-    console.log('🏗️ Criando instância na Evolution API para:', nomeCliente.trim());
+    console.log('🏗️ Iniciando criação da instância para:', nomeCliente.trim());
 
     try {
       setConnecting(true);
       
-      // Primeiro criar no banco de dados
+      // ETAPA 1: Criar no banco de dados
       const { data: dbInstance, error: dbError } = await supabase
         .from('whatsapp_instances')
         .upsert({
@@ -116,7 +116,10 @@ export function useWhatsAppAPI() {
 
       if (dbError) throw dbError;
 
-      // Depois criar na Evolution API
+      console.log('✅ Instância criada no banco:', dbInstance);
+      setInstance(dbInstance);
+
+      // ETAPA 2: Criar na Evolution API
       const response = await fetch(`${EVOLUTION_API_BASE_URL}/instance/create`, {
         method: 'POST',
         headers: {
@@ -156,7 +159,6 @@ export function useWhatsAppAPI() {
         widget: 'whatsapp'
       }).catch(console.error);
 
-      setInstance(dbInstance);
       return dbInstance;
     } catch (error: any) {
       console.error('Erro ao criar instância:', error);
@@ -166,6 +168,104 @@ export function useWhatsAppAPI() {
         variant: "destructive",
       });
       return null;
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const connectWhatsApp = async () => {
+    if (!instance) return false;
+
+    try {
+      setConnecting(true);
+      console.log('📱 Iniciando conexão WhatsApp para:', instance.nome_empresa);
+      
+      // ETAPA 1: Atualizar status para "conectando"
+      await updateInstanceStatus('conectando');
+      
+      // ETAPA 2: Solicitar conexão na Evolution API
+      const response = await fetch(`${EVOLUTION_API_BASE_URL}/instance/connect/${instance.id}`, {
+        method: 'GET',
+        headers: {
+          'apikey': EVOLUTION_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na Evolution API: ${response.status}`);
+      }
+
+      const connectionData = await response.json();
+      console.log('🔄 Dados de conexão recebidos:', connectionData);
+      
+      // ETAPA 3: Se há QR Code, atualizar e aguardar scan
+      if (connectionData.qrcode || connectionData.base64) {
+        const qrCodeData = connectionData.qrcode || connectionData.base64;
+        await updateInstanceStatus('conectando', qrCodeData);
+        console.log('✅ QR Code gerado! Aguardando scan...');
+        
+        // ETAPA 4: Monitorar status até conectar
+        const monitorConnection = async () => {
+          let attempts = 0;
+          const maxAttempts = 40; // 2 minutos (40 x 3s)
+          
+          const checkStatus = async () => {
+            try {
+              const statusResponse = await fetch(`${EVOLUTION_API_BASE_URL}/instance/connectionState/${instance.id}`, {
+                method: 'GET',
+                headers: {
+                  'apikey': EVOLUTION_API_KEY,
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json();
+                console.log('🔍 Verificando status de conexão:', statusData.instance?.state);
+                
+                if (statusData.instance?.state === 'open') {
+                  await updateInstanceStatus('conectado');
+                  console.log('🎉 WhatsApp conectado com sucesso!');
+                  return true;
+                }
+              }
+              
+              attempts++;
+              if (attempts < maxAttempts) {
+                setTimeout(checkStatus, 3000);
+              } else {
+                console.log('⏰ Timeout aguardando conexão');
+                await updateInstanceStatus('desconectado');
+              }
+              
+              return false;
+            } catch (error) {
+              console.error('Erro ao verificar status:', error);
+              attempts++;
+              if (attempts < maxAttempts) {
+                setTimeout(checkStatus, 3000);
+              }
+              return false;
+            }
+          };
+          
+          setTimeout(checkStatus, 3000);
+        };
+        
+        monitorConnection();
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao conectar WhatsApp:', error);
+      await updateInstanceStatus('erro');
+      toast({
+        title: "Erro ao conectar",
+        description: error.message || "Erro na conexão com Evolution API",
+        variant: "destructive",
+      });
+      return false;
     } finally {
       setConnecting(false);
     }
@@ -200,7 +300,7 @@ export function useWhatsAppAPI() {
 
       console.log('✅ Status atualizado para:', status);
 
-      // Só mostrar toast para mudanças importantes
+      // Mostrar toast apenas para conexão bem-sucedida
       if (status === 'conectado') {
         toast({
           title: "WhatsApp Conectado!",
@@ -232,83 +332,6 @@ export function useWhatsAppAPI() {
         variant: "destructive",
       });
       return null;
-    }
-  };
-
-  const connectWhatsApp = async () => {
-    if (!instance) return false;
-
-    try {
-      setConnecting(true);
-      console.log('📱 Conectando à Evolution API para:', instance.nome_empresa);
-      
-      // ETAPA 1: Definir status como "conectando"
-      await updateInstanceStatus('conectando');
-      
-      // ETAPA 2: Solicitar conexão na Evolution API
-      const response = await fetch(`${EVOLUTION_API_BASE_URL}/instance/connect/${instance.id}`, {
-        method: 'GET',
-        headers: {
-          'apikey': EVOLUTION_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro na Evolution API: ${response.status}`);
-      }
-
-      const connectionData = await response.json();
-      console.log('🔄 Dados de conexão recebidos:', connectionData);
-      
-      // ETAPA 3: Se há QR Code, atualizar
-      if (connectionData.qrcode || connectionData.base64) {
-        const qrCodeData = connectionData.qrcode || connectionData.base64;
-        await updateInstanceStatus('conectando', qrCodeData);
-        console.log('✅ QR Code atualizado! Aguardando scan...');
-        
-        // Verificar status periodicamente até conectar
-        const checkConnection = setInterval(async () => {
-          try {
-            const statusResponse = await fetch(`${EVOLUTION_API_BASE_URL}/instance/connectionState/${instance.id}`, {
-              method: 'GET',
-              headers: {
-                'apikey': EVOLUTION_API_KEY,
-                'Content-Type': 'application/json',
-              },
-            });
-
-            if (statusResponse.ok) {
-              const statusData = await statusResponse.json();
-              if (statusData.instance?.state === 'open') {
-                clearInterval(checkConnection);
-                await updateInstanceStatus('conectado');
-                console.log('🎉 WhatsApp conectado com sucesso!');
-              }
-            }
-          } catch (error) {
-            console.error('Erro ao verificar status:', error);
-          }
-        }, 3000); // Verificar a cada 3 segundos
-
-        // Limpar interval após 2 minutos
-        setTimeout(() => {
-          clearInterval(checkConnection);
-        }, 120000);
-      }
-      
-      return true;
-    } catch (error: any) {
-      console.error('Erro ao conectar WhatsApp:', error);
-      await updateInstanceStatus('erro');
-      toast({
-        title: "Erro ao conectar",
-        description: error.message || "Erro na conexão com Evolution API",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setConnecting(false);
     }
   };
 
