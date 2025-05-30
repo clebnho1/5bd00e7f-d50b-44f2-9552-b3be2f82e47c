@@ -13,11 +13,16 @@ const BLOCKED_DOMAINS = [
   'beacon.min.js',
   'clarity.ms',
   'hotjar.com',
-  'fullstory.com'
+  'fullstory.com',
+  'static.cloudflareinsights.com'
 ];
 
+let isActive = false;
+
 export function initializeNetworkBlocker() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || isActive) return;
+  
+  isActive = true;
 
   // Bloquear fetch para domínios específicos
   const originalFetch = window.fetch;
@@ -25,7 +30,7 @@ export function initializeNetworkBlocker() {
     const url = typeof input === 'string' ? input : input.toString();
     
     if (BLOCKED_DOMAINS.some(domain => url.includes(domain))) {
-      console.log(`🚫 Bloqueado fetch para: ${url}`);
+      console.log(`🚫 Fetch bloqueado: ${url}`);
       return Promise.reject(new Error('🚫 Domínio bloqueado pelo sistema'));
     }
     
@@ -38,7 +43,7 @@ export function initializeNetworkBlocker() {
     const urlString = url.toString();
     
     if (BLOCKED_DOMAINS.some(domain => urlString.includes(domain))) {
-      console.log(`🚫 Bloqueado XHR para: ${urlString}`);
+      console.log(`🚫 XHR bloqueado: ${urlString}`);
       throw new Error('🚫 Domínio bloqueado pelo sistema');
     }
     
@@ -54,7 +59,7 @@ export function initializeNetworkBlocker() {
       const originalSetAttribute = element.setAttribute;
       element.setAttribute = function(name: string, value: string) {
         if (name.toLowerCase() === 'src' && BLOCKED_DOMAINS.some(domain => value.includes(domain))) {
-          console.log(`🚫 Bloqueado script dinamico: ${value}`);
+          console.log(`🚫 Script dinâmico bloqueado: ${value}`);
           return;
         }
         return originalSetAttribute.call(this, name, value);

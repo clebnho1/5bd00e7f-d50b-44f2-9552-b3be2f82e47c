@@ -3,7 +3,7 @@
 
 declare global {
   interface Window {
-    __APP_INITIALIZED__?: boolean;
+    __CHAT_WHATSAPP_INITIALIZED__?: boolean;
   }
 }
 

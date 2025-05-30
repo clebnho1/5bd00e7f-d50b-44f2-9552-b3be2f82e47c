@@ -9,9 +9,13 @@ import { initializeMasterBlocker } from "./utils/masterBlocker";
 
 console.log('🚀 [MAIN] Inicializando aplicação');
 
-// Verificar se já foi inicializado para evitar duplicação
-if (!window.__APP_INITIALIZED__) {
-  window.__APP_INITIALIZED__ = true;
+// Prevenir inicialização dupla
+const APP_INIT_KEY = '__CHAT_WHATSAPP_INITIALIZED__';
+
+if (!window[APP_INIT_KEY]) {
+  window[APP_INIT_KEY] = true;
+  
+  console.log('🔧 [MAIN] Primeira inicialização - ativando proteções');
   
   // Ativar sistema de proteção ANTES de qualquer coisa
   initializeMasterBlocker();
@@ -20,11 +24,16 @@ if (!window.__APP_INITIALIZED__) {
   setTimeout(() => {
     const rootElement = document.getElementById("root");
     if (rootElement && !rootElement.hasChildNodes()) {
+      console.log('✅ [MAIN] Renderizando React App');
       createRoot(rootElement).render(
         <StrictMode>
           <App />
         </StrictMode>,
       );
+    } else {
+      console.log('⚠️ [MAIN] Root element já possui conteúdo, ignorando renderização');
     }
-  }, 0);
+  }, 100);
+} else {
+  console.log('⚠️ [MAIN] Inicialização duplicada detectada - ignorando');
 }

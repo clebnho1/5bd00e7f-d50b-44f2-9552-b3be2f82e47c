@@ -17,35 +17,24 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- Permissions Policy com apenas features válidas -->
-    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), web-share=(), autoplay=(), picture-in-picture=(), encrypted-media=(), fullscreen=(), midi=(), sync-xhr=(), publickey-credentials-get=(), speaker-selection=(), local-fonts=(), document-domain=(), execution-while-out-of-focus=(), execution-while-not-rendered=(), focus-without-user-activation=(), hid=(), idle-detection=(), keyboard-map=(), otp-credentials=(), screen-wake-lock=(), storage-access=(), trust-token-redemption=(), window-management=(), cross-origin-isolated=()">
-    
-    <!-- CSP que permite apenas o essencial -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <!-- CSP otimizado -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
     
     <!-- Bloquear recursos externos -->
     <meta http-equiv="X-DNS-Prefetch-Control" content="off">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta name="referrer" content="no-referrer">
-    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
-    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
-    <meta http-equiv="Cross-Origin-Resource-Policy" content="same-origin">
     
     <!-- CSS para bloquear elementos externos -->
     <style>
-      [src*="facebook"], [src*="google-analytics"], [src*="googletagmanager"],
-      [src*="doubleclick"], [src*="googlesyndication"], [src*="googleadservices"],
-      [src*="linkedin"], [src*="bing.com"], [src*="clarity.ms"],
-      [src*="hotjar"], [src*="fullstory"], [src*="mixpanel"],
-      [src*="segment"], [src*="intercom"], [src*="zendesk"],
-      [src*="cloudflareinsights"], [src*="beacon"],
-      [href*="facebook"], [href*="google-analytics"], [href*="googletagmanager"],
-      [href*="doubleclick"], [href*="googlesyndication"], [href*="googleadservices"],
-      [href*="linkedin"], [href*="bing.com"], [href*="clarity.ms"],
-      [href*="hotjar"], [href*="fullstory"], [href*="mixpanel"],
-      [href*="segment"], [href*="intercom"], [href*="zendesk"],
-      [href*="cloudflareinsights"], [href*="beacon"] {
+      /* Bloquear elementos externos conhecidos */
+      [src*="cloudflareinsights"], 
+      [src*="beacon"],
+      [src*="facebook"], 
+      [src*="google-analytics"],
+      [href*="cloudflareinsights"], 
+      [href*="beacon"] {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
@@ -57,13 +46,16 @@
         height: 0 !important;
       }
       
+      /* Bloquear iframes não autorizados */
       iframe:not([src*="lovable"]):not([src*="supabase"]) {
         display: none !important;
       }
       
-      script[src*="gtag"], script[src*="analytics"], script[src*="fbq"],
-      script[src*="pixel"], script[src*="track"], script[src*="cloudflare"],
-      script[src*="beacon"] {
+      /* Bloquear scripts de tracking */
+      script[src*="cloudflareinsights"],
+      script[src*="beacon"],
+      script[src*="gtag"], 
+      script[src*="analytics"] {
         display: none !important;
       }
     </style>
