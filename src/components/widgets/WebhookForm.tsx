@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Webhook, Save, TestTube, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { useWebhookValidation } from '@/hooks/useWebhookValidation';
-import { useWebhookTest } from '@/hooks/useWebhookTest';
 
 interface WebhookFormProps {
   currentWebhookUrl?: string;
@@ -17,19 +15,38 @@ interface WebhookFormProps {
 export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormProps) {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [saveInProgress, setSaveInProgress] = useState(false);
-  const { isValidUrl, validateWebhookUrl } = useWebhookValidation();
-  const { isTesting, testResult, testWebhook } = useWebhookTest();
+  const [isValidUrl, setIsValidUrl] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (currentWebhookUrl) {
       setWebhookUrl(currentWebhookUrl);
       validateWebhookUrl(currentWebhookUrl);
     }
-  }, [currentWebhookUrl, validateWebhookUrl]);
+  }, [currentWebhookUrl]);
+
+  const validateWebhookUrl = (url: string): boolean => {
+    if (!url.trim()) {
+      setIsValidUrl(false);
+      return false;
+    }
+
+    try {
+      const urlObj = new URL(url);
+      const isValid = urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+      setIsValidUrl(isValid);
+      return isValid;
+    } catch {
+      setIsValidUrl(false);
+      return false;
+    }
+  };
 
   const handleUrlChange = (value: string) => {
     setWebhookUrl(value);
     validateWebhookUrl(value);
+    setTestResult(null); // Reset test result when URL changes
   };
 
   const handleSave = async () => {
@@ -56,8 +73,42 @@ export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormP
 
   const handleTest = async () => {
     if (!isValidUrl) return;
-    console.log('🧪 Initiating webhook test:', webhookUrl);
-    await testWebhook(webhookUrl);
+    
+    setIsTesting(true);
+    setTestResult(null);
+    
+    try {
+      console.log('🧪 Testing webhook:', webhookUrl);
+
+      const testPayload = {
+        event: 'webhook_test',
+        timestamp: new Date().toISOString(),
+        data: {
+          message: 'Teste de webhook do sistema',
+          test: true
+        }
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testPayload),
+        signal: AbortSignal.timeout(10000) // Increased timeout to 10 seconds
+      });
+
+      const isSuccess = response.ok;
+      setTestResult(isSuccess);
+      
+      console.log(isSuccess ? '✅ Webhook test successful' : '❌ Webhook test failed');
+      
+    } catch (error) {
+      console.error('❌ Webhook test failed:', error);
+      setTestResult(false);
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   const isLoading = loading || saveInProgress;
@@ -67,15 +118,15 @@ export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormP
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Webhook className="h-5 w-5" />
-          Webhook Configuration
+          Configuração de Webhook
         </CardTitle>
         <CardDescription>
-          Configure the webhook URL for receiving notifications and updates from all widgets interactions.
+          Configure a URL do webhook para receber notificações e atualizações de todas as interações dos widgets.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="webhook-url">Webhook URL</Label>
+          <Label htmlFor="webhook-url">URL do Webhook</Label>
           <Input
             id="webhook-url"
             type="url"
@@ -97,7 +148,7 @@ export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormP
           )}
           {currentWebhookUrl && (
             <p className="text-sm text-gray-500">
-              Webhook salvo: {currentWebhookUrl}
+              Webhook atual: {currentWebhookUrl}
             </p>
           )}
         </div>
@@ -112,7 +163,7 @@ export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormP
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            {saveInProgress ? 'Salvando...' : isLoading ? 'Carregando...' : 'Salvar Configurações'}
+            {saveInProgress ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
           
           {isValidUrl && (

@@ -1,7 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { webhookCircuitBreaker } from './webhookCircuitBreaker';
-import { webhookRateLimiter } from './webhookRateLimiter';
 
 interface WebhookPayload {
   event: string;
@@ -10,10 +8,6 @@ interface WebhookPayload {
   data: any;
   metadata?: any;
 }
-
-// Cache para evitar múltiplos webhooks iguais
-const webhookCache = new Map<string, number>();
-const CACHE_DURATION = 5000; // 5 segundos
 
 const validateWebhookUrl = (url: string): boolean => {
   try {
@@ -24,10 +18,6 @@ const validateWebhookUrl = (url: string): boolean => {
   }
 };
 
-const getCacheKey = (userId: string, event: string, data: any): string => {
-  return `${userId}:${event}:${JSON.stringify(data)}`;
-};
-
 export const sendWebhookData = async (
   userId: string, 
   event: string, 
@@ -35,16 +25,6 @@ export const sendWebhookData = async (
   metadata?: any
 ): Promise<boolean> => {
   try {
-    // Verificar cache para evitar duplicatas
-    const cacheKey = getCacheKey(userId, event, data);
-    const now = Date.now();
-    const cached = webhookCache.get(cacheKey);
-    
-    if (cached && (now - cached) < CACHE_DURATION) {
-      console.log('🔄 Webhook já enviado recentemente, ignorando duplicata');
-      return true;
-    }
-
     console.log('🔍 Verificando webhook para usuário:', userId);
     
     // Para eventos do sistema, buscar webhook de admin
@@ -64,18 +44,13 @@ export const sendWebhookData = async (
         return false;
       }
 
-      const success = await executeWebhookRequest(adminSettings.webhook_url, {
+      return await executeWebhookRequest(adminSettings.webhook_url, {
         event,
         user_id: 'system',
         timestamp: new Date().toISOString(),
         data,
         metadata
       });
-
-      if (success) {
-        webhookCache.set(cacheKey, now);
-      }
-      return success;
     }
     
     // Verificar se o usuário existe
@@ -115,13 +90,7 @@ export const sendWebhookData = async (
       metadata
     };
 
-    const success = await executeWebhookRequest(settings.webhook_url, payload);
-    
-    if (success) {
-      webhookCache.set(cacheKey, now);
-    }
-    
-    return success;
+    return await executeWebhookRequest(settings.webhook_url, payload);
   } catch (error) {
     console.error('❌ Erro ao processar webhook:', error);
     return false;
@@ -135,41 +104,26 @@ const executeWebhookRequest = async (webhookUrl: string, payload: WebhookPayload
     return false;
   }
 
-  // Verificar rate limiting
-  const rateLimitKey = `${payload.user_id}:${payload.event}`;
-  if (!webhookRateLimiter.canMakeRequest(rateLimitKey)) {
-    console.log('⏱️ Rate limit atingido para:', rateLimitKey);
-    return false;
-  }
-
-  // Não enviar webhooks de erro se o circuit breaker estiver aberto
-  if (payload.event.includes('error') && !webhookCircuitBreaker.canExecute(webhookUrl)) {
-    console.log('🔒 Circuit breaker aberto para webhooks de erro');
-    return false;
-  }
-
   try {
-    return await webhookCircuitBreaker.executeWithRetry(webhookUrl, async () => {
-      console.log('📤 Enviando webhook:', { event: payload.event, webhook_url: webhookUrl });
+    console.log('📤 Enviando webhook:', { event: payload.event, webhook_url: webhookUrl });
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(5000)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Webhook falhou: ${response.status} ${response.statusText}`);
-      }
-
-      console.log('✅ Webhook enviado com sucesso:', payload.event);
-      return true;
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000) // Increased timeout to 10 seconds
     });
+
+    if (!response.ok) {
+      throw new Error(`Webhook falhou: ${response.status} ${response.statusText}`);
+    }
+
+    console.log('✅ Webhook enviado com sucesso:', payload.event);
+    return true;
   } catch (error) {
-    console.error('❌ Webhook falhou após todas as tentativas:', error);
+    console.error('❌ Webhook falhou:', error);
     return false;
   }
 };
