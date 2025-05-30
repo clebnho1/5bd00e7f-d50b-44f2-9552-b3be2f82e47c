@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Settings, Edit, Key, Users as UsersIcon, Shield, Eye, Calendar, Building2, Star, UserCheck, UserX } from 'lucide-react';
 import { useAdministracao } from '@/hooks/useAdministracao';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function AdministracaoWidget() {
   const { isAdmin } = useAuth();
