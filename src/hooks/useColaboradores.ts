@@ -15,20 +15,17 @@ export function useColaboradores() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchColaboradores();
-    } else {
-      setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchColaboradores = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user?.id) return;
     
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase
         .from('colaboradores')
         .select('*')
@@ -49,144 +46,85 @@ export function useColaboradores() {
     }
   };
 
-  const saveColaborador = async (data: { 
-    nome: string;
-    email?: string;
-    telefone?: string;
-    cargo?: string;
-    unidade?: string;
-    produtos?: string[]; 
-    produtos_precos?: Record<string, number>;
-    produtos_detalhados?: Array<{
-      nome: string;
-      comissao: number;
-      preco: number;
-      descricao: string;
-      imagem: string;
-    }>;
-    horarios?: string;
-    horarios_detalhados?: Array<{
-      dia: string;
-      inicio: string;
-      fim: string;
-    }>;
-    ativo?: boolean;
-    imagem_url?: string;
-  }) => {
-    if (!user) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Usuário não está logado",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (!data.nome?.trim()) {
-      toast({
-        title: "Campo obrigatório",
-        description: "Nome do colaborador é obrigatório",
-        variant: "destructive",
-      });
-      return false;
-    }
+  const createColaborador = async (colaboradorData: Omit<Tables['colaboradores']['Insert'], 'user_id'>) => {
+    if (!user?.id) return null;
 
     try {
-      const colaboradorData = {
-        user_id: user.id,
-        nome: data.nome.trim(),
-        email: data.email?.trim() || null,
-        telefone: data.telefone?.trim() || null,
-        cargo: data.cargo?.trim() || null,
-        unidade: data.unidade?.trim() || null,
-        produtos: data.produtos || [],
-        produtos_precos: data.produtos_precos || {},
-        produtos_detalhados: data.produtos_detalhados || [],
-        horarios: data.horarios || '09:00 - 18:00',
-        horarios_detalhados: data.horarios_detalhados || [],
-        ativo: data.ativo ?? true,
-        imagem_url: data.imagem_url || null,
-      };
-
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('colaboradores')
-        .insert(colaboradorData);
+        .insert({ ...colaboradorData, user_id: user.id })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast({
-        title: "Colaborador adicionado",
-        description: "Novo colaborador foi adicionado com sucesso.",
+        title: "Colaborador criado",
+        description: "Colaborador criado com sucesso!",
       });
 
       // Enviar webhook
-      await sendWebhookSafe(user.id, 'colaborador_created', {
-        nome: colaboradorData.nome,
-        email: colaboradorData.email,
-        telefone: colaboradorData.telefone,
-        cargo: colaboradorData.cargo,
-        unidade: colaboradorData.unidade,
-        produtos: colaboradorData.produtos,
-        produtos_precos: colaboradorData.produtos_precos,
-        produtos_detalhados: colaboradorData.produtos_detalhados,
-        horarios: colaboradorData.horarios,
-        horarios_detalhados: colaboradorData.horarios_detalhados,
-        ativo: colaboradorData.ativo,
-        imagem_url: colaboradorData.imagem_url
+      sendWebhookSafe(user.id, 'colaborador_created', {
+        colaborador_id: data.id,
+        colaborador_name: data.nome,
+        user_id: user.id,
+        user_email: user.email,
+        colaborador_data: data
       }, {
-        action: 'create',
-        total_colaboradores: colaboradores.length + 1
-      });
+        action: 'create_colaborador',
+        widget: 'colaboradores'
+      }).catch(console.error);
 
-      await fetchColaboradores();
-      return true;
+      fetchColaboradores();
+      return data;
     } catch (error: any) {
-      console.error('Erro ao salvar colaborador:', error);
+      console.error('Erro ao criar colaborador:', error);
       toast({
-        title: "Erro ao salvar colaborador",
+        title: "Erro ao criar colaborador",
         description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
-      return false;
+      return null;
     }
   };
 
-  const updateColaborador = async (id: string, data: Partial<Tables['colaboradores']['Update']>) => {
-    if (!user) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Usuário não está logado",
-        variant: "destructive",
-      });
-      return false;
-    }
+  const updateColaborador = async (id: string, updates: Partial<Tables['colaboradores']['Update']>) => {
+    if (!user?.id) return null;
 
     try {
-      // Buscar dados antigos para enviar no webhook
-      const colaboradorAnterior = colaboradores.find(c => c.id === id);
-
-      const { error } = await supabase
+      const oldColaborador = colaboradores.find(c => c.id === id);
+      
+      const { data, error } = await supabase
         .from('colaboradores')
-        .update(data)
+        .update(updates)
         .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast({
         title: "Colaborador atualizado",
-        description: "Informações atualizadas com sucesso.",
+        description: "Informações atualizadas com sucesso!",
       });
 
       // Enviar webhook
-      await sendWebhookSafe(user.id, 'colaborador_updated', data, {
-        action: 'update',
+      sendWebhookSafe(user.id, 'colaborador_updated', {
         colaborador_id: id,
-        previous_data: colaboradorAnterior
-      });
+        colaborador_name: data.nome,
+        user_id: user.id,
+        user_email: user.email,
+        old_data: oldColaborador,
+        new_data: data,
+        changes: updates
+      }, {
+        action: 'update_colaborador',
+        widget: 'colaboradores'
+      }).catch(console.error);
 
-      await fetchColaboradores();
-      return true;
+      fetchColaboradores();
+      return data;
     } catch (error: any) {
       console.error('Erro ao atualizar colaborador:', error);
       toast({
@@ -194,9 +132,109 @@ export function useColaboradores() {
         description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
+      return null;
+    }
+  };
+
+  const deleteColaborador = async (id: string) => {
+    if (!user?.id) return false;
+
+    try {
+      const colaboradorToDelete = colaboradores.find(c => c.id === id);
+      
+      const { error } = await supabase
+        .from('colaboradores')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Colaborador removido",
+        description: "Colaborador removido com sucesso!",
+      });
+
+      // Enviar webhook
+      sendWebhookSafe(user.id, 'colaborador_deleted', {
+        colaborador_id: id,
+        colaborador_name: colaboradorToDelete?.nome,
+        user_id: user.id,
+        user_email: user.email,
+        deleted_data: colaboradorToDelete
+      }, {
+        action: 'delete_colaborador',
+        widget: 'colaboradores'
+      }).catch(console.error);
+
+      fetchColaboradores();
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao remover colaborador:', error);
+      toast({
+        title: "Erro ao remover colaborador",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
       return false;
     }
   };
 
-  return { colaboradores, loading, saveColaborador, updateColaborador, refetch: fetchColaboradores };
+  const toggleColaboradorStatus = async (id: string, currentStatus: boolean) => {
+    if (!user?.id) return false;
+
+    try {
+      const colaborador = colaboradores.find(c => c.id === id);
+      const newStatus = !currentStatus;
+      
+      const { data, error } = await supabase
+        .from('colaboradores')
+        .update({ ativo: newStatus })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: newStatus ? "Colaborador ativado" : "Colaborador desativado",
+        description: `Colaborador ${newStatus ? 'ativado' : 'desativado'} com sucesso!`,
+      });
+
+      // Enviar webhook
+      sendWebhookSafe(user.id, 'colaborador_status_changed', {
+        colaborador_id: id,
+        colaborador_name: colaborador?.nome,
+        user_id: user.id,
+        user_email: user.email,
+        old_status: currentStatus,
+        new_status: newStatus
+      }, {
+        action: 'toggle_colaborador_status',
+        widget: 'colaboradores'
+      }).catch(console.error);
+
+      fetchColaboradores();
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao alterar status do colaborador:', error);
+      toast({
+        title: "Erro ao alterar status",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  return {
+    colaboradores,
+    loading,
+    createColaborador,
+    updateColaborador,
+    deleteColaborador,
+    toggleColaboradorStatus,
+    refetch: fetchColaboradores
+  };
 }

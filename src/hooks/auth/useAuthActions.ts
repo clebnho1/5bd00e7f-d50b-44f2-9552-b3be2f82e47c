@@ -1,259 +1,166 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { sendWebhookSafe } from '@/utils/webhook';
 
-export function useAuthActions() {
-  const { toast } = useToast();
-
+export const useAuthActions = () => {
   const signIn = async (email: string, password: string) => {
-    if (!email?.trim() || !password?.trim()) {
-      const errorMsg = "Email e senha são obrigatórios";
-      toast({
-        title: "Campos obrigatórios",
-        description: errorMsg,
-        variant: "destructive",
-      });
-      throw new Error(errorMsg);
-    }
-
+    console.log('🔐 Iniciando processo de login para:', email);
+    
     try {
-      console.log('🚀 [SIGNIN] Tentando login para:', email);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
       if (error) {
-        console.error('❌ [SIGNIN_ERROR]', error);
-        let errorMessage = "Erro no login";
+        console.error('❌ Erro no login:', error);
         
         if (error.message.includes('Invalid login credentials')) {
-          errorMessage = "Email ou senha incorretos";
-        } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = "Email não confirmado. Verifique sua caixa de entrada";
-        } else if (error.message.includes('Too many requests')) {
-          errorMessage = "Muitas tentativas. Aguarde alguns minutos";
+          throw new Error('Email ou senha incorretos. Verifique suas credenciais.');
         }
-
-        if (data.user?.id) {
-          await sendWebhookSafe(data.user.id, 'user_login_failed', {
-            email: email.trim(),
-            error: errorMessage,
-            timestamp: new Date().toISOString()
-          }, {
-            action: 'login_failed',
-            error_type: error.message.includes('Invalid login credentials') ? 'invalid_credentials' : 'other'
-          });
+        
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('Email não confirmado. Verifique sua caixa de entrada.');
         }
-
-        toast({
-          title: "Erro no login",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        throw new Error(errorMessage);
+        
+        throw new Error(error.message || 'Erro ao fazer login');
       }
 
-      console.log('✅ [SIGNIN_SUCCESS] Login realizado:', data.user?.email);
-      
-      if (data.user?.id) {
-        await sendWebhookSafe(data.user.id, 'user_login_success', {
-          email: data.user.email,
-          user_id: data.user.id,
-          timestamp: new Date().toISOString(),
-          last_sign_in: data.user.last_sign_in_at
-        }, {
-          action: 'login_success',
-          session_started: true
-        });
+      if (!data.user) {
+        throw new Error('Falha na autenticação');
       }
-      
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo de volta!",
-      });
-      
-    } catch (error: any) {
-      console.error('💥 [SIGNIN_CRASH]', error);
+
+      console.log('✅ Login realizado com sucesso para:', email);
+
+      // Enviar webhook de login
+      sendWebhookSafe(data.user.id, 'user_login', {
+        user_id: data.user.id,
+        email: data.user.email,
+        login_timestamp: new Date().toISOString(),
+        session_expires: data.session?.expires_at
+      }, {
+        action: 'user_login',
+        automatic: false
+      }).catch(console.error);
+
+      return data.user;
+    } catch (error) {
+      console.error('❌ Erro no processo de login:', error);
       throw error;
     }
   };
 
   const signUp = async (email: string, password: string, name: string, plano: string) => {
-    if (!email?.trim() || !password?.trim() || !name?.trim()) {
-      const errorMsg = "Todos os campos são obrigatórios";
-      toast({
-        title: "Campos obrigatórios",
-        description: errorMsg,
-        variant: "destructive",
-      });
-      throw new Error(errorMsg);
-    }
-
-    if (password.length < 6) {
-      const errorMsg = "A senha deve ter pelo menos 6 caracteres";
-      toast({
-        title: "Senha muito fraca",
-        description: errorMsg,
-        variant: "destructive",
-      });
-      throw new Error(errorMsg);
-    }
-
+    console.log('📝 Iniciando processo de cadastro para:', email);
+    
     try {
-      console.log('🚀 [SIGNUP] Tentando cadastro para:', email);
-      
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
           data: {
             name: name.trim(),
-            plano: plano,
-          },
-        },
+            plano: plano
+          }
+        }
       });
 
       if (error) {
-        console.error('❌ [SIGNUP_ERROR]', error);
-        let errorMessage = "Erro no cadastro";
+        console.error('❌ Erro no cadastro:', error);
         
-        if (error.message.includes('User already registered') || 
-            error.message.includes('duplicate key value violates unique constraint')) {
-          errorMessage = "Este email já está cadastrado";
-          
-          toast({
-            title: "Email já cadastrado",
-            description: "Este email já possui uma conta. Tente fazer login.",
-            variant: "destructive",
-          });
-          
-          throw new Error(errorMessage);
+        if (error.message.includes('User already registered')) {
+          throw new Error('Este email já está cadastrado. Tente fazer login.');
         }
-
-        toast({
-          title: "Erro no cadastro",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        throw new Error(errorMessage);
+        
+        throw new Error(error.message || 'Erro ao criar conta');
       }
 
-      console.log('✅ [SIGNUP_SUCCESS] Cadastro realizado:', data.user?.email);
-
-      if (data.user?.id) {
-        await sendWebhookSafe(data.user.id, 'user_signup_success', {
-          email: data.user.email,
-          user_id: data.user.id,
-          name: name.trim(),
-          plano: plano,
-          timestamp: new Date().toISOString(),
-          email_confirmed: !!data.session
-        }, {
-          action: 'signup_success',
-          requires_confirmation: !data.session
-        });
+      if (!data.user) {
+        throw new Error('Falha ao criar usuário');
       }
 
-      if (data.user && !data.session) {
-        toast({
-          title: "Verifique seu email",
-          description: "Um link de confirmação foi enviado para seu email.",
-        });
-      } else if (data.session) {
-        toast({
-          title: "Cadastro realizado com sucesso!",
-          description: "Bem-vindo ao sistema!",
-        });
-      }
-    } catch (error: any) {
-      console.error('💥 [SIGNUP_CRASH]', error);
+      console.log('✅ Cadastro realizado com sucesso para:', email);
+
+      // Enviar webhook de cadastro
+      sendWebhookSafe(data.user.id, 'user_signup', {
+        user_id: data.user.id,
+        email: data.user.email,
+        name: name.trim(),
+        plano: plano,
+        signup_timestamp: new Date().toISOString()
+      }, {
+        action: 'user_signup',
+        automatic: false
+      }).catch(console.error);
+
+      return data.user;
+    } catch (error) {
+      console.error('❌ Erro no processo de cadastro:', error);
       throw error;
     }
   };
 
   const signOut = async () => {
+    console.log('🚪 Iniciando processo de logout');
+    
     try {
-      console.log('🚪 [SIGNOUT] Fazendo logout');
-      
+      // Obter dados do usuário antes do logout para webhook
       const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
       
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
       
-      if (userId) {
-        await sendWebhookSafe(userId, 'user_logout', {
-          user_id: userId,
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'logout',
-          session_ended: true
-        });
+      if (error) {
+        console.error('❌ Erro no logout:', error);
+        throw error;
       }
-      
-      toast({
-        title: "Logout realizado",
-        description: "Até logo!",
-      });
+
+      console.log('✅ Logout realizado com sucesso');
+
+      // Enviar webhook de logout
+      if (user) {
+        sendWebhookSafe(user.id, 'user_logout', {
+          user_id: user.id,
+          email: user.email,
+          logout_timestamp: new Date().toISOString()
+        }, {
+          action: 'user_logout',
+          automatic: false
+        }).catch(console.error);
+      }
+
     } catch (error) {
-      console.error('❌ [SIGNOUT_ERROR]', error);
+      console.error('❌ Erro no processo de logout:', error);
+      throw error;
     }
   };
 
   const resetPassword = async (email: string) => {
-    if (!email?.trim()) {
-      const errorMsg = "Email é obrigatório";
-      toast({
-        title: "Campo obrigatório",
-        description: errorMsg,
-        variant: "destructive",
-      });
-      throw new Error(errorMsg);
-    }
-
+    console.log('🔑 Iniciando reset de senha para:', email);
+    
     try {
-      console.log('🔑 [RESET_PASSWORD] Enviando email para:', email);
-      
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
-        console.error('❌ [RESET_PASSWORD_ERROR]', error);
-        
-        await sendWebhookSafe('system', 'password_reset_failed', {
-          email: email.trim(),
-          error: error.message,
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'password_reset_failed'
-        });
-        
-        toast({
-          title: "Erro ao enviar email",
-          description: error.message || "Erro desconhecido",
-          variant: "destructive",
-        });
+        console.error('❌ Erro no reset de senha:', error);
         throw error;
       }
 
-      console.log('✅ [RESET_PASSWORD_SUCCESS] Email enviado');
-      
-      await sendWebhookSafe('system', 'password_reset_requested', {
+      console.log('✅ Email de reset enviado para:', email);
+
+      // Enviar webhook de reset de senha (sem user_id pois pode não estar logado)
+      sendWebhookSafe('system', 'password_reset_requested', {
         email: email.trim(),
-        timestamp: new Date().toISOString()
+        reset_timestamp: new Date().toISOString(),
+        redirect_url: `${window.location.origin}/reset-password`
       }, {
-        action: 'password_reset_requested'
-      });
-      
-      toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
-      });
-    } catch (error: any) {
-      console.error('💥 [RESET_PASSWORD_CRASH]', error);
+        action: 'password_reset_request',
+        automatic: false
+      }).catch(console.error);
+
+    } catch (error) {
+      console.error('❌ Erro no processo de reset de senha:', error);
       throw error;
     }
   };
@@ -262,6 +169,6 @@ export function useAuthActions() {
     signIn,
     signUp,
     signOut,
-    resetPassword
+    resetPassword,
   };
-}
+};
