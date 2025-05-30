@@ -33,7 +33,10 @@ export function WhatsAppWidget() {
     deleteInstance,
     refetch,
     loading,
-    connecting
+    connecting,
+    connectionState,
+    qrCodeData,
+    cancelConnection
   } = useWhatsAppAPI();
 
   const {
@@ -69,7 +72,6 @@ export function WhatsAppWidget() {
     }
   };
   
-  const qrCode = instance?.qr_code || '';
   const error = instance?.status === 'erro' ? 'Erro na conexão' : null;
 
   // Sincronizar dados da instância com o estado local
@@ -134,7 +136,7 @@ export function WhatsAppWidget() {
     try {
       const result = await connectWhatsApp();
       if (result) {
-        console.log('✅ Processo de conexão iniciado - QR Code será gerado');
+        console.log('✅ Processo de conexão iniciado');
       }
     } finally {
       setIsConnecting(false);
@@ -182,6 +184,39 @@ export function WhatsAppWidget() {
     );
   }
 
+  // Se está exibindo QR Code
+  if (connectionState === 'qrcode' && qrCodeData) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao Dashboard
+          </Button>
+          <h1 className="text-2xl font-bold text-gray-800">WhatsApp Pessoal</h1>
+          <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+            <User className="h-4 w-4" />
+            {user.email}
+          </div>
+        </div>
+
+        <QrCodeDisplay 
+          qrCodeData={qrCodeData} 
+          isLoading={false}
+          onCancel={() => {
+            console.log('❌ Cancelando conexão');
+            cancelConnection();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-6">
       {/* Header */}
@@ -217,41 +252,41 @@ export function WhatsAppWidget() {
               {!instance && <div className="text-xs mt-1 font-bold">← Você está aqui</div>}
             </div>
             <div className={`text-center p-3 rounded-lg transition-all ${
-              instance && statusConexao === 'connecting' ? 'bg-blue-200 text-blue-900 ring-2 ring-blue-400' : 
+              instance && connectionState === 'loading' ? 'bg-blue-200 text-blue-900 ring-2 ring-blue-400' : 
               instance ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
             }`}>
               <div className="font-medium">2. Conectar</div>
               <div className="text-xs mt-1">Iniciar conexão</div>
-              {instance && statusConexao !== 'connecting' && statusConexao !== 'open' && (
+              {instance && connectionState !== 'loading' && connectionState !== 'qrcode' && connectionState !== 'connected' && (
                 <div className="text-xs mt-1 font-bold">← Você está aqui</div>
               )}
             </div>
             <div className={`text-center p-3 rounded-lg transition-all ${
-              statusConexao === 'connecting' && qrCode ? 'bg-blue-200 text-blue-900 ring-2 ring-blue-400' : 
-              statusConexao === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+              connectionState === 'loading' || connectionState === 'qrcode' ? 'bg-blue-200 text-blue-900 ring-2 ring-blue-400' : 
+              connectionState === 'connected' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
             }`}>
               <div className="font-medium">3. Gerar QR</div>
               <div className="text-xs mt-1">QR Code criado</div>
-              {statusConexao === 'connecting' && !qrCode && (
+              {connectionState === 'loading' && (
                 <div className="text-xs mt-1 font-bold">← Gerando...</div>
               )}
             </div>
             <div className={`text-center p-3 rounded-lg transition-all ${
-              statusConexao === 'connecting' && qrCode ? 'bg-yellow-200 text-yellow-900 ring-2 ring-yellow-400' : 
-              statusConexao === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+              connectionState === 'qrcode' ? 'bg-yellow-200 text-yellow-900 ring-2 ring-yellow-400' : 
+              connectionState === 'connected' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
             }`}>
               <div className="font-medium">4. Aguardar Scan</div>
               <div className="text-xs mt-1">Escaneie o QR</div>
-              {statusConexao === 'connecting' && qrCode && (
+              {connectionState === 'qrcode' && (
                 <div className="text-xs mt-1 font-bold">← Escaneie agora!</div>
               )}
             </div>
             <div className={`text-center p-3 rounded-lg transition-all ${
-              statusConexao === 'open' ? 'bg-green-200 text-green-900 ring-2 ring-green-400' : 'bg-gray-100 text-gray-600'
+              connectionState === 'connected' ? 'bg-green-200 text-green-900 ring-2 ring-green-400' : 'bg-gray-100 text-gray-600'
             }`}>
               <div className="font-medium">5. Conectado</div>
               <div className="text-xs mt-1">Pronto para usar</div>
-              {statusConexao === 'open' && (
+              {connectionState === 'connected' && (
                 <div className="text-xs mt-1 font-bold">✅ Concluído!</div>
               )}
             </div>
@@ -301,7 +336,7 @@ export function WhatsAppWidget() {
           )}
 
           <WhatsAppActions
-            isConnecting={isConnecting || connecting}
+            isConnecting={isConnecting || connecting || connectionState === 'loading'}
             isDisconnecting={isDisconnecting}
             isDeleting={isDeleting}
             instanceId={instanceId}
@@ -314,36 +349,21 @@ export function WhatsAppWidget() {
         </CardContent>
       </Card>
 
-      {/* Card do QR Code Melhorado */}
-      <Card className="bg-white shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-800">
-            <QrCode className="h-5 w-5" />
-            QR Code para Conexão
-            {statusConexao === 'connecting' && (
-              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-            )}
-          </CardTitle>
-          <CardDescription className="text-gray-600">
-            {statusConexao === 'connecting' && qrCode
-              ? '📱 QR Code gerado! Abra o WhatsApp, vá em "Dispositivos conectados" e escaneie este código.'
-              : statusConexao === 'open'
-              ? '✅ WhatsApp conectado! Para reconectar, desconecte primeiro e conecte novamente.'
-              : statusConexao === 'connecting'
-              ? '🔄 Gerando QR Code... aguarde alguns segundos.'
-              : 'Clique em "Conectar WhatsApp" para gerar o QR Code'
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <QrCodeDisplay 
-            qrCodeData={qrCode} 
-            isLoading={isConnecting || connecting || (statusConexao === 'connecting' && !qrCode)} 
-            error={error}
-            message={statusConexao === 'open' ? 'WhatsApp conectado com sucesso! 🎉' : undefined}
-          />
-        </CardContent>
-      </Card>
+      {/* Mensagem de status quando conectado */}
+      {connectionState === 'connected' && (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-green-600 text-lg font-medium mb-2">
+                ✅ WhatsApp Conectado com Sucesso!
+              </div>
+              <p className="text-green-700 text-sm">
+                Sua instância está conectada e pronta para uso.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
