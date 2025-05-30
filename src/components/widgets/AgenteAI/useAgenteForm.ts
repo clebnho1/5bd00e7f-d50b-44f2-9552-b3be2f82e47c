@@ -9,7 +9,7 @@ interface AgenteFormData {
   nome: string;
   sexo: string;
   area_atuacao: string;
-  funcoes: string[];
+  funcoes: string;
   estilo_comportamento: string;
   nome_empresa: string;
   email_empresa: string;
@@ -17,6 +17,7 @@ interface AgenteFormData {
   website_empresa: string;
   endereco_empresa: string;
   usar_emotion: boolean;
+  observacoes: string;
 }
 
 export function useAgenteForm(agente: AgenteAI | null) {
@@ -24,14 +25,15 @@ export function useAgenteForm(agente: AgenteAI | null) {
     nome: 'Sofia',
     sexo: 'feminino',
     area_atuacao: 'Atendimento ao Cliente',
-    funcoes: ['Responder dúvidas sobre produtos', 'Agendar atendimentos', 'Fornecer informações de contato'],
+    funcoes: 'Responder dúvidas sobre produtos\nAgendar atendimentos\nFornecer informações de contato',
     estilo_comportamento: 'Amigável e profissional',
     nome_empresa: 'Minha Empresa',
     email_empresa: '',
     telefone_empresa: '',
     website_empresa: '',
     endereco_empresa: '',
-    usar_emotion: true
+    usar_emotion: true,
+    observacoes: ''
   }), []);
 
   const [formData, setFormData] = useState<AgenteFormData>(defaultFormData);
@@ -42,14 +44,17 @@ export function useAgenteForm(agente: AgenteAI | null) {
         nome: agente.nome || defaultFormData.nome,
         sexo: agente.sexo || defaultFormData.sexo,
         area_atuacao: agente.area_atuacao || defaultFormData.area_atuacao,
-        funcoes: agente.funcoes || defaultFormData.funcoes,
+        funcoes: Array.isArray(agente.funcoes) 
+          ? agente.funcoes.join('\n') 
+          : agente.funcoes || defaultFormData.funcoes,
         estilo_comportamento: agente.estilo_comportamento || defaultFormData.estilo_comportamento,
         nome_empresa: agente.nome_empresa || defaultFormData.nome_empresa,
         email_empresa: agente.email_empresa || defaultFormData.email_empresa,
         telefone_empresa: agente.telefone_empresa || defaultFormData.telefone_empresa,
         website_empresa: agente.website_empresa || defaultFormData.website_empresa,
         endereco_empresa: agente.endereco_empresa || defaultFormData.endereco_empresa,
-        usar_emotion: agente.usar_emotion ?? defaultFormData.usar_emotion
+        usar_emotion: agente.usar_emotion ?? defaultFormData.usar_emotion,
+        observacoes: '' // Agentes existentes podem não ter observações
       });
     } else {
       setFormData(defaultFormData);
@@ -68,7 +73,7 @@ export function useAgenteForm(agente: AgenteAI | null) {
       nome: formData.nome,
       sexo: formData.sexo,
       area_atuacao: formData.area_atuacao,
-      funcoes: formData.funcoes,
+      funcoes: formData.funcoes.split('\n').filter(f => f.trim()),
       estilo_comportamento: formData.estilo_comportamento,
       nome_empresa: formData.nome_empresa,
       email_empresa: formData.email_empresa || null,

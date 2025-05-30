@@ -51,7 +51,7 @@ export const AgenteAIWidget = memo(function AgenteAIWidget() {
 
         {/* 2. Funções */}
         <FuncoesAgente
-          formData={formData}
+          formData={{ funcoes: formData.funcoes }}
           onInputChange={handleInputChange}
         />
 
@@ -76,7 +76,7 @@ export const AgenteAIWidget = memo(function AgenteAIWidget() {
 
         {/* 6. Observações */}
         <Observacoes
-          formData={formData}
+          formData={{ observacoes: formData.observacoes }}
           onInputChange={handleInputChange}
         />
 
