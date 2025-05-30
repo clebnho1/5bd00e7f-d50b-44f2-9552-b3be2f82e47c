@@ -17,28 +17,55 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- Permissions Policy ultra restritiva -->
-    <meta http-equiv="Permissions-Policy" content="vr=(), ambient-light-sensor=(), battery=(), join-ad-interest-group=(), interest-cohort=(), attribution-reporting=(), browsing-topics=(), camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), web-share=(), autoplay=(), picture-in-picture=(), encrypted-media=(), fullscreen=(), midi=(), sync-xhr=()">
+    <!-- Permissions Policy ULTRA restritiva - bloqueia TUDO -->
+    <meta http-equiv="Permissions-Policy" content="vr=(), ambient-light-sensor=(), battery=(), join-ad-interest-group=(), interest-cohort=(), attribution-reporting=(), browsing-topics=(), camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), web-share=(), autoplay=(), picture-in-picture=(), encrypted-media=(), fullscreen=(), midi=(), sync-xhr=(), publickey-credentials-get=(), speaker-selection=(), xr-spatial-tracking=(), local-fonts=(), document-domain=(), execution-while-out-of-focus=(), execution-while-not-rendered=(), focus-without-user-activation=(), hid=(), idle-detection=(), keyboard-map=(), otp-credentials=(), screen-wake-lock=(), storage-access=(), trust-token-redemption=(), window-management=(), cross-origin-isolated=()">
     
-    <!-- CSP ultra rigorosa -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+    <!-- CSP ULTRA rigorosa - só permite o essencial -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests; block-all-mixed-content;">
     
-    <!-- Bloqueios máximos de recursos externos -->
+    <!-- Bloqueios MÁXIMOS de recursos externos -->
     <meta http-equiv="X-DNS-Prefetch-Control" content="off">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+    <meta http-equiv="Cross-Origin-Resource-Policy" content="same-origin">
     
-    <!-- Bloquear preload de recursos externos -->
+    <!-- Bloquear QUALQUER script externo -->
     <style>
-      /* Bloquear qualquer elemento externo */
+      /* Bloquear TODOS os elementos externos possíveis */
       [src*="facebook"], [src*="google-analytics"], [src*="googletagmanager"],
-      [href*="facebook"], [href*="google-analytics"], [href*="googletagmanager"] {
+      [src*="doubleclick"], [src*="googlesyndication"], [src*="googleadservices"],
+      [src*="linkedin"], [src*="bing.com"], [src*="clarity.ms"],
+      [src*="hotjar"], [src*="fullstory"], [src*="mixpanel"],
+      [src*="segment"], [src*="intercom"], [src*="zendesk"],
+      [href*="facebook"], [href*="google-analytics"], [href*="googletagmanager"],
+      [href*="doubleclick"], [href*="googlesyndication"], [href*="googleadservices"],
+      [href*="linkedin"], [href*="bing.com"], [href*="clarity.ms"],
+      [href*="hotjar"], [href*="fullstory"], [href*="mixpanel"],
+      [href*="segment"], [href*="intercom"], [href*="zendesk"] {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+      
+      /* Bloquear qualquer iframe */
+      iframe:not([src*="lovable"]):not([src*="supabase"]) {
+        display: none !important;
+      }
+      
+      /* Bloquear scripts suspeitos */
+      script[src*="gtag"], script[src*="analytics"], script[src*="fbq"],
+      script[src*="pixel"], script[src*="track"] {
+        display: none !important;
       }
     </style>
   </head>

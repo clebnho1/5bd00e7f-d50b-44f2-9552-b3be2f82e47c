@@ -34,13 +34,13 @@ export function useUserSettings() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao carregar configurações:', error);
+        // Não logar erros - sistema de limpeza vai capturar
         return;
       }
 
       setSettings(data || {});
     } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
+      // Silencioso - não logar
     } finally {
       setLoading(false);
     }
@@ -73,32 +73,38 @@ export function useUserSettings() {
 
       setSettings(prev => ({ ...prev, ...newSettings }));
       
-      // Webhook para configurações salvas
-      await sendWebhookSafe(user.id, 'user_settings_updated', {
-        user_id: user.id,
-        settings: newSettings,
-        timestamp: new Date().toISOString()
-      }, {
-        action: 'settings_updated',
-        settings_keys: Object.keys(newSettings)
-      });
+      // Webhook silencioso
+      try {
+        await sendWebhookSafe(user.id, 'user_settings_updated', {
+          user_id: user.id,
+          settings: newSettings,
+          timestamp: new Date().toISOString()
+        }, {
+          action: 'settings_updated',
+          settings_keys: Object.keys(newSettings)
+        });
+      } catch {
+        // Silencioso
+      }
       
       toast({
         title: "Configurações salvas",
         description: "Suas configurações foram atualizadas com sucesso.",
       });
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-      
-      // Webhook para erro ao salvar
-      await sendWebhookSafe(user.id, 'user_settings_error', {
-        user_id: user.id,
-        settings: newSettings,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
-        timestamp: new Date().toISOString()
-      }, {
-        action: 'settings_save_failed'
-      });
+      // Webhook silencioso para erro
+      try {
+        await sendWebhookSafe(user.id, 'user_settings_error', {
+          user_id: user.id,
+          settings: newSettings,
+          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          timestamp: new Date().toISOString()
+        }, {
+          action: 'settings_save_failed'
+        });
+      } catch {
+        // Silencioso
+      }
       
       toast({
         title: "Erro ao salvar",
@@ -135,17 +141,21 @@ export function useUserSettings() {
 
       const isSuccess = response.ok;
       
-      // Webhook para resultado do teste
-      await sendWebhookSafe(user.id, 'webhook_test_result', {
-        user_id: user.id,
-        webhook_url: webhookUrl,
-        success: isSuccess,
-        status_code: response.status,
-        timestamp: new Date().toISOString()
-      }, {
-        action: 'webhook_test',
-        result: isSuccess ? 'success' : 'failed'
-      });
+      // Webhook silencioso para resultado
+      try {
+        await sendWebhookSafe(user.id, 'webhook_test_result', {
+          user_id: user.id,
+          webhook_url: webhookUrl,
+          success: isSuccess,
+          status_code: response.status,
+          timestamp: new Date().toISOString()
+        }, {
+          action: 'webhook_test',
+          result: isSuccess ? 'success' : 'failed'
+        });
+      } catch {
+        // Silencioso
+      }
 
       if (isSuccess) {
         toast({
@@ -162,17 +172,19 @@ export function useUserSettings() {
 
       return isSuccess;
     } catch (error) {
-      console.error('Erro ao testar webhook:', error);
-      
-      // Webhook para erro no teste
-      await sendWebhookSafe(user.id, 'webhook_test_error', {
-        user_id: user.id,
-        webhook_url: webhookUrl,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
-        timestamp: new Date().toISOString()
-      }, {
-        action: 'webhook_test_failed'
-      });
+      // Webhook silencioso para erro
+      try {
+        await sendWebhookSafe(user.id, 'webhook_test_error', {
+          user_id: user.id,
+          webhook_url: webhookUrl,
+          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          timestamp: new Date().toISOString()
+        }, {
+          action: 'webhook_test_failed'
+        });
+      } catch {
+        // Silencioso
+      }
       
       toast({
         title: "Erro no teste",
