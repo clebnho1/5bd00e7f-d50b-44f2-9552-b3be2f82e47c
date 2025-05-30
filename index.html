@@ -8,57 +8,39 @@
     <meta name="description" content="Plataforma de automação para WhatsApp Business" />
     <meta name="author" content="ChatWhatsApp" />
 
+    <!-- Meta tags essenciais para SEO -->
     <meta property="og:title" content="ChatWhatsApp - Automação de WhatsApp" />
     <meta property="og:description" content="Plataforma de automação para WhatsApp Business" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- Permissions Policy aprimorada para bloquear recursos desnecessários -->
-    <meta http-equiv="Permissions-Policy" content="
-      vr=(),
-      ambient-light-sensor=(),
-      battery=(),
-      join-ad-interest-group=(),
-      interest-cohort=(),
-      attribution-reporting=(),
-      browsing-topics=(),
-      camera=(),
-      microphone=(),
-      geolocation=(),
-      payment=(),
-      usb=(),
-      serial=(),
-      bluetooth=(),
-      magnetometer=(),
-      gyroscope=(),
-      accelerometer=(),
-      display-capture=(),
-      web-share=()
-    ">
+    <!-- Permissions Policy ultra restritiva -->
+    <meta http-equiv="Permissions-Policy" content="vr=(), ambient-light-sensor=(), battery=(), join-ad-interest-group=(), interest-cohort=(), attribution-reporting=(), browsing-topics=(), camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), web-share=(), autoplay=(), picture-in-picture=(), encrypted-media=(), fullscreen=(), midi=(), sync-xhr=()">
     
-    <!-- CSP rigorosa para máxima segurança -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co;
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https: blob:;
-      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co;
-      frame-src 'none';
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      upgrade-insecure-requests;
-    ">
+    <!-- CSP ultra rigorosa -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     
-    <!-- Bloqueios adicionais de recursos externos -->
+    <!-- Bloqueios máximos de recursos externos -->
     <meta http-equiv="X-DNS-Prefetch-Control" content="off">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta name="referrer" content="no-referrer">
+    
+    <!-- Bloquear preload de recursos externos -->
+    <style>
+      /* Bloquear qualquer elemento externo */
+      [src*="facebook"], [src*="google-analytics"], [src*="googletagmanager"],
+      [href*="facebook"], [href*="google-analytics"], [href*="googletagmanager"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    </style>
   </head>
 
   <body>
