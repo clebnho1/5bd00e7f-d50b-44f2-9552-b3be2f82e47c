@@ -7,8 +7,8 @@ import { WebhookForm } from '@/components/widgets/WebhookForm';
 export function ConfiguracoesWidget() {
   const { settings, loading, saveSettings } = useUserSettings();
 
-  const handleSaveWebhook = async (webhookUrl: string) => {
-    await saveSettings({ webhook_url: webhookUrl });
+  const handleSaveWebhook = async (webhookUrl: string): Promise<boolean> => {
+    return await saveSettings({ webhook_url: webhookUrl });
   };
 
   return (
