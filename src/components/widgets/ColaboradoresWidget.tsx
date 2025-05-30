@@ -156,14 +156,14 @@ export function ColaboradoresWidget() {
       horarios: horarios.map(h => `${h.dia}: ${h.inicio} - ${h.fim}`).join('\n')
     };
 
-    let success = false;
+    let result = null;
     if (editingColaborador) {
-      success = await updateColaborador(editingColaborador.id, dadosColaborador);
+      result = await updateColaborador(editingColaborador.id, dadosColaborador);
     } else {
-      success = await createColaborador(dadosColaborador);
+      result = await createColaborador(dadosColaborador);
     }
 
-    if (success) {
+    if (result) {
       setIsDialogOpen(false);
     }
     setIsSubmitting(false);
