@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Settings, Edit, Key, Users as UsersIcon, Shield, Eye, Calendar, Building2 } from 'lucide-react';
+import { Settings, Edit, Key, Users as UsersIcon, Shield, Eye, Calendar, Building2, Star } from 'lucide-react';
 import { useAdministracao } from '@/hooks/useAdministracao';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -127,7 +127,7 @@ export function AdministracaoWidget() {
       </div>
 
       {/* Estatísticas */}
-      <div className="grid md:grid-cols-5 gap-4">
+      <div className="grid md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -150,6 +150,20 @@ export function AdministracaoWidget() {
                 </p>
               </div>
               <Shield className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Plano Gratuito</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {users.filter(u => u.plano === 'gratuito').length}
+                </p>
+              </div>
+              <Star className="h-8 w-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>
