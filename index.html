@@ -17,11 +17,14 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- Bloqueia recursos de terceiros via Permissions Policy -->
-    <meta http-equiv="Permissions-Policy" content="vr=(), ambient-light-sensor=(), battery=(), join-ad-interest-group=()">
+    <!-- Permissions Policy mais robusta -->
+    <meta http-equiv="Permissions-Policy" content="vr=(), ambient-light-sensor=(), battery=(), join-ad-interest-group=(), interest-cohort=(), attribution-reporting=(), browsing-topics=(), camera=(), microphone=(), geolocation=(), payment=()">
     
-    <!-- Bloqueia preload de recursos do Facebook -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none';">
+    <!-- CSP mais restritiva para bloquear terceiros -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none';">
+    
+    <!-- Bloqueia preload de terceiros -->
+    <meta http-equiv="X-DNS-Prefetch-Control" content="off">
   </head>
 
   <body>
