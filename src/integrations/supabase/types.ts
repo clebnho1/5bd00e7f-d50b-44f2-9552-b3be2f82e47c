@@ -387,6 +387,7 @@ export type Database = {
       }
       users: {
         Row: {
+          active: boolean
           created_at: string
           email: string
           id: string
@@ -399,6 +400,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           created_at?: string
           email: string
           id: string
@@ -411,6 +413,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           created_at?: string
           email?: string
           id?: string
@@ -508,6 +511,10 @@ export type Database = {
       }
       save_user_webhook_url: {
         Args: { user_id_param: string; webhook_url_param: string }
+        Returns: undefined
+      }
+      update_expired_plans: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
     }

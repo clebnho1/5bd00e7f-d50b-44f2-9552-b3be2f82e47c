@@ -76,7 +76,6 @@ export function useAdministracao() {
         description: "Informações do usuário atualizadas com sucesso.",
       });
 
-      // Webhook assíncrono
       sendWebhookSafe(user.id, 'admin_user_updated', {
         target_user_id: userId,
         target_user_email: userToUpdate?.email,
@@ -103,6 +102,57 @@ export function useAdministracao() {
     }
   };
 
+  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    if (!user || !isAdmin()) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem ativar/desativar usuários",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const userToUpdate = users.find(u => u.id === userId);
+      const newStatus = !currentStatus;
+
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          active: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: newStatus ? "Usuário ativado" : "Usuário desativado",
+        description: `Usuário ${newStatus ? 'ativado' : 'desativado'} com sucesso.`,
+      });
+
+      sendWebhookSafe(user.id, 'admin_user_status_changed', {
+        target_user_id: userId,
+        target_user_email: userToUpdate?.email,
+        new_status: newStatus,
+        admin_user_id: user.id,
+        admin_user_email: user.email
+      }, {
+        action: 'user_status_change',
+        admin_action: true
+      }).catch(console.error);
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Erro ao alterar status do usuário:', error);
+      toast({
+        title: "Erro ao alterar status",
+        description: error.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
   const updateUserPlan = async (userId: string, plano: string, expirationDate?: string) => {
     if (!user || !isAdmin()) {
       toast({
@@ -123,9 +173,11 @@ export function useAdministracao() {
       };
 
       if (plano === 'gratuito') {
+        // Plano gratuito: 7 dias de trial
         updateData.trial_expires_at = expirationDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         updateData.plano_expires_at = null;
-      } else {
+      } else if (plano === 'profissional' || plano === 'empresarial') {
+        // Planos pagos: 30 dias
         updateData.plano_expires_at = expirationDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         updateData.trial_expires_at = null;
       }
@@ -142,7 +194,6 @@ export function useAdministracao() {
         description: `Plano do usuário alterado para ${plano}`,
       });
 
-      // Webhook assíncrono
       sendWebhookSafe(user.id, 'admin_plan_updated', {
         target_user_id: userId,
         target_user_email: userToUpdate?.email,
@@ -272,6 +323,7 @@ export function useAdministracao() {
     loading, 
     updateUser, 
     updateUserPlan,
+    toggleUserStatus,
     resetUserPassword,
     generateTemporaryPassword,
     refetch: fetchUsers 

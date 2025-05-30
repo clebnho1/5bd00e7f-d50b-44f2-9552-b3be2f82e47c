@@ -6,13 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Settings, Edit, Key, Users as UsersIcon, Shield, Eye, Calendar, Building2, Star } from 'lucide-react';
+import { Settings, Edit, Key, Users as UsersIcon, Shield, Eye, Calendar, Building2, Star, UserCheck, UserX } from 'lucide-react';
 import { useAdministracao } from '@/hooks/useAdministracao';
 import { useAuth } from '@/hooks/useAuth';
 
 export function AdministracaoWidget() {
   const { isAdmin } = useAuth();
-  const { users, loading, updateUser, updateUserPlan, resetUserPassword, generateTemporaryPassword } = useAdministracao();
+  const { users, loading, updateUser, updateUserPlan, toggleUserStatus, resetUserPassword, generateTemporaryPassword } = useAdministracao();
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
@@ -143,6 +143,13 @@ export function AdministracaoWidget() {
     }
   };
 
+  const handleToggleUserStatus = async (user: any) => {
+    const action = user.active ? 'desativar' : 'ativar';
+    if (confirm(`Tem certeza que deseja ${action} o usuário ${user.email}?`)) {
+      await toggleUserStatus(user.id, user.active);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -178,10 +185,10 @@ export function AdministracaoWidget() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Usuários Ativos</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {users.filter(u => u.plano_active).length}
+                  {users.filter(u => u.active && u.plano_active).length}
                 </p>
               </div>
-              <Shield className="h-8 w-8 text-green-600" />
+              <UserCheck className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
@@ -268,8 +275,11 @@ export function AdministracaoWidget() {
                       <Badge variant={user.plano_active ? 'default' : 'secondary'}>
                         {user.plano}
                       </Badge>
+                      <Badge variant={user.active ? 'default' : 'destructive'}>
+                        {user.active ? 'Ativo' : 'Inativo'}
+                      </Badge>
                       <Badge variant={user.plano_active ? 'default' : 'secondary'}>
-                        {user.plano_active ? 'Ativo' : 'Inativo'}
+                        {user.plano_active ? 'Plano Ativo' : 'Plano Inativo'}
                       </Badge>
                     </div>
                   </div>
@@ -289,6 +299,14 @@ export function AdministracaoWidget() {
                 </div>
                 
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant={user.active ? "destructive" : "default"}
+                    size="sm"
+                    onClick={() => handleToggleUserStatus(user)}
+                    title={user.active ? "Desativar usuário" : "Ativar usuário"}
+                  >
+                    {user.active ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -397,9 +415,9 @@ export function AdministracaoWidget() {
                   <SelectValue placeholder="Selecione um plano" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gratuito">Gratuito</SelectItem>
-                  <SelectItem value="profissional">Profissional</SelectItem>
-                  <SelectItem value="empresarial">Empresarial</SelectItem>
+                  <SelectItem value="gratuito">Gratuito (7 dias)</SelectItem>
+                  <SelectItem value="profissional">Profissional (30 dias)</SelectItem>
+                  <SelectItem value="empresarial">Empresarial (30 dias)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
