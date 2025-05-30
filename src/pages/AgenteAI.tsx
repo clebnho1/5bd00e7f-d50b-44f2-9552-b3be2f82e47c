@@ -7,23 +7,16 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AgenteAI = () => {
-  console.log('🎯 [AGENTE_AI_PAGE] Renderizando página AgenteAI');
-  
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  console.log('🎯 [AGENTE_AI_PAGE] Usuário:', user?.email);
-
   if (!user) {
-    console.log('🎯 [AGENTE_AI_PAGE] Usuário não logado, mostrando loading');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
       </div>
     );
   }
-
-  console.log('🎯 [AGENTE_AI_PAGE] Usuário logado, renderizando página');
 
   return (
     <div className="min-h-screen bg-gray-50">

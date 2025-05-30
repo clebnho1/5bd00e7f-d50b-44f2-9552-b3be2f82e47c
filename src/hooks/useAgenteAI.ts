@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -15,13 +15,7 @@ export function useAgenteAI() {
   const [agente, setAgente] = useState<AgenteAI | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchAgente();
-    }
-  }, [user?.id]);
-
-  const fetchAgente = async () => {
+  const fetchAgente = useCallback(async () => {
     if (!user?.id) return;
     
     try {
@@ -48,9 +42,15 @@ export function useAgenteAI() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, toast]);
 
-  const saveAgente = async (agenteData: Omit<Tables['agentes_ai']['Insert'], 'user_id'>) => {
+  useEffect(() => {
+    if (user?.id) {
+      fetchAgente();
+    }
+  }, [user?.id, fetchAgente]);
+
+  const saveAgente = useCallback(async (agenteData: Omit<Tables['agentes_ai']['Insert'], 'user_id'>) => {
     if (!user?.id) return null;
 
     try {
@@ -124,9 +124,9 @@ export function useAgenteAI() {
       });
       return null;
     }
-  };
+  }, [user, agente, toast]);
 
-  const deleteAgente = async () => {
+  const deleteAgente = useCallback(async () => {
     if (!user?.id || !agente) return false;
 
     try {
@@ -164,7 +164,7 @@ export function useAgenteAI() {
       });
       return false;
     }
-  };
+  }, [user, agente, toast]);
 
   return {
     agente,

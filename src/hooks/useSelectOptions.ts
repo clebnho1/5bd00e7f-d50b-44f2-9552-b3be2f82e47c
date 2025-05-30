@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -13,14 +13,7 @@ export function useSelectOptions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([
-      fetchAreasAtuacao(),
-      fetchEstilosComportamento()
-    ]).finally(() => setLoading(false));
-  }, []);
-
-  const fetchAreasAtuacao = async () => {
+  const fetchAreasAtuacao = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('areas_atuacao')
@@ -39,9 +32,9 @@ export function useSelectOptions() {
       console.error('Erro ao carregar áreas de atuação:', error);
       setError('Erro ao carregar áreas de atuação');
     }
-  };
+  }, []);
 
-  const fetchEstilosComportamento = async () => {
+  const fetchEstilosComportamento = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('estilos_comportamento')
@@ -60,20 +53,26 @@ export function useSelectOptions() {
       console.error('Erro ao carregar estilos de comportamento:', error);
       setError('Erro ao carregar estilos de comportamento');
     }
-  };
+  }, []);
+
+  const refetch = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      fetchAreasAtuacao(),
+      fetchEstilosComportamento()
+    ]).finally(() => setLoading(false));
+  }, [fetchAreasAtuacao, fetchEstilosComportamento]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   return { 
     areasAtuacao, 
     estilosComportamento, 
     loading,
     error,
-    refetch: () => {
-      setLoading(true);
-      setError(null);
-      Promise.all([
-        fetchAreasAtuacao(),
-        fetchEstilosComportamento()
-      ]).finally(() => setLoading(false));
-    }
+    refetch
   };
 }

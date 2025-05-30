@@ -13,38 +13,23 @@ import { Observacoes } from './AgenteAI/Observacoes';
 import { useAgenteForm } from './AgenteAI/useAgenteForm';
 
 export const AgenteAIWidget = memo(function AgenteAIWidget() {
-  console.log('🤖 [AGENTE_AI_WIDGET] Renderizando AgenteAIWidget');
-  
   const { agente, loading, saveAgente } = useAgenteAI();
   const { areasAtuacao, estilosComportamento, loading: optionsLoading } = useSelectOptions();
   const { formData, handleInputChange, prepareDataForSave } = useAgenteForm(agente);
 
-  console.log('🤖 [AGENTE_AI_WIDGET] Estado:', { 
-    agente: agente?.nome, 
-    loading, 
-    optionsLoading,
-    areasAtuacao: areasAtuacao?.length,
-    estilosComportamento: estilosComportamento?.length
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🤖 [AGENTE_AI_WIDGET] Salvando agente...');
     const dataToSave = prepareDataForSave();
-    console.log('🤖 [AGENTE_AI_WIDGET] Dados para salvar:', dataToSave);
     await saveAgente(dataToSave);
   };
 
   if (loading || optionsLoading) {
-    console.log('🤖 [AGENTE_AI_WIDGET] Carregando...');
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-whatsapp"></div>
       </div>
     );
   }
-
-  console.log('🤖 [AGENTE_AI_WIDGET] Renderizando formulário');
 
   return (
     <div className="space-y-6">

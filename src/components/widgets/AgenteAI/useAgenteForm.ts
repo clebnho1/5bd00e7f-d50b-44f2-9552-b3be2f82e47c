@@ -1,80 +1,81 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { debounce } from 'lodash';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type Tables = Database['public']['Tables'];
+type AgenteAI = Tables['agentes_ai']['Row'];
 
-interface FormData {
+interface AgenteFormData {
   nome: string;
   sexo: string;
   area_atuacao: string;
+  funcoes: string[];
   estilo_comportamento: string;
-  usar_emotion: boolean;
   nome_empresa: string;
-  telefone_empresa: string;
   email_empresa: string;
+  telefone_empresa: string;
   website_empresa: string;
   endereco_empresa: string;
-  funcoes: string;
-  instagram_empresa?: string;
-  facebook_empresa?: string;
-  observacoes?: string;
+  usar_emotion: boolean;
 }
 
-export function useAgenteForm(agentData: Tables['agentes_ai']['Row'] | null) {
-  const [formData, setFormData] = useState<FormData>({
-    nome: '',
-    sexo: '',
-    area_atuacao: '',
-    estilo_comportamento: '',
-    usar_emotion: true,
-    nome_empresa: '',
-    telefone_empresa: '',
+export function useAgenteForm(agente: AgenteAI | null) {
+  const defaultFormData: AgenteFormData = useMemo(() => ({
+    nome: 'Sofia',
+    sexo: 'feminino',
+    area_atuacao: 'Atendimento ao Cliente',
+    funcoes: ['Responder dúvidas sobre produtos', 'Agendar atendimentos', 'Fornecer informações de contato'],
+    estilo_comportamento: 'Amigável e profissional',
+    nome_empresa: 'Minha Empresa',
     email_empresa: '',
+    telefone_empresa: '',
     website_empresa: '',
     endereco_empresa: '',
-    funcoes: '',
-    instagram_empresa: '',
-    facebook_empresa: '',
-    observacoes: ''
-  });
+    usar_emotion: true
+  }), []);
 
-  // Função de mudança otimizada - SEM debounce para inputs simples
-  const handleInputChange = useCallback((field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const [formData, setFormData] = useState<AgenteFormData>(defaultFormData);
+
+  useEffect(() => {
+    if (agente) {
+      setFormData({
+        nome: agente.nome || defaultFormData.nome,
+        sexo: agente.sexo || defaultFormData.sexo,
+        area_atuacao: agente.area_atuacao || defaultFormData.area_atuacao,
+        funcoes: agente.funcoes || defaultFormData.funcoes,
+        estilo_comportamento: agente.estilo_comportamento || defaultFormData.estilo_comportamento,
+        nome_empresa: agente.nome_empresa || defaultFormData.nome_empresa,
+        email_empresa: agente.email_empresa || defaultFormData.email_empresa,
+        telefone_empresa: agente.telefone_empresa || defaultFormData.telefone_empresa,
+        website_empresa: agente.website_empresa || defaultFormData.website_empresa,
+        endereco_empresa: agente.endereco_empresa || defaultFormData.endereco_empresa,
+        usar_emotion: agente.usar_emotion ?? defaultFormData.usar_emotion
+      });
+    } else {
+      setFormData(defaultFormData);
+    }
+  }, [agente, defaultFormData]);
+
+  const handleInputChange = useCallback((field: keyof AgenteFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   }, []);
 
-  // Inicialização dos dados do agente
-  useEffect(() => {
-    if (agentData) {
-      setFormData({
-        nome: agentData.nome || '',
-        sexo: agentData.sexo || '',
-        area_atuacao: agentData.area_atuacao || '',
-        estilo_comportamento: agentData.estilo_comportamento || '',
-        usar_emotion: agentData.usar_emotion ?? true,
-        nome_empresa: agentData.nome_empresa || '',
-        telefone_empresa: agentData.telefone_empresa || '',
-        email_empresa: agentData.email_empresa || '',
-        website_empresa: agentData.website_empresa || '',
-        endereco_empresa: agentData.endereco_empresa || '',
-        funcoes: Array.isArray(agentData.funcoes) ? agentData.funcoes.join('\n') : (agentData.funcoes || ''),
-        instagram_empresa: (agentData as any).instagram_empresa || '',
-        facebook_empresa: (agentData as any).facebook_empresa || '',
-        observacoes: (agentData as any).observacoes || ''
-      });
-    }
-  }, [agentData]);
-
   const prepareDataForSave = useCallback(() => {
-    const funcoesArray = formData.funcoes 
-      ? formData.funcoes.split('\n').filter(f => f.trim()).map(f => f.trim())
-      : [];
-    
     return {
-      ...formData,
-      funcoes: funcoesArray
+      nome: formData.nome,
+      sexo: formData.sexo,
+      area_atuacao: formData.area_atuacao,
+      funcoes: formData.funcoes,
+      estilo_comportamento: formData.estilo_comportamento,
+      nome_empresa: formData.nome_empresa,
+      email_empresa: formData.email_empresa || null,
+      telefone_empresa: formData.telefone_empresa || null,
+      website_empresa: formData.website_empresa || null,
+      endereco_empresa: formData.endereco_empresa || null,
+      usar_emotion: formData.usar_emotion
     };
   }, [formData]);
 
