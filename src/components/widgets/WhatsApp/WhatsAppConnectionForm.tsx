@@ -40,8 +40,9 @@ export function WhatsAppConnectionForm({
             id="nomeCliente"
             value={nomeCliente}
             onChange={(e) => setNomeCliente(e.target.value)}
-            placeholder="Digite o nome do cliente (ex: joao)"
+            placeholder="Digite o nome do cliente (ex: João Silva)"
             className="flex-1"
+            // Sempre permitir edição - removido disabled
           />
           <Button 
             variant="outline" 
@@ -63,7 +64,10 @@ export function WhatsAppConnectionForm({
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          Use um nome único para identificar este dispositivo
+          {instanceId 
+            ? `Instância criada para: ${nomeCliente}` 
+            : "Use um nome único para identificar este cliente"
+          }
         </p>
       </div>
 

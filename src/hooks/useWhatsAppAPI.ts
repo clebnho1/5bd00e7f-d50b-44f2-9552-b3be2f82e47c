@@ -52,21 +52,20 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const createInstance = async (nomeEmpresa: string) => {
+  const createInstance = async (nomeCliente: string) => {
     if (!user?.id) return null;
-    if (!nomeEmpresa.trim()) return null;
+    if (!nomeCliente.trim()) return null;
 
-    console.log('🏗️ Criando instância com nome:', nomeEmpresa);
+    console.log('🏗️ Criando instância com nome do cliente:', nomeCliente.trim());
 
     try {
       setConnecting(true);
       
-      // Usar upsert ao invés de insert para evitar constraint violations
       const { data, error } = await supabase
         .from('whatsapp_instances')
         .upsert({
           user_id: user.id,
-          nome_empresa: nomeEmpresa.trim(), // Garantir que o nome seja salvo corretamente
+          nome_empresa: nomeCliente.trim(), // Salvar o nome do cliente
           status: 'desconectado'
         }, {
           onConflict: 'user_id'
@@ -76,17 +75,17 @@ export function useWhatsAppAPI() {
 
       if (error) throw error;
 
-      console.log('✅ Instância criada com sucesso:', data);
+      console.log('✅ Instância criada com nome do cliente:', data.nome_empresa);
 
       toast({
         title: "Instância criada",
-        description: `Instância WhatsApp criada para "${nomeEmpresa}"!`,
+        description: `Instância WhatsApp criada para "${nomeCliente.trim()}"!`,
       });
 
       // Enviar webhook
       sendWebhookSafe(user.id, 'whatsapp_instance_created', {
         instance_id: data.id,
-        nome_empresa: nomeEmpresa,
+        nome_empresa: nomeCliente.trim(),
         user_id: user.id,
         user_email: user.email,
         status: 'desconectado'
@@ -125,7 +124,7 @@ export function useWhatsAppAPI() {
         updateData.qr_code = qrCode;
       }
 
-      console.log('🔄 Atualizando status para:', status);
+      console.log('🔄 Atualizando status de', oldStatus, 'para:', status);
 
       const { data, error } = await supabase
         .from('whatsapp_instances')
@@ -137,13 +136,15 @@ export function useWhatsAppAPI() {
 
       if (error) throw error;
 
-      console.log('✅ Status atualizado:', data);
+      console.log('✅ Status atualizado para:', status);
 
-      toast({
-        title: "Status atualizado",
-        description: `WhatsApp ${status === 'conectado' ? 'conectado' : status === 'desconectado' ? 'desconectado' : status === 'conectando' ? 'conectando' : 'com erro'}!`,
-        variant: status === 'erro' ? 'destructive' : 'default'
-      });
+      // Só mostrar toast para mudanças importantes
+      if (status === 'conectado') {
+        toast({
+          title: "WhatsApp Conectado!",
+          description: "Seu WhatsApp foi conectado com sucesso!",
+        });
+      }
 
       // Enviar webhook
       sendWebhookSafe(user.id, 'whatsapp_status_changed', {
@@ -221,24 +222,26 @@ export function useWhatsAppAPI() {
 
     try {
       setConnecting(true);
-      console.log('📱 Iniciando processo de conexão WhatsApp');
+      console.log('📱 INICIANDO processo de conexão WhatsApp para:', instance.nome_empresa);
       
-      // 1. Primeiro, definir status como "conectando"
+      // ETAPA 1: Definir status como "conectando"
       await updateInstanceStatus('conectando');
       
-      // 2. Simular geração de QR Code (em produção, seria uma chamada para API real)
-      const simulatedQrCode = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNk+M9QzwAEjAxDQRQDAA8cAQVAKDW0AAAAAElFTkSuQmCC`;
+      // ETAPA 2: Gerar QR Code
+      console.log('🔄 Gerando QR Code...');
+      const simulatedQrCode = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==`;
       
-      // 3. Atualizar com QR Code
+      // ETAPA 3: Atualizar com QR Code mas manter status "conectando"
       await updateInstanceStatus('conectando', simulatedQrCode);
       
-      console.log('✅ QR Code gerado, aguardando scan do usuário');
+      console.log('✅ QR Code gerado! Aguardando scan do usuário...');
       
-      // 4. Simular scan do usuário após alguns segundos (em produção, seria webhook)
+      // ETAPA 4: Simular scan após 15 segundos
       setTimeout(async () => {
-        console.log('📱 Simulando conexão bem-sucedida');
+        console.log('📱 SIMULANDO scan do QR Code pelo usuário');
         await updateInstanceStatus('conectado');
-      }, 10000); // 10 segundos para dar tempo do usuário ver o QR
+        console.log('🎉 WhatsApp conectado com sucesso!');
+      }, 15000); // 15 segundos para dar tempo do usuário ver o QR
       
       return true;
     } catch (error) {

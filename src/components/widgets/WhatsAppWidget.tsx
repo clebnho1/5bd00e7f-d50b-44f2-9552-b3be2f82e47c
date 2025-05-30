@@ -30,7 +30,8 @@ export function WhatsAppWidget() {
     disconnectWhatsApp,
     deleteInstance,
     refetch,
-    loading
+    loading,
+    connecting
   } = useWhatsAppAPI();
 
   const {
@@ -47,35 +48,35 @@ export function WhatsAppWidget() {
   const statusConexao = instance?.status === 'conectado' ? 'open' : 
                        instance?.status === 'conectando' ? 'connecting' :
                        instance?.status === 'erro' ? 'error' : 'closed';
-  const statusMessage = instance ? `Status: ${instance.status}` : 'Nenhuma instância encontrada';
+  
+  const statusMessage = instance ? 
+    `Status: ${instance.status} | Nome: ${instance.nome_empresa}` : 
+    'Nenhuma instância encontrada';
+  
   const qrCode = instance?.qr_code || '';
   const error = instance?.status === 'erro' ? 'Erro na conexão' : null;
   const isAPIHealthy = true;
 
-  // Auto-verificação com debounce adequado
+  // Sincronizar dados da instância com o estado local
   useEffect(() => {
-    if (nomeCliente.trim().length > 2 && isAPIHealthy && !loading) {
-      debouncedStatusCheck(() => {
-        handleCheckStatus();
-      });
-    }
-  }, [nomeCliente, isAPIHealthy, loading, debouncedStatusCheck]);
-
-  // Sincronizar instanceId com a instância do banco
-  useEffect(() => {
-    if (instance?.id && instance.id !== instanceId) {
-      console.log('🔄 Sincronizando instanceId:', instance.id);
-      setInstanceId(instance.id);
+    if (instance) {
+      console.log('🔄 Sincronizando dados da instância:', instance);
+      
+      // Atualizar instanceId se diferente
+      if (instance.id !== instanceId) {
+        setInstanceId(instance.id);
+      }
+      
+      // Atualizar nome do cliente com o nome salvo na instância
       if (instance.nome_empresa && instance.nome_empresa !== nomeCliente) {
+        console.log('📝 Atualizando nome do cliente de', nomeCliente, 'para', instance.nome_empresa);
         setNomeCliente(instance.nome_empresa);
       }
     }
   }, [instance, instanceId, nomeCliente, setInstanceId, setNomeCliente]);
 
   const handleCheckStatus = async () => {
-    const targetInstance = instanceId || nomeCliente.trim();
-    if (!targetInstance) return;
-
+    console.log('🔍 Verificando status da instância...');
     setIsCheckingStatus(true);
     try {
       await refetch();
@@ -87,17 +88,22 @@ export function WhatsAppWidget() {
   const handleCreateInstance = async () => {
     if (!nomeCliente.trim()) {
       console.error('❌ Nome do cliente é obrigatório');
+      toast({
+        title: "Nome obrigatório",
+        description: "Por favor, digite o nome do cliente",
+        variant: "destructive",
+      });
       return;
     }
 
-    console.log('🏗️ Criando instância para:', nomeCliente.trim());
+    console.log('🏗️ Criando instância para o cliente:', nomeCliente.trim());
     setIsCreatingInstance(true);
     try {
       const newInstance = await createInstance(nomeCliente.trim());
       if (newInstance) {
-        console.log('✅ Instância criada:', newInstance);
+        console.log('✅ Instância criada com sucesso para:', newInstance.nome_empresa);
         setInstanceId(newInstance.id);
-        saveToLocalStorage(newInstance.id, nomeCliente.trim());
+        saveToLocalStorage(newInstance.id, newInstance.nome_empresa);
         setTimeout(() => handleCheckStatus(), 2000);
       }
     } finally {
@@ -111,15 +117,12 @@ export function WhatsAppWidget() {
       return;
     }
 
-    console.log('📱 Iniciando conexão WhatsApp para:', instance.nome_empresa);
+    console.log('📱 Iniciando conexão WhatsApp para cliente:', instance.nome_empresa);
     setIsConnecting(true);
     try {
-      // Gerar QR Code e iniciar processo de conexão
       const result = await connectWhatsApp();
       if (result) {
-        console.log('✅ Processo de conexão iniciado');
-        // Verificar status após alguns segundos
-        setTimeout(() => handleCheckStatus(), 3000);
+        console.log('✅ Processo de conexão iniciado com sucesso');
       }
     } finally {
       setIsConnecting(false);
@@ -127,29 +130,32 @@ export function WhatsAppWidget() {
   };
 
   const handleDisconnect = async () => {
-    console.log('🔌 Desconectando WhatsApp');
+    console.log('🔌 Desconectando WhatsApp para:', instance?.nome_empresa);
     setIsDisconnecting(true);
     try {
-      await disconnectWhatsApp();
-      // Limpar estado após desconectar
-      setInstanceId('');
-      setNomeCliente('');
-      clearLocalStorage();
-      console.log('✅ Desconectado e estado limpo');
+      const result = await disconnectWhatsApp();
+      if (result) {
+        console.log('✅ WhatsApp desconectado');
+        // Não limpar os dados, apenas desconectar
+        setTimeout(() => handleCheckStatus(), 1000);
+      }
     } finally {
       setIsDisconnecting(false);
     }
   };
 
   const handleDelete = async () => {
-    console.log('🗑️ Deletando instância');
+    console.log('🗑️ Deletando instância do cliente:', instance?.nome_empresa);
     setIsDeleting(true);
     try {
-      await deleteInstance();
-      setInstanceId('');
-      setNomeCliente('');
-      clearLocalStorage();
-      console.log('✅ Instância deletada e estado limpo');
+      const result = await deleteInstance();
+      if (result) {
+        // Limpar tudo após deletar
+        setInstanceId('');
+        setNomeCliente('');
+        clearLocalStorage();
+        console.log('✅ Instância deletada e estado limpo');
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -235,13 +241,13 @@ export function WhatsAppWidget() {
                 className="bg-gray-50 text-gray-600 font-mono text-xs"
               />
               <p className="text-xs text-gray-500">
-                Esta é sua instância privada, isolada de outros usuários: {nomeCliente}
+                Esta é sua instância privada, isolada de outros usuários: {instance?.nome_empresa || nomeCliente}
               </p>
             </div>
           )}
 
           <WhatsAppActions
-            isConnecting={isConnecting}
+            isConnecting={isConnecting || connecting}
             isDisconnecting={isDisconnecting}
             isDeleting={isDeleting}
             instanceId={instanceId}
@@ -261,20 +267,20 @@ export function WhatsAppWidget() {
             QR Code para Conexão
           </CardTitle>
           <CardDescription className="text-gray-600">
-            {isConnecting
-              ? 'Gerando QR Code para conexão...'
-              : statusConexao === 'open' && !isConnecting
-              ? 'WhatsApp conectado! Para reconectar, clique em "Conectar WhatsApp" novamente.'
-              : 'Escaneie o código QR com seu WhatsApp para conectar sua instância privada'
+            {statusConexao === 'connecting'
+              ? 'QR Code gerado! Escaneie com seu WhatsApp para conectar.'
+              : statusConexao === 'open'
+              ? 'WhatsApp conectado! Para reconectar, desconecte primeiro e conecte novamente.'
+              : 'Clique em "Conectar WhatsApp" para gerar o QR Code'
             }
           </CardDescription>
         </CardHeader>
         <CardContent>
           <QrCodeDisplay 
             qrCodeData={qrCode} 
-            isLoading={isConnecting} 
+            isLoading={isConnecting || connecting} 
             error={error}
-            message={statusConexao === 'open' && !isConnecting ? 'Seu WhatsApp conectado com sucesso! ✅' : undefined}
+            message={statusConexao === 'open' ? 'Seu WhatsApp conectado com sucesso! ✅' : undefined}
           />
         </CardContent>
       </Card>
