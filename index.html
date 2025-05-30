@@ -17,14 +17,48 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- Permissions Policy mais robusta -->
-    <meta http-equiv="Permissions-Policy" content="vr=(), ambient-light-sensor=(), battery=(), join-ad-interest-group=(), interest-cohort=(), attribution-reporting=(), browsing-topics=(), camera=(), microphone=(), geolocation=(), payment=()">
+    <!-- Permissions Policy aprimorada para bloquear recursos desnecessários -->
+    <meta http-equiv="Permissions-Policy" content="
+      vr=(),
+      ambient-light-sensor=(),
+      battery=(),
+      join-ad-interest-group=(),
+      interest-cohort=(),
+      attribution-reporting=(),
+      browsing-topics=(),
+      camera=(),
+      microphone=(),
+      geolocation=(),
+      payment=(),
+      usb=(),
+      serial=(),
+      bluetooth=(),
+      magnetometer=(),
+      gyroscope=(),
+      accelerometer=(),
+      display-capture=(),
+      web-share=()
+    ">
     
-    <!-- CSP mais restritiva para bloquear terceiros -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none';">
+    <!-- CSP rigorosa para máxima segurança -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co;
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https: blob:;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.gpteng.co;
+      frame-src 'none';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    ">
     
-    <!-- Bloqueia preload de terceiros -->
+    <!-- Bloqueios adicionais de recursos externos -->
     <meta http-equiv="X-DNS-Prefetch-Control" content="off">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="no-referrer">
   </head>
 
   <body>

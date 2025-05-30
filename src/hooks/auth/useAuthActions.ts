@@ -37,7 +37,6 @@ export function useAuthActions() {
           errorMessage = "Muitas tentativas. Aguarde alguns minutos";
         }
 
-        // Webhook para erro de login
         if (data.user?.id) {
           await sendWebhookSafe(data.user.id, 'user_login_failed', {
             email: email.trim(),
@@ -59,7 +58,6 @@ export function useAuthActions() {
 
       console.log('✅ [SIGNIN_SUCCESS] Login realizado:', data.user?.email);
       
-      // Webhook para login bem-sucedido
       if (data.user?.id) {
         await sendWebhookSafe(data.user.id, 'user_login_success', {
           email: data.user.email,
@@ -145,7 +143,6 @@ export function useAuthActions() {
 
       console.log('✅ [SIGNUP_SUCCESS] Cadastro realizado:', data.user?.email);
 
-      // Webhook para cadastro bem-sucedido
       if (data.user?.id) {
         await sendWebhookSafe(data.user.id, 'user_signup_success', {
           email: data.user.email,
@@ -181,13 +178,11 @@ export function useAuthActions() {
     try {
       console.log('🚪 [SIGNOUT] Fazendo logout');
       
-      // Capturar user_id antes do logout
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
       
       await supabase.auth.signOut();
       
-      // Webhook para logout
       if (userId) {
         await sendWebhookSafe(userId, 'user_logout', {
           user_id: userId,
@@ -228,7 +223,6 @@ export function useAuthActions() {
       if (error) {
         console.error('❌ [RESET_PASSWORD_ERROR]', error);
         
-        // Webhook para erro no reset
         await sendWebhookSafe('system', 'password_reset_failed', {
           email: email.trim(),
           error: error.message,
@@ -247,7 +241,6 @@ export function useAuthActions() {
 
       console.log('✅ [RESET_PASSWORD_SUCCESS] Email enviado');
       
-      // Webhook para reset bem-sucedido
       await sendWebhookSafe('system', 'password_reset_requested', {
         email: email.trim(),
         timestamp: new Date().toISOString()
