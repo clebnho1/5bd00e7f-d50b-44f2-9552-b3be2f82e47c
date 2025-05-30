@@ -38,6 +38,7 @@ export function useWhatsAppAPI() {
         throw error;
       }
       
+      console.log('📊 Instância carregada:', data);
       setInstance(data);
     } catch (error: any) {
       console.error('Erro ao carregar instância WhatsApp:', error);
@@ -53,6 +54,9 @@ export function useWhatsAppAPI() {
 
   const createInstance = async (nomeEmpresa: string) => {
     if (!user?.id) return null;
+    if (!nomeEmpresa.trim()) return null;
+
+    console.log('🏗️ Criando instância com nome:', nomeEmpresa);
 
     try {
       setConnecting(true);
@@ -62,7 +66,7 @@ export function useWhatsAppAPI() {
         .from('whatsapp_instances')
         .upsert({
           user_id: user.id,
-          nome_empresa: nomeEmpresa,
+          nome_empresa: nomeEmpresa.trim(), // Garantir que o nome seja salvo corretamente
           status: 'desconectado'
         }, {
           onConflict: 'user_id'
@@ -72,9 +76,11 @@ export function useWhatsAppAPI() {
 
       if (error) throw error;
 
+      console.log('✅ Instância criada com sucesso:', data);
+
       toast({
         title: "Instância criada",
-        description: "Instância WhatsApp criada com sucesso!",
+        description: `Instância WhatsApp criada para "${nomeEmpresa}"!`,
       });
 
       // Enviar webhook
@@ -104,7 +110,7 @@ export function useWhatsAppAPI() {
     }
   };
 
-  const updateInstanceStatus = async (status: 'conectado' | 'desconectado' | 'erro', qrCode?: string) => {
+  const updateInstanceStatus = async (status: 'conectado' | 'desconectado' | 'erro' | 'conectando', qrCode?: string) => {
     if (!user?.id || !instance) return null;
 
     try {
@@ -119,6 +125,8 @@ export function useWhatsAppAPI() {
         updateData.qr_code = qrCode;
       }
 
+      console.log('🔄 Atualizando status para:', status);
+
       const { data, error } = await supabase
         .from('whatsapp_instances')
         .update(updateData)
@@ -129,9 +137,11 @@ export function useWhatsAppAPI() {
 
       if (error) throw error;
 
+      console.log('✅ Status atualizado:', data);
+
       toast({
         title: "Status atualizado",
-        description: `WhatsApp ${status === 'conectado' ? 'conectado' : status === 'desconectado' ? 'desconectado' : 'com erro'}!`,
+        description: `WhatsApp ${status === 'conectado' ? 'conectado' : status === 'desconectado' ? 'desconectado' : status === 'conectando' ? 'conectando' : 'com erro'}!`,
         variant: status === 'erro' ? 'destructive' : 'default'
       });
 
@@ -174,6 +184,8 @@ export function useWhatsAppAPI() {
 
       if (error) throw error;
 
+      console.log('🗑️ Instância deletada');
+
       toast({
         title: "Instância removida",
         description: "Instância WhatsApp removida com sucesso!",
@@ -209,13 +221,29 @@ export function useWhatsAppAPI() {
 
     try {
       setConnecting(true);
+      console.log('📱 Iniciando processo de conexão WhatsApp');
       
-      // Simular processo de conexão
-      await updateInstanceStatus('conectado');
+      // 1. Primeiro, definir status como "conectando"
+      await updateInstanceStatus('conectando');
+      
+      // 2. Simular geração de QR Code (em produção, seria uma chamada para API real)
+      const simulatedQrCode = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNk+M9QzwAEjAxDQRQDAA8cAQVAKDW0AAAAAElFTkSuQmCC`;
+      
+      // 3. Atualizar com QR Code
+      await updateInstanceStatus('conectando', simulatedQrCode);
+      
+      console.log('✅ QR Code gerado, aguardando scan do usuário');
+      
+      // 4. Simular scan do usuário após alguns segundos (em produção, seria webhook)
+      setTimeout(async () => {
+        console.log('📱 Simulando conexão bem-sucedida');
+        await updateInstanceStatus('conectado');
+      }, 10000); // 10 segundos para dar tempo do usuário ver o QR
       
       return true;
     } catch (error) {
       console.error('Erro ao conectar WhatsApp:', error);
+      await updateInstanceStatus('erro');
       return false;
     } finally {
       setConnecting(false);
@@ -226,6 +254,7 @@ export function useWhatsAppAPI() {
     if (!instance) return false;
 
     try {
+      console.log('🔌 Desconectando WhatsApp');
       await updateInstanceStatus('desconectado');
       return true;
     } catch (error) {

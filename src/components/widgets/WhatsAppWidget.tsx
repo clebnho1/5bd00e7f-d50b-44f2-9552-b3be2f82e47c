@@ -61,6 +61,17 @@ export function WhatsAppWidget() {
     }
   }, [nomeCliente, isAPIHealthy, loading, debouncedStatusCheck]);
 
+  // Sincronizar instanceId com a instância do banco
+  useEffect(() => {
+    if (instance?.id && instance.id !== instanceId) {
+      console.log('🔄 Sincronizando instanceId:', instance.id);
+      setInstanceId(instance.id);
+      if (instance.nome_empresa && instance.nome_empresa !== nomeCliente) {
+        setNomeCliente(instance.nome_empresa);
+      }
+    }
+  }, [instance, instanceId, nomeCliente, setInstanceId, setNomeCliente]);
+
   const handleCheckStatus = async () => {
     const targetInstance = instanceId || nomeCliente.trim();
     if (!targetInstance) return;
@@ -74,10 +85,17 @@ export function WhatsAppWidget() {
   };
 
   const handleCreateInstance = async () => {
+    if (!nomeCliente.trim()) {
+      console.error('❌ Nome do cliente é obrigatório');
+      return;
+    }
+
+    console.log('🏗️ Criando instância para:', nomeCliente.trim());
     setIsCreatingInstance(true);
     try {
-      const newInstance = await createInstance(nomeCliente);
+      const newInstance = await createInstance(nomeCliente.trim());
       if (newInstance) {
+        console.log('✅ Instância criada:', newInstance);
         setInstanceId(newInstance.id);
         saveToLocalStorage(newInstance.id, nomeCliente.trim());
         setTimeout(() => handleCheckStatus(), 2000);
@@ -88,16 +106,28 @@ export function WhatsAppWidget() {
   };
 
   const handleConnect = async () => {
+    if (!instance) {
+      console.error('❌ Nenhuma instância para conectar');
+      return;
+    }
+
+    console.log('📱 Iniciando conexão WhatsApp para:', instance.nome_empresa);
     setIsConnecting(true);
     try {
-      await connectWhatsApp();
-      setTimeout(() => handleCheckStatus(), 5000);
+      // Gerar QR Code e iniciar processo de conexão
+      const result = await connectWhatsApp();
+      if (result) {
+        console.log('✅ Processo de conexão iniciado');
+        // Verificar status após alguns segundos
+        setTimeout(() => handleCheckStatus(), 3000);
+      }
     } finally {
       setIsConnecting(false);
     }
   };
 
   const handleDisconnect = async () => {
+    console.log('🔌 Desconectando WhatsApp');
     setIsDisconnecting(true);
     try {
       await disconnectWhatsApp();
@@ -105,18 +135,21 @@ export function WhatsAppWidget() {
       setInstanceId('');
       setNomeCliente('');
       clearLocalStorage();
+      console.log('✅ Desconectado e estado limpo');
     } finally {
       setIsDisconnecting(false);
     }
   };
 
   const handleDelete = async () => {
+    console.log('🗑️ Deletando instância');
     setIsDeleting(true);
     try {
       await deleteInstance();
       setInstanceId('');
       setNomeCliente('');
       clearLocalStorage();
+      console.log('✅ Instância deletada e estado limpo');
     } finally {
       setIsDeleting(false);
     }
@@ -228,8 +261,10 @@ export function WhatsAppWidget() {
             QR Code para Conexão
           </CardTitle>
           <CardDescription className="text-gray-600">
-            {statusConexao === 'open' && !isConnecting
-              ? 'Seu WhatsApp está conectado! Para reconectar, clique em "Conectar WhatsApp" novamente.'
+            {isConnecting
+              ? 'Gerando QR Code para conexão...'
+              : statusConexao === 'open' && !isConnecting
+              ? 'WhatsApp conectado! Para reconectar, clique em "Conectar WhatsApp" novamente.'
               : 'Escaneie o código QR com seu WhatsApp para conectar sua instância privada'
             }
           </CardDescription>
