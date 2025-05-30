@@ -48,11 +48,13 @@ export function initializeSuperBlocker() {
   const originalAppendChild = Node.prototype.appendChild;
   Node.prototype.appendChild = function<T extends Node>(newChild: T): T {
     if (newChild.nodeType === Node.ELEMENT_NODE) {
-      const element = newChild as Element;
-      const src = element.getAttribute?.('src');
-      if (src && BLOCKED_DOMAINS.some(domain => src.includes(domain))) {
-        console.log('🚫 [SUPER_BLOCK] appendChild bloqueado:', src);
-        return newChild;
+      // Correção do TypeScript: verificar se é Element antes do cast
+      if (newChild instanceof Element) {
+        const src = newChild.getAttribute('src');
+        if (src && BLOCKED_DOMAINS.some(domain => src.includes(domain))) {
+          console.log('🚫 [SUPER_BLOCK] appendChild bloqueado:', src);
+          return newChild;
+        }
       }
     }
     return originalAppendChild.call(this, newChild);
@@ -62,11 +64,13 @@ export function initializeSuperBlocker() {
   const originalInsertBefore = Node.prototype.insertBefore;
   Node.prototype.insertBefore = function<T extends Node>(newChild: T, refChild: Node | null): T {
     if (newChild.nodeType === Node.ELEMENT_NODE) {
-      const element = newChild as Element;
-      const src = element.getAttribute?.('src');
-      if (src && BLOCKED_DOMAINS.some(domain => src.includes(domain))) {
-        console.log('🚫 [SUPER_BLOCK] insertBefore bloqueado:', src);
-        return newChild;
+      // Correção do TypeScript: verificar se é Element antes do cast
+      if (newChild instanceof Element) {
+        const src = newChild.getAttribute('src');
+        if (src && BLOCKED_DOMAINS.some(domain => src.includes(domain))) {
+          console.log('🚫 [SUPER_BLOCK] insertBefore bloqueado:', src);
+          return newChild;
+        }
       }
     }
     return originalInsertBefore.call(this, newChild, refChild);
