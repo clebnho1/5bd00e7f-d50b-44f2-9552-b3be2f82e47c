@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { sendWebhookSafe } from '@/utils/webhook';
 
 export function useWebhookTest() {
   const { user } = useAuth();
@@ -27,32 +26,19 @@ export function useWebhookTest() {
         }
       };
 
+      console.log('🧪 Testando webhook:', webhookUrl);
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(testPayload),
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(5000)
       });
 
       const isSuccess = response.ok;
       setTestResult(isSuccess);
-      
-      try {
-        await sendWebhookSafe(user.id, 'webhook_test_result', {
-          user_id: user.id,
-          webhook_url: webhookUrl,
-          success: isSuccess,
-          status_code: response.status,
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'webhook_test',
-          result: isSuccess ? 'success' : 'failed'
-        });
-      } catch (error) {
-        console.error('Failed to log webhook test result:', error);
-      }
 
       if (isSuccess) {
         toast({
@@ -71,22 +57,9 @@ export function useWebhookTest() {
     } catch (error) {
       setTestResult(false);
       
-      try {
-        await sendWebhookSafe(user.id, 'webhook_test_error', {
-          user_id: user.id,
-          webhook_url: webhookUrl,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'webhook_test_failed'
-        });
-      } catch (logError) {
-        console.error('Failed to log webhook test error:', logError);
-      }
-      
       toast({
         title: "Erro no teste",
-        description: "Não foi possível testar o webhook.",
+        description: "Não foi possível testar o webhook. Verifique a URL e tente novamente.",
         variant: "destructive",
       });
       

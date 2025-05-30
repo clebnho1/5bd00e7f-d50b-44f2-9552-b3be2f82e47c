@@ -72,36 +72,22 @@ export function useUserSettings() {
 
       setSettings(prev => ({ ...prev, ...newSettings }));
       
-      try {
-        await sendWebhookSafe(user.id, 'user_settings_updated', {
-          user_id: user.id,
-          settings: newSettings,
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'settings_updated',
-          settings_keys: Object.keys(newSettings)
-        });
-      } catch (webhookError) {
-        console.error('Failed to send webhook notification:', webhookError);
-      }
+      // Enviar notificação de sucesso apenas se não for webhook de erro
+      await sendWebhookSafe(user.id, 'user_settings_updated', {
+        user_id: user.id,
+        settings: newSettings,
+        timestamp: new Date().toISOString()
+      }, {
+        action: 'settings_updated',
+        settings_keys: Object.keys(newSettings)
+      });
       
       toast({
         title: "Configurações salvas",
         description: "Suas configurações foram atualizadas com sucesso.",
       });
     } catch (error) {
-      try {
-        await sendWebhookSafe(user.id, 'user_settings_error', {
-          user_id: user.id,
-          settings: newSettings,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'settings_save_failed'
-        });
-      } catch (webhookError) {
-        console.error('Failed to send error webhook:', webhookError);
-      }
+      console.error('Failed to save settings:', error);
       
       toast({
         title: "Erro ao salvar",
