@@ -12,6 +12,7 @@ export function useAuthState() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [webhookSent, setWebhookSent] = useState(false);
 
   const fetchUserRole = async (userId: string) => {
     try {
@@ -52,7 +53,6 @@ export function useAuthState() {
       try {
         console.log('🔄 [AUTH_INIT] Inicializando autenticação...');
         
-        // Primeiro, verifica se já existe uma sessão (mais rápido)
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -66,22 +66,23 @@ export function useAuthState() {
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Busca o role imediatamente sem aguardar webhook
           fetchUserRole(currentSession.user.id);
           
-          // Webhook assíncrono (não bloqueia)
-          sendWebhookSafe(currentSession.user.id, 'session_restored', {
-            user_id: currentSession.user.id,
-            email: currentSession.user.email,
-            timestamp: new Date().toISOString(),
-            session_expires: currentSession.expires_at
-          }, {
-            action: 'session_restore',
-            automatic: true
-          }).catch(console.error);
+          // Enviar webhook apenas uma vez por sessão
+          if (!webhookSent) {
+            setWebhookSent(true);
+            sendWebhookSafe(currentSession.user.id, 'session_restored', {
+              user_id: currentSession.user.id,
+              email: currentSession.user.email,
+              timestamp: new Date().toISOString(),
+              session_expires: currentSession.expires_at
+            }, {
+              action: 'session_restore',
+              automatic: true
+            }).catch(console.error);
+          }
         }
 
-        // Configura o listener depois da verificação inicial
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!isMounted) return;
@@ -92,24 +93,27 @@ export function useAuthState() {
               setUser(null);
               setSession(null);
               setUserRole(null);
+              setWebhookSent(false);
             } else if (newSession?.user) {
               setSession(newSession);
               setUser(newSession.user);
               
-              // Busca role sem aguardar
               fetchUserRole(newSession.user.id);
               
-              // Webhook assíncrono
-              sendWebhookSafe(newSession.user.id, 'auth_state_changed', {
-                event,
-                user_id: newSession.user.id,
-                email: newSession.user.email,
-                timestamp: new Date().toISOString(),
-                has_session: !!newSession
-              }, {
-                action: 'auth_state_change',
-                event_type: event
-              }).catch(console.error);
+              // Enviar webhook apenas para eventos específicos
+              if (event === 'SIGNED_IN' && !webhookSent) {
+                setWebhookSent(true);
+                sendWebhookSafe(newSession.user.id, 'auth_state_changed', {
+                  event,
+                  user_id: newSession.user.id,
+                  email: newSession.user.email,
+                  timestamp: new Date().toISOString(),
+                  has_session: !!newSession
+                }, {
+                  action: 'auth_state_change',
+                  event_type: event
+                }).catch(console.error);
+              }
             }
           }
         );
@@ -136,7 +140,7 @@ export function useAuthState() {
         authSubscription.unsubscribe();
       }
     };
-  }, []);
+  }, [webhookSent]);
 
   return {
     user,

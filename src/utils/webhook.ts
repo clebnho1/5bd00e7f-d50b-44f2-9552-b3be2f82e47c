@@ -11,6 +11,10 @@ interface WebhookPayload {
   metadata?: any;
 }
 
+// Cache para evitar múltiplos webhooks iguais
+const webhookCache = new Map<string, number>();
+const CACHE_DURATION = 5000; // 5 segundos
+
 const validateWebhookUrl = (url: string): boolean => {
   try {
     const urlObj = new URL(url);
@@ -20,16 +24,8 @@ const validateWebhookUrl = (url: string): boolean => {
   }
 };
 
-const isWebhookOnline = async (url: string): Promise<boolean> => {
-  try {
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: AbortSignal.timeout(3000)
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
+const getCacheKey = (userId: string, event: string, data: any): string => {
+  return `${userId}:${event}:${JSON.stringify(data)}`;
 };
 
 export const sendWebhookData = async (
@@ -39,9 +35,19 @@ export const sendWebhookData = async (
   metadata?: any
 ): Promise<boolean> => {
   try {
+    // Verificar cache para evitar duplicatas
+    const cacheKey = getCacheKey(userId, event, data);
+    const now = Date.now();
+    const cached = webhookCache.get(cacheKey);
+    
+    if (cached && (now - cached) < CACHE_DURATION) {
+      console.log('🔄 Webhook já enviado recentemente, ignorando duplicata');
+      return true;
+    }
+
     console.log('🔍 Verificando webhook para usuário:', userId);
     
-    // Para eventos do sistema, não verificar usuário
+    // Para eventos do sistema, buscar webhook de admin
     if (userId === 'system') {
       console.log('ℹ️ Evento do sistema, buscando webhook de admin');
       
@@ -58,13 +64,18 @@ export const sendWebhookData = async (
         return false;
       }
 
-      return await executeWebhookRequest(adminSettings.webhook_url, {
+      const success = await executeWebhookRequest(adminSettings.webhook_url, {
         event,
         user_id: 'system',
         timestamp: new Date().toISOString(),
         data,
         metadata
       });
+
+      if (success) {
+        webhookCache.set(cacheKey, now);
+      }
+      return success;
     }
     
     // Verificar se o usuário existe
@@ -104,7 +115,13 @@ export const sendWebhookData = async (
       metadata
     };
 
-    return await executeWebhookRequest(settings.webhook_url, payload);
+    const success = await executeWebhookRequest(settings.webhook_url, payload);
+    
+    if (success) {
+      webhookCache.set(cacheKey, now);
+    }
+    
+    return success;
   } catch (error) {
     console.error('❌ Erro ao processar webhook:', error);
     return false;
@@ -118,7 +135,7 @@ const executeWebhookRequest = async (webhookUrl: string, payload: WebhookPayload
     return false;
   }
 
-  // Verificar rate limiting (evitar eventos de erro em loop)
+  // Verificar rate limiting
   const rateLimitKey = `${payload.user_id}:${payload.event}`;
   if (!webhookRateLimiter.canMakeRequest(rateLimitKey)) {
     console.log('⏱️ Rate limit atingido para:', rateLimitKey);
@@ -141,7 +158,7 @@ const executeWebhookRequest = async (webhookUrl: string, payload: WebhookPayload
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(5000) // Reduzido para 5 segundos
+        signal: AbortSignal.timeout(5000)
       });
 
       if (!response.ok) {
