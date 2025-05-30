@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +15,7 @@ interface WhatsAppConnectionFormProps {
   isCheckingStatus: boolean;
   onCreateInstance: () => void;
   onCheckStatus: () => void;
+  apiStatus?: 'checking' | 'online' | 'offline';
 }
 
 export function WhatsAppConnectionForm({
@@ -27,8 +27,11 @@ export function WhatsAppConnectionForm({
   isCreatingInstance,
   isCheckingStatus,
   onCreateInstance,
-  onCheckStatus
+  onCheckStatus,
+  apiStatus = 'online'
 }: WhatsAppConnectionFormProps) {
+  const isApiOffline = apiStatus === 'offline';
+  
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1 space-y-2">
@@ -42,21 +45,21 @@ export function WhatsAppConnectionForm({
             onChange={(e) => setNomeCliente(e.target.value)}
             placeholder="Digite o nome do cliente (ex: João Silva)"
             className="flex-1"
-            // Sempre permitir edição - removido disabled
+            disabled={isApiOffline && !instanceId} // Só desabilita se não tem instância E API offline
           />
           <Button 
             variant="outline" 
             size="icon" 
             onClick={onCheckStatus} 
             disabled={isCheckingStatus || (!instanceId && !nomeCliente.trim())}
-            title="Verificar status da conexão"
+            title="Verificar status da conexão e API"
           >
             <RefreshCw className={`h-4 w-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
           </Button>
           {!instanceId && (
             <Button
               onClick={onCreateInstance}
-              disabled={isCreatingInstance || !nomeCliente.trim()}
+              disabled={isCreatingInstance || !nomeCliente.trim() || isApiOffline}
               className="min-w-[150px]"
             >
               {isCreatingInstance ? "Criando..." : "Criar Instância"}
@@ -65,7 +68,9 @@ export function WhatsAppConnectionForm({
         </div>
         <p className="text-xs text-muted-foreground">
           {instanceId 
-            ? `Instância criada para: ${nomeCliente}` 
+            ? `Instância criada para: ${nomeCliente}${isApiOffline ? ' (API offline)' : ''}` 
+            : isApiOffline 
+            ? "API offline - não é possível criar novas instâncias no momento"
             : "Use um nome único para identificar este cliente"
           }
         </p>

@@ -12,18 +12,69 @@ type WhatsAppInstance = Tables['whatsapp_instances']['Row'];
 const EVOLUTION_API_BASE_URL = 'https://apiwhats.lifecombr.com.br';
 const EVOLUTION_API_KEY = '0417bf43b0a8669bd6635bcb49d783df';
 
+// Utility function para fazer requests com retry
+const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 3) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      console.log(`🔄 Tentativa ${i + 1} para: ${url}`);
+      const response = await fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(15000) // 15s timeout
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`✅ Sucesso na tentativa ${i + 1}:`, data);
+      return { response, data };
+    } catch (error: any) {
+      console.warn(`❌ Falha na tentativa ${i + 1}:`, error.message);
+      
+      if (i === maxRetries - 1) {
+        throw new Error(`Falha após ${maxRetries} tentativas: ${error.message}`);
+      }
+      
+      // Wait progressively longer between retries
+      await new Promise(resolve => setTimeout(resolve, (i + 1) * 2000));
+    }
+  }
+};
+
 export function useWhatsAppAPI() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [instance, setInstance] = useState<WhatsAppInstance | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
   useEffect(() => {
     if (user?.id) {
       fetchInstance();
+      checkApiHealth();
     }
   }, [user?.id]);
+
+  const checkApiHealth = async () => {
+    setApiStatus('checking');
+    try {
+      await fetchWithRetry(`${EVOLUTION_API_BASE_URL}/instance/fetchInstances`, {
+        method: 'GET',
+        headers: {
+          'apikey': EVOLUTION_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }, 1); // Only 1 retry for health check
+      
+      setApiStatus('online');
+      console.log('✅ Evolution API está online');
+    } catch (error) {
+      setApiStatus('offline');
+      console.error('❌ Evolution API offline:', error);
+    }
+  };
 
   const fetchInstance = async () => {
     if (!user?.id) return;
@@ -45,7 +96,7 @@ export function useWhatsAppAPI() {
       setInstance(data);
 
       // Se existe instância, verificar status na Evolution API
-      if (data?.id) {
+      if (data?.id && apiStatus === 'online') {
         await checkInstanceStatusInEvolution(data.id);
       }
     } catch (error: any) {
@@ -61,34 +112,41 @@ export function useWhatsAppAPI() {
   };
 
   const checkInstanceStatusInEvolution = async (instanceId: string) => {
+    if (apiStatus === 'offline') {
+      console.log('⚠️ API offline, pulando verificação de status');
+      return;
+    }
+
     try {
-      const response = await fetch(`${EVOLUTION_API_BASE_URL}/instance/connectionState/${instanceId}`, {
-        method: 'GET',
-        headers: {
-          'apikey': EVOLUTION_API_KEY,
-          'Content-Type': 'application/json',
+      const { data } = await fetchWithRetry(
+        `${EVOLUTION_API_BASE_URL}/instance/connectionState/${instanceId}`,
+        {
+          method: 'GET',
+          headers: {
+            'apikey': EVOLUTION_API_KEY,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+        2
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📡 Status da Evolution API:', data);
-        
-        // Mapear status da Evolution para nosso sistema
-        let status: string = 'desconectado';
-        if (data.instance?.state === 'open') {
-          status = 'conectado';
-        } else if (data.instance?.state === 'connecting') {
-          status = 'conectando';
-        }
+      console.log('📡 Status da Evolution API:', data);
+      
+      // Mapear status da Evolution para nosso sistema
+      let status: string = 'desconectado';
+      if (data.instance?.state === 'open') {
+        status = 'conectado';
+      } else if (data.instance?.state === 'connecting') {
+        status = 'conectando';
+      }
 
-        // Atualizar status no banco se diferente
-        if (instance && instance.status !== status) {
-          await updateInstanceStatus(status as any);
-        }
+      // Atualizar status no banco se diferente
+      if (instance && instance.status !== status) {
+        await updateInstanceStatus(status as any);
       }
     } catch (error) {
       console.error('Erro ao verificar status na Evolution API:', error);
+      // Não mostrar toast para erro de verificação, apenas log
     }
   };
 
@@ -97,6 +155,15 @@ export function useWhatsAppAPI() {
     if (!nomeCliente.trim()) return null;
 
     console.log('🏗️ Iniciando criação da instância para:', nomeCliente.trim());
+
+    if (apiStatus === 'offline') {
+      toast({
+        title: "API WhatsApp Offline",
+        description: "A Evolution API está temporariamente indisponível. Tente novamente em alguns minutos.",
+        variant: "destructive",
+      });
+      return null;
+    }
 
     try {
       setConnecting(true);
@@ -119,47 +186,55 @@ export function useWhatsAppAPI() {
       console.log('✅ Instância criada no banco:', dbInstance);
       setInstance(dbInstance);
 
-      // ETAPA 2: Criar na Evolution API
-      const response = await fetch(`${EVOLUTION_API_BASE_URL}/instance/create`, {
-        method: 'POST',
-        headers: {
-          'apikey': EVOLUTION_API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          instanceName: dbInstance.id,
-          token: EVOLUTION_API_KEY,
-          qrcode: true,
-          integration: 'WHATSAPP-BAILEYS'
-        }),
-      });
+      // ETAPA 2: Criar na Evolution API com retry
+      try {
+        const { data: evolutionData } = await fetchWithRetry(
+          `${EVOLUTION_API_BASE_URL}/instance/create`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': EVOLUTION_API_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              instanceName: dbInstance.id,
+              token: EVOLUTION_API_KEY,
+              qrcode: true,
+              integration: 'WHATSAPP-BAILEYS'
+            }),
+          }
+        );
 
-      if (!response.ok) {
-        throw new Error(`Erro na Evolution API: ${response.status}`);
+        console.log('✅ Instância criada na Evolution API:', evolutionData);
+
+        toast({
+          title: "Instância criada",
+          description: `Instância WhatsApp criada para "${nomeCliente.trim()}"!`,
+        });
+
+        // Enviar webhook
+        sendWebhookSafe(user.id, 'whatsapp_instance_created', {
+          instance_id: dbInstance.id,
+          nome_empresa: nomeCliente.trim(),
+          user_id: user.id,
+          user_email: user.email,
+          status: 'desconectado',
+          evolution_data: evolutionData
+        }, {
+          action: 'create_whatsapp_instance',
+          widget: 'whatsapp'
+        }).catch(console.error);
+
+        return dbInstance;
+      } catch (apiError: any) {
+        console.error('Erro na Evolution API, mas instância criada no banco:', apiError);
+        toast({
+          title: "Instância criada parcialmente",
+          description: `Instância salva localmente. Evolution API: ${apiError.message}`,
+          variant: "default",
+        });
+        return dbInstance;
       }
-
-      const evolutionData = await response.json();
-      console.log('✅ Instância criada na Evolution API:', evolutionData);
-
-      toast({
-        title: "Instância criada",
-        description: `Instância WhatsApp criada para "${nomeCliente.trim()}"!`,
-      });
-
-      // Enviar webhook
-      sendWebhookSafe(user.id, 'whatsapp_instance_created', {
-        instance_id: dbInstance.id,
-        nome_empresa: nomeCliente.trim(),
-        user_id: user.id,
-        user_email: user.email,
-        status: 'desconectado',
-        evolution_data: evolutionData
-      }, {
-        action: 'create_whatsapp_instance',
-        widget: 'whatsapp'
-      }).catch(console.error);
-
-      return dbInstance;
     } catch (error: any) {
       console.error('Erro ao criar instância:', error);
       toast({
@@ -176,6 +251,15 @@ export function useWhatsAppAPI() {
   const connectWhatsApp = async () => {
     if (!instance) return false;
 
+    if (apiStatus === 'offline') {
+      toast({
+        title: "API WhatsApp Offline",
+        description: "Não é possível conectar. Evolution API indisponível.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     try {
       setConnecting(true);
       console.log('📱 Iniciando conexão WhatsApp para:', instance.nome_empresa);
@@ -184,19 +268,17 @@ export function useWhatsAppAPI() {
       await updateInstanceStatus('conectando');
       
       // ETAPA 2: Solicitar conexão na Evolution API
-      const response = await fetch(`${EVOLUTION_API_BASE_URL}/instance/connect/${instance.id}`, {
-        method: 'GET',
-        headers: {
-          'apikey': EVOLUTION_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data: connectionData } = await fetchWithRetry(
+        `${EVOLUTION_API_BASE_URL}/instance/connect/${instance.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'apikey': EVOLUTION_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error(`Erro na Evolution API: ${response.status}`);
-      }
-
-      const connectionData = await response.json();
       console.log('🔄 Dados de conexão recebidos:', connectionData);
       
       // ETAPA 3: Se há QR Code, atualizar e aguardar scan
@@ -212,23 +294,24 @@ export function useWhatsAppAPI() {
           
           const checkStatus = async () => {
             try {
-              const statusResponse = await fetch(`${EVOLUTION_API_BASE_URL}/instance/connectionState/${instance.id}`, {
-                method: 'GET',
-                headers: {
-                  'apikey': EVOLUTION_API_KEY,
-                  'Content-Type': 'application/json',
+              const { data: statusData } = await fetchWithRetry(
+                `${EVOLUTION_API_BASE_URL}/instance/connectionState/${instance.id}`,
+                {
+                  method: 'GET',
+                  headers: {
+                    'apikey': EVOLUTION_API_KEY,
+                    'Content-Type': 'application/json',
+                  },
                 },
-              });
+                1 // Apenas 1 retry para monitoramento
+              );
 
-              if (statusResponse.ok) {
-                const statusData = await statusResponse.json();
-                console.log('🔍 Verificando status de conexão:', statusData.instance?.state);
-                
-                if (statusData.instance?.state === 'open') {
-                  await updateInstanceStatus('conectado');
-                  console.log('🎉 WhatsApp conectado com sucesso!');
-                  return true;
-                }
+              console.log('🔍 Verificando status de conexão:', statusData.instance?.state);
+              
+              if (statusData.instance?.state === 'open') {
+                await updateInstanceStatus('conectado');
+                console.log('🎉 WhatsApp conectado com sucesso!');
+                return true;
               }
               
               attempts++;
@@ -262,7 +345,7 @@ export function useWhatsAppAPI() {
       await updateInstanceStatus('erro');
       toast({
         title: "Erro ao conectar",
-        description: error.message || "Erro na conexão com Evolution API",
+        description: `Falha na conexão: ${error.message}`,
         variant: "destructive",
       });
       return false;
@@ -338,26 +421,39 @@ export function useWhatsAppAPI() {
   const disconnectWhatsApp = async () => {
     if (!instance) return false;
 
+    if (apiStatus === 'offline') {
+      // Se API offline, apenas atualizar status local
+      await updateInstanceStatus('desconectado');
+      toast({
+        title: "WhatsApp desconectado localmente",
+        description: "API offline, status atualizado apenas no sistema.",
+      });
+      return true;
+    }
+
     try {
       console.log('🔌 Desconectando da Evolution API');
       
-      const response = await fetch(`${EVOLUTION_API_BASE_URL}/instance/logout/${instance.id}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': EVOLUTION_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      });
+      await fetchWithRetry(
+        `${EVOLUTION_API_BASE_URL}/instance/logout/${instance.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': EVOLUTION_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      if (response.ok) {
-        await updateInstanceStatus('desconectado');
-        console.log('✅ WhatsApp desconectado da Evolution API');
-      }
+      await updateInstanceStatus('desconectado');
+      console.log('✅ WhatsApp desconectado da Evolution API');
       
       return true;
     } catch (error) {
       console.error('Erro ao desconectar WhatsApp:', error);
-      return false;
+      // Mesmo com erro, atualizar status local
+      await updateInstanceStatus('desconectado');
+      return true;
     }
   };
 
@@ -365,17 +461,22 @@ export function useWhatsAppAPI() {
     if (!user?.id || !instance) return false;
 
     try {
-      // Primeiro deletar da Evolution API
-      try {
-        await fetch(`${EVOLUTION_API_BASE_URL}/instance/delete/${instance.id}`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': EVOLUTION_API_KEY,
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (error) {
-        console.warn('Erro ao deletar da Evolution API (pode não existir):', error);
+      // Primeiro deletar da Evolution API se estiver online
+      if (apiStatus === 'online') {
+        try {
+          await fetchWithRetry(
+            `${EVOLUTION_API_BASE_URL}/instance/delete/${instance.id}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'apikey': EVOLUTION_API_KEY,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        } catch (error) {
+          console.warn('Erro ao deletar da Evolution API (pode não existir):', error);
+        }
       }
 
       // Depois deletar do banco
@@ -423,11 +524,13 @@ export function useWhatsAppAPI() {
     instance,
     loading,
     connecting,
+    apiStatus,
     createInstance,
     updateInstanceStatus,
     deleteInstance,
     connectWhatsApp,
     disconnectWhatsApp,
-    refetch: fetchInstance
+    refetch: fetchInstance,
+    checkApiHealth
   };
 }
