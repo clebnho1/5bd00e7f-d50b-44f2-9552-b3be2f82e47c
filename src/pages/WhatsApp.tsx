@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { WhatsAppWidget } from '@/components/widgets/WhatsAppWidget';
 import { LayoutWithSidebar } from '@/components/LayoutWithSidebar';
 

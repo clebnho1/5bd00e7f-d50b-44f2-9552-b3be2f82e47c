@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import QrCodeDisplay from '@/components/QrCodeDisplay';
 import { WhatsAppConnectionForm } from './WhatsApp/WhatsAppConnectionForm';
 import { WhatsAppActions } from './WhatsApp/WhatsAppActions';
 import { useWhatsAppAPI } from '@/hooks/useWhatsAppAPI';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function WhatsAppWidget() {
   const navigate = useNavigate();

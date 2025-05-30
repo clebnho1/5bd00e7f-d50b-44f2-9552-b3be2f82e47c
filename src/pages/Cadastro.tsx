@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { CadastroHeader } from '@/components/auth/CadastroHeader';
 import { CadastroForm } from '@/components/auth/CadastroForm';
 import { CadastroActions } from '@/components/auth/CadastroActions';

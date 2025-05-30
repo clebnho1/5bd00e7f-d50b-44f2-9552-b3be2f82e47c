@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { AgenteAIWidget } from '@/components/widgets/AgenteAIWidget';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';

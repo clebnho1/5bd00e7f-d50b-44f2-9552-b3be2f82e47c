@@ -8,7 +8,7 @@ import { SubscriptionManager } from '@/components/SubscriptionManager';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { FileUpload } from '@/components/FileUpload';
 import { RealtimeChat } from '@/components/RealtimeChat';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
