@@ -15,7 +15,6 @@ export function useUserSettings() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Carregar configurações do usuário
   useEffect(() => {
     if (user?.id) {
       loadSettings();
@@ -34,13 +33,12 @@ export function useUserSettings() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        // Não logar erros - sistema de limpeza vai capturar
         return;
       }
 
       setSettings(data || {});
     } catch (error) {
-      // Silencioso - não logar
+      // Silencioso
     } finally {
       setLoading(false);
     }
@@ -73,7 +71,6 @@ export function useUserSettings() {
 
       setSettings(prev => ({ ...prev, ...newSettings }));
       
-      // Webhook silencioso
       try {
         await sendWebhookSafe(user.id, 'user_settings_updated', {
           user_id: user.id,
@@ -92,7 +89,6 @@ export function useUserSettings() {
         description: "Suas configurações foram atualizadas com sucesso.",
       });
     } catch (error) {
-      // Webhook silencioso para erro
       try {
         await sendWebhookSafe(user.id, 'user_settings_error', {
           user_id: user.id,
@@ -141,7 +137,6 @@ export function useUserSettings() {
 
       const isSuccess = response.ok;
       
-      // Webhook silencioso para resultado
       try {
         await sendWebhookSafe(user.id, 'webhook_test_result', {
           user_id: user.id,
@@ -172,7 +167,6 @@ export function useUserSettings() {
 
       return isSuccess;
     } catch (error) {
-      // Webhook silencioso para erro
       try {
         await sendWebhookSafe(user.id, 'webhook_test_error', {
           user_id: user.id,

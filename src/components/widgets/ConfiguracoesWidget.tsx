@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Settings, Webhook, Save, TestTube, CheckCircle, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useUserSettings } from '@/hooks/useSupabaseData';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { ProtectedWidget } from '@/components/ProtectedWidget';
 
 export function ConfiguracoesWidget() {
