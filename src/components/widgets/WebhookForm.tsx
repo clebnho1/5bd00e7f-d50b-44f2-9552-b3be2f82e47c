@@ -4,18 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Webhook, Save, TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Webhook, Save, TestTube, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useWebhookValidation } from '@/hooks/useWebhookValidation';
 import { useWebhookTest } from '@/hooks/useWebhookTest';
 
 interface WebhookFormProps {
   currentWebhookUrl?: string;
   loading: boolean;
-  onSave: (webhookUrl: string) => Promise<void>;
+  onSave: (webhookUrl: string) => Promise<boolean>;
 }
 
 export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormProps) {
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [saveInProgress, setSaveInProgress] = useState(false);
   const { isValidUrl, validateWebhookUrl } = useWebhookValidation();
   const { isTesting, testResult, testWebhook } = useWebhookTest();
 
@@ -35,13 +36,31 @@ export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormP
     if (!isValidUrl && webhookUrl.trim()) {
       return;
     }
-    await onSave(webhookUrl);
+    
+    setSaveInProgress(true);
+    try {
+      console.log('🔄 Initiating webhook save:', webhookUrl);
+      const success = await onSave(webhookUrl);
+      
+      if (success) {
+        console.log('✅ Webhook save completed successfully');
+      } else {
+        console.log('❌ Webhook save failed');
+      }
+    } catch (error) {
+      console.error('❌ Error during webhook save:', error);
+    } finally {
+      setSaveInProgress(false);
+    }
   };
 
   const handleTest = async () => {
     if (!isValidUrl) return;
+    console.log('🧪 Initiating webhook test:', webhookUrl);
     await testWebhook(webhookUrl);
   };
+
+  const isLoading = loading || saveInProgress;
 
   return (
     <Card>
@@ -63,7 +82,7 @@ export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormP
             placeholder="https://seu-dominio.com/webhook"
             value={webhookUrl}
             onChange={(e) => handleUrlChange(e.target.value)}
-            disabled={loading}
+            disabled={isLoading}
             className={
               webhookUrl && !isValidUrl 
                 ? "border-red-500 focus:border-red-500" 
@@ -86,17 +105,21 @@ export function WebhookForm({ currentWebhookUrl, loading, onSave }: WebhookFormP
         <div className="flex items-center gap-2 flex-wrap">
           <Button 
             onClick={handleSave} 
-            disabled={loading || (webhookUrl.trim() && !isValidUrl)}
+            disabled={isLoading || (webhookUrl.trim() && !isValidUrl)}
           >
-            <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Salvando...' : 'Salvar Configurações'}
+            {saveInProgress ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {saveInProgress ? 'Salvando...' : isLoading ? 'Carregando...' : 'Salvar Configurações'}
           </Button>
           
           {isValidUrl && (
             <Button 
               variant="outline" 
               onClick={handleTest}
-              disabled={isTesting || loading}
+              disabled={isTesting || isLoading}
             >
               <TestTube className="h-4 w-4 mr-2" />
               {isTesting ? 'Testando...' : 'Testar Webhook'}
