@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { CustomSidebar } from '@/components/CustomSidebar';
 import { DashboardContent } from '@/components/DashboardContent';
 import { SidebarProvider } from '@/components/ui/sidebar';

@@ -1,5 +1,5 @@
 
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -10,19 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
-  
-  // Sempre chamar useAuth - se falhar, mostrar loading
-  let user = null;
-  let loading = true;
-  
-  try {
-    const authData = useAuth();
-    user = authData.user;
-    loading = authData.loading;
-  } catch (error) {
-    // Se useAuth falhar, manter loading como true
-    console.log('⏳ [PROTECTED_ROUTE] AuthProvider ainda não está pronto');
-  }
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     console.log('🛡️ [PROTECTED_ROUTE] Estado:', { user: user?.email, loading });
@@ -34,7 +22,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [user, loading, navigate]);
 
   if (loading) {
-    console.log('⏳ [PROTECTED_ROUTE] Mostrando loader');
+    console.log('⏳ [PROTECTED_ROUTE] Carregando autenticação...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
         <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-lg shadow-lg">

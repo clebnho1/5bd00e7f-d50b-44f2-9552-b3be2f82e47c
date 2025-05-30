@@ -1,9 +1,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { sendWebhookSafe } from '@/utils/webhook';
 
 interface UserSettings {
   webhook_url?: string;
@@ -71,16 +70,6 @@ export function useUserSettings() {
       }
 
       setSettings(prev => ({ ...prev, ...newSettings }));
-      
-      // Enviar notificação de sucesso apenas se não for webhook de erro
-      await sendWebhookSafe(user.id, 'user_settings_updated', {
-        user_id: user.id,
-        settings: newSettings,
-        timestamp: new Date().toISOString()
-      }, {
-        action: 'settings_updated',
-        settings_keys: Object.keys(newSettings)
-      });
       
       toast({
         title: "Configurações salvas",

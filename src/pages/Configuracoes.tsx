@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { ConfiguracoesWidget } from '@/components/widgets/ConfiguracoesWidget';
 import { LayoutWithSidebar } from '@/components/LayoutWithSidebar';
 
