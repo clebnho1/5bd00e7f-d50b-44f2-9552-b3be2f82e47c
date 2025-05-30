@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { QrCode, Settings, ArrowLeft, User, AlertTriangle, Loader2, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { QrCode, Settings, ArrowLeft, User, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import QrCodeDisplay from '@/components/QrCodeDisplay';
 import { WhatsAppConnectionForm } from './WhatsApp/WhatsAppConnectionForm';
@@ -33,9 +33,7 @@ export function WhatsAppWidget() {
     deleteInstance,
     refetch,
     loading,
-    connecting,
-    apiStatus,
-    checkApiHealth
+    connecting
   } = useWhatsAppAPI();
 
   const {
@@ -94,10 +92,7 @@ export function WhatsAppWidget() {
     console.log('🔍 Verificando status da instância...');
     setIsCheckingStatus(true);
     try {
-      await Promise.all([
-        refetch(),
-        checkApiHealth()
-      ]);
+      await refetch();
     } finally {
       setIsCheckingStatus(false);
     }
@@ -204,52 +199,7 @@ export function WhatsAppWidget() {
           <User className="h-4 w-4" />
           {user.email}
         </div>
-        
-        {/* Status da API com botão de refresh */}
-        <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-2 text-xs px-2 py-1 rounded-full ${
-            apiStatus === 'online' ? 'bg-green-100 text-green-800' : 
-            apiStatus === 'offline' ? 'bg-red-100 text-red-800' : 
-            'bg-yellow-100 text-yellow-800'
-          }`}>
-            {apiStatus === 'online' ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-            API {apiStatus === 'online' ? 'Online' : apiStatus === 'offline' ? 'Offline' : 'Verificando...'}
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={checkApiHealth}
-            className="h-6 w-6 p-0"
-            title="Verificar API"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </Button>
-        </div>
       </div>
-
-      {/* Alert da API Offline */}
-      {apiStatus === 'offline' && (
-        <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-orange-800 mb-2">
-              <AlertTriangle className="h-5 w-5" />
-              <h3 className="font-medium">Evolution API Temporariamente Indisponível</h3>
-            </div>
-            <p className="text-orange-700 text-sm mb-3">
-              A API externa está offline. Você pode visualizar instâncias existentes, mas não conectar ou criar novas até a API voltar.
-            </p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={checkApiHealth}
-              className="text-orange-800 border-orange-300 hover:bg-orange-100"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Verificar API Novamente
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Fluxo de Conexão Melhorado */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
@@ -318,7 +268,6 @@ export function WhatsAppWidget() {
           </CardTitle>
           <CardDescription className="text-gray-600">
             Configure e gerencie sua instância WhatsApp pessoal seguindo o fluxo: criar → conectar → QR → scan → conectado
-            {apiStatus === 'offline' && <span className="text-orange-600 font-medium"> (API offline - funcionalidade limitada)</span>}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -332,7 +281,6 @@ export function WhatsAppWidget() {
             isCheckingStatus={isCheckingStatus}
             onCreateInstance={handleCreateInstance}
             onCheckStatus={handleCheckStatus}
-            apiStatus={apiStatus}
           />
 
           {instanceId && (
@@ -348,7 +296,6 @@ export function WhatsAppWidget() {
               />
               <p className="text-xs text-gray-500">
                 Instância para o cliente: {instance?.nome_empresa || nomeCliente}
-                {apiStatus === 'offline' && <span className="text-orange-600"> (API offline)</span>}
               </p>
             </div>
           )}
@@ -363,7 +310,6 @@ export function WhatsAppWidget() {
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
             onDelete={handleDelete}
-            apiStatus={apiStatus}
           />
         </CardContent>
       </Card>
@@ -379,15 +325,13 @@ export function WhatsAppWidget() {
             )}
           </CardTitle>
           <CardDescription className="text-gray-600">
-            {apiStatus === 'offline' ? 
-              'API offline - QR Code não disponível no momento.' :
-              statusConexao === 'connecting' && qrCode
-                ? '📱 QR Code gerado! Abra o WhatsApp, vá em "Dispositivos conectados" e escaneie este código.'
-                : statusConexao === 'open'
-                ? '✅ WhatsApp conectado! Para reconectar, desconecte primeiro e conecte novamente.'
-                : statusConexao === 'connecting'
-                ? '🔄 Gerando QR Code... aguarde alguns segundos.'
-                : 'Clique em "Conectar WhatsApp" para gerar o QR Code'
+            {statusConexao === 'connecting' && qrCode
+              ? '📱 QR Code gerado! Abra o WhatsApp, vá em "Dispositivos conectados" e escaneie este código.'
+              : statusConexao === 'open'
+              ? '✅ WhatsApp conectado! Para reconectar, desconecte primeiro e conecte novamente.'
+              : statusConexao === 'connecting'
+              ? '🔄 Gerando QR Code... aguarde alguns segundos.'
+              : 'Clique em "Conectar WhatsApp" para gerar o QR Code'
             }
           </CardDescription>
         </CardHeader>
@@ -395,7 +339,7 @@ export function WhatsAppWidget() {
           <QrCodeDisplay 
             qrCodeData={qrCode} 
             isLoading={isConnecting || connecting || (statusConexao === 'connecting' && !qrCode)} 
-            error={error || (apiStatus === 'offline' ? 'API offline - QR Code indisponível' : undefined)}
+            error={error}
             message={statusConexao === 'open' ? 'WhatsApp conectado com sucesso! 🎉' : undefined}
           />
         </CardContent>

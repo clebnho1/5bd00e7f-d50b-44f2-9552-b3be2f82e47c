@@ -15,7 +15,6 @@ interface WhatsAppConnectionFormProps {
   isCheckingStatus: boolean;
   onCreateInstance: () => void;
   onCheckStatus: () => void;
-  apiStatus?: 'checking' | 'online' | 'offline';
 }
 
 export function WhatsAppConnectionForm({
@@ -27,11 +26,8 @@ export function WhatsAppConnectionForm({
   isCreatingInstance,
   isCheckingStatus,
   onCreateInstance,
-  onCheckStatus,
-  apiStatus = 'online'
+  onCheckStatus
 }: WhatsAppConnectionFormProps) {
-  const isApiOffline = apiStatus === 'offline';
-  
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1 space-y-2">
@@ -45,21 +41,20 @@ export function WhatsAppConnectionForm({
             onChange={(e) => setNomeCliente(e.target.value)}
             placeholder="Digite o nome do cliente (ex: João Silva)"
             className="flex-1"
-            disabled={isApiOffline && !instanceId} // Só desabilita se não tem instância E API offline
           />
           <Button 
             variant="outline" 
             size="icon" 
             onClick={onCheckStatus} 
             disabled={isCheckingStatus || (!instanceId && !nomeCliente.trim())}
-            title="Verificar status da conexão e API"
+            title="Verificar status da conexão"
           >
             <RefreshCw className={`h-4 w-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
           </Button>
           {!instanceId && (
             <Button
               onClick={onCreateInstance}
-              disabled={isCreatingInstance || !nomeCliente.trim() || isApiOffline}
+              disabled={isCreatingInstance || !nomeCliente.trim()}
               className="min-w-[150px]"
             >
               {isCreatingInstance ? "Criando..." : "Criar Instância"}
@@ -68,9 +63,7 @@ export function WhatsAppConnectionForm({
         </div>
         <p className="text-xs text-muted-foreground">
           {instanceId 
-            ? `Instância criada para: ${nomeCliente}${isApiOffline ? ' (API offline)' : ''}` 
-            : isApiOffline 
-            ? "API offline - não é possível criar novas instâncias no momento"
+            ? `Instância criada para: ${nomeCliente}` 
             : "Use um nome único para identificar este cliente"
           }
         </p>
