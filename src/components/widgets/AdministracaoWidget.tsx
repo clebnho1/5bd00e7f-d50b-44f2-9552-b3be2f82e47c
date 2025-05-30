@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 
 export function AdministracaoWidget() {
   const { isAdmin } = useAuth();
+  
+  // Sempre chamar os hooks na mesma ordem, independente de condições
   const { users, loading, updateUser, updateUserPlan, toggleUserStatus, resetUserPassword, generateTemporaryPassword } = useAdministracao();
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -29,6 +31,7 @@ export function AdministracaoWidget() {
     expirationDate: ''
   });
 
+  // Verificar se é admin APÓS todos os hooks serem declarados
   if (!isAdmin()) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -157,7 +160,6 @@ export function AdministracaoWidget() {
     } else if ((user.plano === 'profissional' || user.plano === 'empresarial') && user.plano_expires_at) {
       return `Plano expira em: ${new Date(user.plano_expires_at).toLocaleDateString('pt-BR')}`;
     } else {
-      // Para usuários sem data de expiração definida, mostrar como expirado
       return 'Plano sem data de expiração';
     }
   };
