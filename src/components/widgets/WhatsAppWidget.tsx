@@ -27,10 +27,10 @@ export function WhatsAppWidget() {
   const {
     instance,
     createInstance,
-    connectToWhatsApp,
+    connectWhatsApp,
     disconnectWhatsApp,
     deleteInstance,
-    checkStatus,
+    refetch,
     loading
   } = useWhatsAppAPI();
 
@@ -88,7 +88,7 @@ export function WhatsAppWidget() {
 
     setIsCheckingStatus(true);
     try {
-      await checkStatus();
+      await refetch();
     } finally {
       setIsCheckingStatus(false);
     }
@@ -117,7 +117,7 @@ export function WhatsAppWidget() {
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
-      await connectToWhatsApp();
+      await connectWhatsApp();
       setTimeout(() => handleCheckStatus(), 5000);
     } finally {
       setIsConnecting(false);
