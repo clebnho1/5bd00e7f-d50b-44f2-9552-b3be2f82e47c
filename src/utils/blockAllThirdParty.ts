@@ -5,7 +5,7 @@
 export function blockAllThirdPartyServices() {
   if (typeof window === 'undefined') return;
 
-  // Bloqueia Google Analytics, GTM, DoubleClick
+  // Bloqueia Google Analytics, GTM, DoubleClick, Facebook
   const blockedDomains = [
     'google-analytics.com',
     'googletagmanager.com',
@@ -15,8 +15,51 @@ export function blockAllThirdPartyServices() {
     'facebook.com',
     'fbcdn.net',
     'analytics.google.com',
-    'tagmanager.google.com'
+    'tagmanager.google.com',
+    'connect.facebook.net',
+    'www.facebook.com'
   ];
+
+  // Bloqueia preload de recursos do Facebook
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const element = node as Element;
+          
+          // Remove preload de terceiros
+          if (element.tagName === 'LINK' && element.getAttribute('rel') === 'preload') {
+            const href = element.getAttribute('href');
+            if (href && blockedDomains.some(domain => href.includes(domain))) {
+              element.remove();
+              console.log('🚫 Removed third-party preload:', href);
+            }
+          }
+
+          // Remove scripts de terceiros
+          if (element.tagName === 'SCRIPT') {
+            const src = element.getAttribute('src');
+            if (src && blockedDomains.some(domain => src.includes(domain))) {
+              element.remove();
+              console.log('🚫 Removed third-party script:', src);
+            }
+          }
+
+          // Remove iframes de terceiros
+          if (element.tagName === 'IFRAME') {
+            const src = element.getAttribute('src');
+            if (src && blockedDomains.some(domain => src.includes(domain))) {
+              element.remove();
+              console.log('🚫 Removed third-party iframe:', src);
+            }
+          }
+        }
+      });
+    });
+  });
+
+  observer.observe(document.head, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true });
 
   // Bloqueia fetch para domínios de terceiros
   const originalFetch = window.fetch;
@@ -40,7 +83,7 @@ export function blockAllThirdPartyServices() {
         console.log('🚫 Blocked third-party XHR to:', urlStr);
         throw new Error('Third-party XHR blocked');
       }
-      // Corrigido: usar argumentos específicos em vez de spread
+      
       if (async !== undefined) {
         if (user !== undefined) {
           if (password !== undefined) {
@@ -54,63 +97,6 @@ export function blockAllThirdPartyServices() {
     }
   } as any;
 
-  // Bloqueia criação de scripts dinâmicos
-  const originalCreateElement = document.createElement;
-  document.createElement = function(tagName: string, options?: ElementCreationOptions) {
-    const element = originalCreateElement.call(this, tagName, options);
-    
-    if (tagName.toLowerCase() === 'script') {
-      const originalSrcSetter = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src')?.set;
-      if (originalSrcSetter) {
-        Object.defineProperty(element, 'src', {
-          set: function(value: string) {
-            if (blockedDomains.some(domain => value.includes(domain))) {
-              console.log('🚫 Blocked third-party script:', value);
-              return;
-            }
-            originalSrcSetter.call(this, value);
-          },
-          get: function() {
-            return this.getAttribute('src') || '';
-          }
-        });
-      }
-    }
-    
-    if (tagName.toLowerCase() === 'iframe') {
-      const originalSrcSetter = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src')?.set;
-      if (originalSrcSetter) {
-        Object.defineProperty(element, 'src', {
-          set: function(value: string) {
-            if (blockedDomains.some(domain => value.includes(domain))) {
-              console.log('🚫 Blocked third-party iframe:', value);
-              return;
-            }
-            originalSrcSetter.call(this, value);
-          },
-          get: function() {
-            return this.getAttribute('src') || '';
-          }
-        });
-      }
-    }
-    
-    return element;
-  };
-
-  // Bloqueia WebSocket para terceiros
-  const OriginalWebSocket = window.WebSocket;
-  window.WebSocket = class extends OriginalWebSocket {
-    constructor(url: string | URL, protocols?: string | string[]) {
-      const urlStr = url.toString();
-      if (blockedDomains.some(domain => urlStr.includes(domain))) {
-        console.log('🚫 Blocked third-party WebSocket to:', urlStr);
-        throw new Error('Third-party WebSocket blocked');
-      }
-      super(url, protocols);
-    }
-  } as any;
-
   // Remove objetos globais de tracking
   const trackingObjects = [
     'gtag',
@@ -121,7 +107,8 @@ export function blockAllThirdPartyServices() {
     'google_tag_manager',
     'gtm',
     'fbq',
-    '_fbq'
+    '_fbq',
+    'FB'
   ];
 
   trackingObjects.forEach(obj => {
@@ -136,24 +123,14 @@ export function blockAllThirdPartyServices() {
     }
   });
 
-  // Substitui dataLayer por um array vazio para evitar erros
+  // Substitui dataLayer por um array vazio
   // @ts-ignore
   window.dataLayer = [];
 
-  // Bloqueia tentativas de injeção via appendChild
-  const originalAppendChild = Element.prototype.appendChild;
-  Element.prototype.appendChild = function<T extends Node>(node: T): T {
-    // Corrigido: verificar se é Element antes da conversão
-    if (node.nodeType === Node.ELEMENT_NODE && node instanceof Element) {
-      const src = node.getAttribute('src');
-      
-      if (src && blockedDomains.some(domain => src.includes(domain))) {
-        console.log('🚫 Blocked third-party element injection:', src);
-        return node;
-      }
-    }
-    
-    return originalAppendChild.call(this, node);
+  // Bloqueia Facebook Pixel especificamente
+  // @ts-ignore
+  window.fbq = function() {
+    console.log('🚫 Facebook Pixel call blocked');
   };
 
   console.log('🛡️ All third-party services completely blocked');
