@@ -50,7 +50,7 @@ export function WhatsAppWidget() {
   const statusMessage = instance ? `Status: ${instance.status}` : 'Nenhuma instância encontrada';
   const qrCode = instance?.qr_code || '';
   const error = instance?.status === 'erro' ? 'Erro na conexão' : null;
-  const isAPIHealthy = true; // Assumindo que a API está funcionando
+  const isAPIHealthy = true;
 
   // Auto-verificação com debounce adequado
   useEffect(() => {
@@ -101,6 +101,10 @@ export function WhatsAppWidget() {
     setIsDisconnecting(true);
     try {
       await disconnectWhatsApp();
+      // Limpar estado após desconectar
+      setInstanceId('');
+      setNomeCliente('');
+      clearLocalStorage();
     } finally {
       setIsDisconnecting(false);
     }
@@ -198,7 +202,7 @@ export function WhatsAppWidget() {
                 className="bg-gray-50 text-gray-600 font-mono text-xs"
               />
               <p className="text-xs text-gray-500">
-                Esta é sua instância privada, isolada de outros usuários
+                Esta é sua instância privada, isolada de outros usuários: {nomeCliente}
               </p>
             </div>
           )}
@@ -224,8 +228,8 @@ export function WhatsAppWidget() {
             QR Code para Conexão
           </CardTitle>
           <CardDescription className="text-gray-600">
-            {statusConexao === 'open' 
-              ? 'Seu WhatsApp está conectado! Não é necessário escanear o QR Code.'
+            {statusConexao === 'open' && !isConnecting
+              ? 'Seu WhatsApp está conectado! Para reconectar, clique em "Conectar WhatsApp" novamente.'
               : 'Escaneie o código QR com seu WhatsApp para conectar sua instância privada'
             }
           </CardDescription>
@@ -235,7 +239,7 @@ export function WhatsAppWidget() {
             qrCodeData={qrCode} 
             isLoading={isConnecting} 
             error={error}
-            message={statusConexao === 'open' ? 'Seu WhatsApp conectado com sucesso! ✅' : undefined}
+            message={statusConexao === 'open' && !isConnecting ? 'Seu WhatsApp conectado com sucesso! ✅' : undefined}
           />
         </CardContent>
       </Card>

@@ -42,7 +42,6 @@ export function WhatsAppConnectionForm({
             onChange={(e) => setNomeCliente(e.target.value)}
             placeholder="Digite o nome do cliente (ex: joao)"
             className="flex-1"
-            disabled={!!instanceId}
           />
           <Button 
             variant="outline" 
