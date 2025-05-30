@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -150,6 +151,17 @@ export function AdministracaoWidget() {
     }
   };
 
+  const getExpirationText = (user: any) => {
+    if (user.plano === 'gratuito' && user.trial_expires_at) {
+      return `Trial expira em: ${new Date(user.trial_expires_at).toLocaleDateString('pt-BR')}`;
+    } else if ((user.plano === 'profissional' || user.plano === 'empresarial') && user.plano_expires_at) {
+      return `Plano expira em: ${new Date(user.plano_expires_at).toLocaleDateString('pt-BR')}`;
+    } else {
+      // Para usuários sem data de expiração definida, mostrar como expirado
+      return 'Plano sem data de expiração';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -285,16 +297,9 @@ export function AdministracaoWidget() {
                   </div>
                   <div className="mt-2 text-xs text-gray-500">
                     Criado em: {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                    {user.plano_expires_at && (
-                      <span className="ml-4">
-                        Expira em: {new Date(user.plano_expires_at).toLocaleDateString('pt-BR')}
-                      </span>
-                    )}
-                    {user.trial_expires_at && (
-                      <span className="ml-4">
-                        Trial expira em: {new Date(user.trial_expires_at).toLocaleDateString('pt-BR')}
-                      </span>
-                    )}
+                    <span className="ml-4">
+                      {getExpirationText(user)}
+                    </span>
                   </div>
                 </div>
                 
@@ -398,7 +403,6 @@ export function AdministracaoWidget() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Plano */}
       <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-white">
           <DialogHeader>
@@ -448,7 +452,6 @@ export function AdministracaoWidget() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Senha Temporária */}
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-white">
           <DialogHeader>

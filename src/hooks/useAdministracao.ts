@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -317,6 +318,50 @@ export function useAdministracao() {
       return null;
     }
   };
+
+  // Função para corrigir usuários sem datas de expiração definidas
+  const fixUsersWithoutExpiration = async () => {
+    if (!user || !isAdmin()) return;
+
+    try {
+      const usersToFix = users.filter(u => {
+        if (u.plano === 'gratuito' && !u.trial_expires_at) return true;
+        if ((u.plano === 'profissional' || u.plano === 'empresarial') && !u.plano_expires_at) return true;
+        return false;
+      });
+
+      for (const userToFix of usersToFix) {
+        let updateData: any = {
+          updated_at: new Date().toISOString()
+        };
+
+        if (userToFix.plano === 'gratuito') {
+          updateData.trial_expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        } else if (userToFix.plano === 'profissional' || userToFix.plano === 'empresarial') {
+          updateData.plano_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
+
+        await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', userToFix.id);
+      }
+
+      if (usersToFix.length > 0) {
+        console.log(`Fixed ${usersToFix.length} users without expiration dates`);
+        fetchUsers(); // Recarregar dados após correção
+      }
+    } catch (error) {
+      console.error('Erro ao corrigir usuários sem data de expiração:', error);
+    }
+  };
+
+  // Executar correção quando os usuários forem carregados
+  useEffect(() => {
+    if (users.length > 0 && user && isAdmin()) {
+      fixUsersWithoutExpiration();
+    }
+  }, [users.length]);
 
   return { 
     users, 
