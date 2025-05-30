@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -374,7 +373,6 @@ export function AdministracaoWidget() {
             <Button 
               onClick={handleSubmit} 
               className="whatsapp-gradient text-white"
-              disabled={!formData.name.trim() || !formData.email.trim()}
             >
               Salvar Alterações
             </Button>
@@ -425,7 +423,6 @@ export function AdministracaoWidget() {
             <Button 
               onClick={handlePlanSubmit} 
               className="whatsapp-gradient text-white"
-              disabled={!planData.plano}
             >
               Atualizar Plano
             </Button>
