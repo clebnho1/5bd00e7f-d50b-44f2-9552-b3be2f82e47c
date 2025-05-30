@@ -25,7 +25,7 @@ const diasSemana = [
 ];
 
 export function ColaboradoresWidget() {
-  const { colaboradores, loading, saveColaborador, updateColaborador } = useColaboradores();
+  const { colaboradores, loading, createColaborador, updateColaborador } = useColaboradores();
   const { isAdmin } = useAuth();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -160,7 +160,7 @@ export function ColaboradoresWidget() {
     if (editingColaborador) {
       success = await updateColaborador(editingColaborador.id, dadosColaborador);
     } else {
-      success = await saveColaborador(dadosColaborador);
+      success = await createColaborador(dadosColaborador);
     }
 
     if (success) {

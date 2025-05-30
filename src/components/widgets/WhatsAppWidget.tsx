@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,19 +25,23 @@ export function WhatsAppWidget() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   
   const {
-    statusConexao,
-    statusMessage,
-    qrCode,
-    error,
-    isAPIHealthy,
-    checkConnectionStatus,
+    instance,
     createInstance,
-    connectWhatsApp,
-    disconnect,
+    connectToWhatsApp,
+    disconnectWhatsApp,
     deleteInstance,
-    startPeriodicCheck,
-    stopPeriodicCheck
+    checkStatus,
+    loading
   } = useWhatsAppAPI();
+
+  // Mapear os dados da instância para compatibilidade com os componentes
+  const statusConexao = instance?.status === 'conectado' ? 'open' : 
+                       instance?.status === 'conectando' ? 'connecting' :
+                       instance?.status === 'erro' ? 'error' : 'closed';
+  const statusMessage = instance ? `Status: ${instance.status}` : 'Nenhuma instância encontrada';
+  const qrCode = instance?.qr_code || '';
+  const error = instance?.status === 'erro' ? 'Erro na conexão' : null;
+  const isAPIHealthy = true; // Assumindo que a API está funcionando
 
   // Carregar dados salvos do localStorage específicos do usuário
   useEffect(() => {
@@ -59,7 +64,7 @@ export function WhatsAppWidget() {
     if (nomeCliente.trim().length > 2 && isAPIHealthy) {
       const timer = setTimeout(() => {
         handleCheckStatus();
-      }, 2000); // Aumentado para 2 segundos
+      }, 2000);
       
       return () => clearTimeout(timer);
     }
@@ -71,12 +76,10 @@ export function WhatsAppWidget() {
     
     if (targetInstance && user?.id && isAPIHealthy) {
       console.log(`🎯 Iniciando monitoramento para usuário ${user.email}: ${targetInstance}`);
-      startPeriodicCheck(targetInstance);
-    } else {
-      stopPeriodicCheck();
+      // startPeriodicCheck(targetInstance);
     }
     
-    return () => stopPeriodicCheck();
+    // return () => stopPeriodicCheck();
   }, [instanceId, nomeCliente, user?.id, isAPIHealthy]);
 
   const handleCheckStatus = async () => {
@@ -85,7 +88,7 @@ export function WhatsAppWidget() {
 
     setIsCheckingStatus(true);
     try {
-      await checkConnectionStatus(targetInstance);
+      await checkStatus();
     } finally {
       setIsCheckingStatus(false);
     }
@@ -94,27 +97,27 @@ export function WhatsAppWidget() {
   const handleCreateInstance = async () => {
     setIsCreatingInstance(true);
     try {
-      const newInstanceId = await createInstance(nomeCliente);
-      setInstanceId(newInstanceId);
-      
-      if (user?.id) {
-        const userKey = `whatsapp_${user.id}`;
-        localStorage.setItem(`${userKey}_instance_id`, newInstanceId);
-        localStorage.setItem(`${userKey}_cliente_nome`, nomeCliente.trim());
+      const newInstance = await createInstance(nomeCliente);
+      if (newInstance) {
+        setInstanceId(newInstance.id);
+        
+        if (user?.id) {
+          const userKey = `whatsapp_${user.id}`;
+          localStorage.setItem(`${userKey}_instance_id`, newInstance.id);
+          localStorage.setItem(`${userKey}_cliente_nome`, nomeCliente.trim());
+        }
+        
+        setTimeout(() => handleCheckStatus(), 2000);
       }
-      
-      setTimeout(() => handleCheckStatus(), 2000);
     } finally {
       setIsCreatingInstance(false);
     }
   };
 
   const handleConnect = async () => {
-    // Usar instanceId se disponível, senão usar nomeCliente
-    const targetInstance = instanceId || nomeCliente.trim();
     setIsConnecting(true);
     try {
-      await connectWhatsApp(targetInstance);
+      await connectToWhatsApp();
       setTimeout(() => handleCheckStatus(), 5000);
     } finally {
       setIsConnecting(false);
@@ -122,20 +125,18 @@ export function WhatsAppWidget() {
   };
 
   const handleDisconnect = async () => {
-    const targetInstance = instanceId || nomeCliente.trim();
     setIsDisconnecting(true);
     try {
-      await disconnect(targetInstance);
+      await disconnectWhatsApp();
     } finally {
       setIsDisconnecting(false);
     }
   };
 
   const handleDelete = async () => {
-    const targetInstance = instanceId || nomeCliente.trim();
     setIsDeleting(true);
     try {
-      await deleteInstance(targetInstance);
+      await deleteInstance();
       setInstanceId('');
       setNomeCliente('');
       

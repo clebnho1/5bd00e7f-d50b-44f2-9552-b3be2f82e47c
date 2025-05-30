@@ -13,14 +13,14 @@ import { Observacoes } from './AgenteAI/Observacoes';
 import { useAgenteForm } from './AgenteAI/useAgenteForm';
 
 export const AgenteAIWidget = memo(function AgenteAIWidget() {
-  const { agentData, loading, saveAgenteAI } = useAgenteAI();
+  const { agente, loading, saveAgente } = useAgenteAI();
   const { areasAtuacao, estilosComportamento, loading: optionsLoading } = useSelectOptions();
-  const { formData, handleInputChange, prepareDataForSave } = useAgenteForm(agentData);
+  const { formData, handleInputChange, prepareDataForSave } = useAgenteForm(agente);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const dataToSave = prepareDataForSave();
-    await saveAgenteAI(dataToSave);
+    await saveAgente(dataToSave);
   };
 
   if (loading || optionsLoading) {

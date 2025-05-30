@@ -19,10 +19,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading, setUser, setLoading } = useAuthState();
+  const { user, session, loading, userRole, isAdmin: isAdminFromState, refreshUserRole } = useAuthState();
   const { signIn, signUp, signOut, resetPassword } = useAuthActions();
   
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentLoading, setCurrentLoading] = useState(true);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+
+  useEffect(() => {
+    setCurrentUser(user);
+    setCurrentLoading(loading);
+  }, [user, loading]);
 
   useEffect(() => {
     // Configurar listener para mudanças de autenticação
@@ -30,8 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, session) => {
         console.log('🔄 Auth state changed:', event, session?.user?.email);
         
-        setUser(session?.user ?? null);
-        setLoading(false);
+        setCurrentUser(session?.user ?? null);
+        setCurrentLoading(false);
         
         // Enviar webhook para mudanças de estado de autenticação
         if (session?.user) {
@@ -69,22 +76,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
     };
-  }, [setUser, setLoading, isFirstLoad]);
+  }, [isFirstLoad]);
 
   const isAdmin = () => {
-    if (!user) return false;
+    if (!currentUser) return false;
     
     // Verificar se o usuário é admin baseado no email ou metadata
     const adminEmails = ['admin@admin.com', 'clebermosmann@gmail.com'];
-    const userRole = user.user_metadata?.role || user.app_metadata?.role;
+    const userRole = currentUser.user_metadata?.role || currentUser.app_metadata?.role;
     
-    return adminEmails.includes(user.email || '') || userRole === 'admin';
+    return adminEmails.includes(currentUser.email || '') || userRole === 'admin';
   };
 
   return (
     <AuthContext.Provider value={{
-      user,
-      loading,
+      user: currentUser,
+      loading: currentLoading,
       signIn,
       signUp,
       signOut,
