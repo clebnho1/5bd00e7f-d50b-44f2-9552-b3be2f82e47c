@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -15,13 +15,7 @@ export function useUserSettings() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user?.id) {
-      loadSettings();
-    }
-  }, [user?.id]);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -33,16 +27,23 @@ export function useUserSettings() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
+        console.error('Error loading settings:', error);
         return;
       }
 
       setSettings(data || {});
     } catch (error) {
-      // Silencioso
+      console.error('Failed to load settings:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadSettings();
+    }
+  }, [user?.id, loadSettings]);
 
   const saveSettings = async (newSettings: Partial<UserSettings>) => {
     if (!user?.id) {
@@ -80,8 +81,8 @@ export function useUserSettings() {
           action: 'settings_updated',
           settings_keys: Object.keys(newSettings)
         });
-      } catch {
-        // Silencioso
+      } catch (webhookError) {
+        console.error('Failed to send webhook notification:', webhookError);
       }
       
       toast({
@@ -93,13 +94,13 @@ export function useUserSettings() {
         await sendWebhookSafe(user.id, 'user_settings_error', {
           user_id: user.id,
           settings: newSettings,
-          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         }, {
           action: 'settings_save_failed'
         });
-      } catch {
-        // Silencioso
+      } catch (webhookError) {
+        console.error('Failed to send error webhook:', webhookError);
       }
       
       toast({
@@ -112,89 +113,10 @@ export function useUserSettings() {
     }
   };
 
-  const testWebhook = async (webhookUrl: string): Promise<boolean> => {
-    if (!user?.id) return false;
-
-    try {
-      const testPayload = {
-        event: 'webhook_test',
-        user_id: user.id,
-        timestamp: new Date().toISOString(),
-        data: {
-          message: 'Teste de webhook do sistema',
-          test: true
-        }
-      };
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testPayload),
-        signal: AbortSignal.timeout(10000)
-      });
-
-      const isSuccess = response.ok;
-      
-      try {
-        await sendWebhookSafe(user.id, 'webhook_test_result', {
-          user_id: user.id,
-          webhook_url: webhookUrl,
-          success: isSuccess,
-          status_code: response.status,
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'webhook_test',
-          result: isSuccess ? 'success' : 'failed'
-        });
-      } catch {
-        // Silencioso
-      }
-
-      if (isSuccess) {
-        toast({
-          title: "Webhook testado",
-          description: "Webhook está funcionando corretamente!",
-        });
-      } else {
-        toast({
-          title: "Webhook offline",
-          description: `Webhook retornou status ${response.status}`,
-          variant: "destructive",
-        });
-      }
-
-      return isSuccess;
-    } catch (error) {
-      try {
-        await sendWebhookSafe(user.id, 'webhook_test_error', {
-          user_id: user.id,
-          webhook_url: webhookUrl,
-          error: error instanceof Error ? error.message : 'Erro desconhecido',
-          timestamp: new Date().toISOString()
-        }, {
-          action: 'webhook_test_failed'
-        });
-      } catch {
-        // Silencioso
-      }
-      
-      toast({
-        title: "Erro no teste",
-        description: "Não foi possível testar o webhook.",
-        variant: "destructive",
-      });
-      
-      return false;
-    }
-  };
-
   return {
     settings,
     loading,
     saveSettings,
-    testWebhook,
     loadSettings
   };
 }
