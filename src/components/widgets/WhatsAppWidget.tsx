@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,10 +11,12 @@ import { WhatsAppActions } from './WhatsApp/WhatsAppActions';
 import { useWhatsAppAPI } from '@/hooks/useWhatsAppAPI';
 import { useWhatsAppState } from '@/hooks/useWhatsAppState';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export function WhatsAppWidget() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   
   const [isCreatingInstance, setIsCreatingInstance] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
